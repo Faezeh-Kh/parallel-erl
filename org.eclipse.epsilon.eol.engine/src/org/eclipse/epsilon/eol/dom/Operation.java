@@ -1,0 +1,316 @@
+/*******************************************************************************
+ * Copyright (c) 2008 The University of York.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Dimitrios Kolovos - initial API and implementation
+ ******************************************************************************/
+package org.eclipse.epsilon.eol.dom;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.WeakHashMap;
+import java.util.List;
+import java.util.Map;
+import org.eclipse.epsilon.common.module.IModule;
+import org.eclipse.epsilon.common.parse.AST;
+import org.eclipse.epsilon.eol.compile.context.EolCompilationContext;
+import org.eclipse.epsilon.eol.exceptions.EolIllegalReturnException;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.Return;
+import org.eclipse.epsilon.eol.execute.context.FrameStack;
+import org.eclipse.epsilon.eol.execute.context.FrameType;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
+import org.eclipse.epsilon.eol.execute.context.Variable;
+import org.eclipse.epsilon.eol.execute.operations.contributors.IterableOperationContributor;
+import org.eclipse.epsilon.eol.parse.EolParser;
+import org.eclipse.epsilon.eol.types.EolAnyType;
+import org.eclipse.epsilon.eol.types.EolNoType;
+import org.eclipse.epsilon.eol.types.EolType;
+
+public class Operation extends AnnotatableModuleElement implements ICompilableModuleElement {
+	
+	protected NameExpression nameExpression;
+	protected TypeExpression contextTypeExpression;
+	protected EolType contextType;
+	protected TypeExpression returnTypeExpression;
+	protected EolType returnType;
+	protected StatementBlock body;
+	protected List<Parameter> formalParameters = new ArrayList<>();
+	protected boolean isCached;
+	// If this operation cannot be cached, it will stay null, to save some memory.
+	// Note that this cache needs to be thread-safe!
+	protected Map<Object, Object> cache;
+	
+	//TODO: Add guards to helpers
+	public Operation() {
+		
+	}
+	
+	@Override
+	public void build(AST cst, IModule module) {
+		super.build(cst, module);
+		
+		AST nameAst = null;
+		if (cst.getFirstChild().getType() == EolParser.TYPE) {
+			AST contextTypeExpressionAst = cst.getFirstChild();
+			contextTypeExpression = (TypeExpression) module.createAst(contextTypeExpressionAst, this);
+			nameAst = contextTypeExpressionAst.getNextSibling(); 
+		}
+		else {
+			nameAst = cst.getFirstChild();
+		}
+		AST paramListAst = null;
+		AST returnAst = null;
+		AST bodyAst = null;
+		
+		if (nameAst.getNextSibling().getType() == EolParser.PARAMLIST) {
+			paramListAst = nameAst.getNextSibling();
+		}
+		
+		if (paramListAst != null){ // helper with parameters
+			if (paramListAst.getNextSibling().getType() == EolParser.TYPE) { // with return type
+				returnAst = paramListAst.getNextSibling();
+				bodyAst = returnAst.getNextSibling();
+			} else { // without return type
+				bodyAst = paramListAst.getNextSibling();
+			}
+		} else { // helper without parameters
+			if (nameAst.getNextSibling().getType() == EolParser.TYPE) { //with return type
+				returnAst = nameAst.getNextSibling();
+				bodyAst = returnAst.getNextSibling();
+			} else { // without return type
+				bodyAst = nameAst.getNextSibling();
+			}
+		}
+		
+		this.nameExpression = (NameExpression) module.createAst(nameAst, this);
+		this.returnTypeExpression = (TypeExpression)  module.createAst(returnAst, this);
+		if (paramListAst != null) {
+			for (AST formalParameterAst : paramListAst.getChildren()) {
+				formalParameters.add((Parameter) module.createAst(formalParameterAst, this));
+			}
+		}
+		this.body = (StatementBlock) module.createAst(bodyAst, this);
+		
+		// Assignment intended
+		if (isCached = hasAnnotation("cached") && formalParameters.isEmpty()) {
+			this.cache = Collections.synchronizedMap(new WeakHashMap<>());
+		}
+	}
+
+	@Override
+	public void compile(EolCompilationContext context) {
+		EolType contextType = EolNoType.Instance;
+		if (contextTypeExpression != null) {
+			contextTypeExpression.compile(context);
+			contextType = contextTypeExpression.getCompilationType();
+		}
+		
+		context.getFrameStack().enterLocal(FrameType.PROTECTED, this, new Variable("self", contextType));
+		for (Parameter parameter : formalParameters) {
+			parameter.compile(context);
+		}
+		body.compile(context);
+		context.getFrameStack().leaveLocal(this);
+	}
+	
+	public void clearCache() {
+		if (isCached()) {
+			cache.clear();
+		}
+
+		// This is important for EUnit, as it ensures that the cached
+		// type information will be re-evaluated for the reloaded models
+		contextType = returnType = null;
+		for (Parameter formalParameter : formalParameters) {
+			formalParameter.clearCache();
+		}
+	}
+	
+	@Override
+	public String toString() {
+		String contextTypeName = "";
+		String returnTypeName = "";
+
+		if (contextTypeExpression != null) {
+			contextTypeName = " - " + contextTypeExpression.getName();// + ".";
+		}
+		if (returnTypeExpression != null) {
+			returnTypeName = " : " + returnTypeExpression.getName();
+		}
+		
+		return getName() + "(" + new IterableOperationContributor(formalParameters).concat(", ") + ")" + returnTypeName + contextTypeName;
+	}
+
+	public boolean isCached() {
+		return isCached;
+	}
+
+	public Object execute(Object self, List<?> parameterValues, IEolContext context) throws EolRuntimeException {
+		return execute(self, parameterValues, context, true);
+	}
+	
+	public Object execute(Object self, List<?> parameterValues, IEolContext context, boolean inNewStackFrame) throws EolRuntimeException {
+		final int paramSize = formalParameters.size();
+		assert paramSize > 0 ? paramSize == parameterValues.size() : true;
+		boolean cacheContainsSelf = isCached && cache.containsKey(self);
+
+		if (cacheContainsSelf) {
+			return cache.get(self);
+		}
+		
+		FrameStack scope = context.getFrameStack();
+		
+		if (inNewStackFrame) {
+			scope.enterLocal(FrameType.PROTECTED, this);
+			scope.put(Variable.createReadOnlyVariable("self", self));
+		}
+		
+		for (int i = 0; i < paramSize; i++) {
+			Parameter fp = (Parameter) formalParameters.get(i);
+			scope.put(new Variable(fp.getName(), parameterValues.get(i), fp.getType(context)));
+		}
+		
+		evaluatePreConditions(context);
+		
+		Object result = Return.getValue(executeBody(context));
+
+		checkResultType(result, context);
+		evaluatePostConditions(context, result);
+		
+		if (inNewStackFrame) {
+			scope.leaveLocal(this);
+		}
+		
+		// cache.containsKey(self) == false;
+		if (isCached && !cacheContainsSelf) {
+			cache.put(self, result);
+		}
+		
+		return result;
+	}
+
+	protected Object executeBody(IEolContext context) throws EolRuntimeException {
+		return context.getExecutorFactory().execute(this.getBody(), context);
+	}
+	
+	protected void evaluatePreConditions(IEolContext context) throws EolRuntimeException {
+		for (Annotation annotation : getAnnotations("pre")) {
+			if (!(annotation instanceof ExecutableAnnotation)) continue;
+			
+			Object satisfied = ((ExecutableAnnotation)annotation).getValue(context);
+			if (satisfied instanceof Boolean) {
+				if (!(boolean) satisfied) {
+					throw new EolRuntimeException("Pre-condition not satisfied", annotation);
+				}
+			}
+			else {
+				throw new EolIllegalReturnException("Boolean", satisfied, annotation, context);
+			}
+		}
+	}
+	
+	protected void checkResultType(Object result, IEolContext context) throws EolRuntimeException {
+		if (returnTypeExpression != null && result != null) {
+			if (returnType == null) {
+				returnType = (EolType) context.getExecutorFactory().execute(returnTypeExpression, context);
+			}
+			if (!returnType.isKind(result)) {
+				throw new EolRuntimeException(getName() + " is expected to return a " + returnType.getName() + ", but returned a " + result.getClass().getCanonicalName());
+			}
+		}
+	}
+
+	protected void evaluatePostConditions(IEolContext context, Object result) throws EolRuntimeException {
+		context.getFrameStack().put(Variable.createReadOnlyVariable("_result", result));
+		for (Annotation annotation : getAnnotations("post")) {
+			if (!(annotation instanceof ExecutableAnnotation)) continue;
+			
+			Object satisfied = ((ExecutableAnnotation) annotation).getValue(context);
+			if (satisfied instanceof Boolean) {
+				if (!(boolean) satisfied) {
+						// We can simply use the frame stack here, as we created a frame for the post-condition
+						// in order to isolate the _result variable.
+						throw new EolRuntimeException(
+							"Post-condition not satisfied: _result was "
+									+ context.getPrettyPrinterManager().print(result));
+				}
+			}
+			else {
+				throw new EolIllegalReturnException("Boolean", satisfied, annotation, context);
+			}
+		}
+	}
+	
+	public List<?> getModuleElements() {
+		return Collections.EMPTY_LIST;
+	}
+	
+	public EolType getReturnType(IEolContext context) throws EolRuntimeException{
+		if (returnType == null) {
+			if (returnTypeExpression != null) {
+				returnType = (EolType) context.getExecutorFactory().execute(returnTypeExpression, context);
+			}
+			else {
+				returnType = EolAnyType.Instance;
+			}
+		}
+		return returnType;
+	}
+	
+	public EolType getContextType(IEolContext context) throws EolRuntimeException {
+		if (contextType == null) {
+			if (contextTypeExpression != null) {
+				contextType = (EolType) context.getExecutorFactory().execute(contextTypeExpression, context);
+			}
+			else {
+				contextType = EolNoType.Instance;
+			}
+		}
+		return contextType;
+	}
+	
+	public String getName() {
+		return nameExpression.getName();
+	}
+	
+	public List<Parameter> getFormalParameters() {
+		return formalParameters;
+	}
+	
+	public StatementBlock getBody() {
+		return body;
+	}
+	
+	public void setBody(StatementBlock body) {
+		this.body = body;
+	}
+	
+	public NameExpression getNameExpression() {
+		return nameExpression;
+	}
+	
+	public void setNameExpression(NameExpression nameExpression) {
+		this.nameExpression = nameExpression;
+	}
+	
+	public TypeExpression getContextTypeExpression() {
+		return contextTypeExpression;
+	}
+	
+	public void setContextTypeExpression(TypeExpression contextTypeExpression) {
+		this.contextTypeExpression = contextTypeExpression;
+	}
+	
+	public TypeExpression getReturnTypeExpression() {
+		return returnTypeExpression;
+	}
+	
+	public void setReturnTypeExpression(TypeExpression returnTypeExpression) {
+		this.returnTypeExpression = returnTypeExpression;
+	}
+}

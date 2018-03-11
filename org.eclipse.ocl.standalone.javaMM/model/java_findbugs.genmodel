@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" modelDirectory="/org.eclipse.ocl.standalone.javaMM/src" modelPluginID="org.eclipse.ocl.standalone.javaMM"
+    modelName="Java_findbugs" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    importerID="org.eclipse.emf.importer.ecore" complianceLevel="8.0" copyrightFields="false"
+    operationReflection="true" importOrganizing="true">
+  <foreignModel>java_findbugs.ecore</foreignModel>
+  <genPackages prefix="JavaMM" disposableProviderFactory="true" loadInitialization="true"
+      ecorePackage="java_findbugs.ecore#/">
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//AssignmentKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/PLUS_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/MINUS_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/TIMES_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/DIVIDE_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/BIT_AND_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/BIT_OR_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/BIT_XOR_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/REMAINDER_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/LEFT_SHIFT_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/RIGHT_SHIFT_SIGNED_ASSIGN"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//AssignmentKind/RIGHT_SHIFT_UNSIGNED_ASSIGN"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//InfixExpressionKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/TIMES"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/DIVIDE"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/REMAINDER"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/PLUS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/MINUS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/LEFT_SHIFT"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/RIGHT_SHIFT_SIGNED"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/RIGHT_SHIFT_UNSIGNED"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/LESS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/GREATER"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/LESS_EQUALS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/GREATER_EQUALS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/EQUALS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/NOT_EQUALS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/XOR"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/AND"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/OR"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/CONDITIONAL_AND"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InfixExpressionKind/CONDITIONAL_OR"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//InheritanceKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InheritanceKind/none"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InheritanceKind/abstract"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//InheritanceKind/final"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//PostfixExpressionKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PostfixExpressionKind/INCREMENT"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PostfixExpressionKind/DECREMENT"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//PrefixExpressionKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/INCREMENT"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/DECREMENT"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/PLUS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/MINUS"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/COMPLEMENT"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//PrefixExpressionKind/NOT"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="java_findbugs.ecore#//VisibilityKind">
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//VisibilityKind/none"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//VisibilityKind/public"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//VisibilityKind/private"/>
+      <genEnumLiterals ecoreEnumLiteral="java_findbugs.ecore#//VisibilityKind/protected"/>
+    </genEnums>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//AbstractMethodDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/body"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/parameters"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/thrownExceptions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/typeParameters"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/usagesInDocComments"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodDeclaration/usages"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//AbstractMethodInvocation">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodInvocation/method"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodInvocation/arguments"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractMethodInvocation/typeArguments"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//AbstractTypeDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeDeclaration/bodyDeclarations"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeDeclaration/commentsBeforeBody"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeDeclaration/commentsAfterBody"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeDeclaration/package"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeDeclaration/superInterfaces"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//AbstractTypeDeclaration/implements">
+        <genParameters ecoreParameter="java_findbugs.ecore#//AbstractTypeDeclaration/implements/type"/>
+      </genOperations>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//AbstractTypeQualifiedExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractTypeQualifiedExpression/qualifier"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//AbstractVariablesContainer">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractVariablesContainer/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AbstractVariablesContainer/fragments"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Annotation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Annotation/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Annotation/values"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Archive">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Archive/originalFilePath"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Archive/classFiles"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Archive/manifest"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//AssertStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AssertStatement/message"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AssertStatement/expression"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//ASTNode">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ASTNode/comments"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ASTNode/originalCompilationUnit"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ASTNode/originalClassFile"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//AnnotationMemberValuePair">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnnotationMemberValuePair/member"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnnotationMemberValuePair/value"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//AnnotationTypeDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//AnnotationTypeMemberDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnnotationTypeMemberDeclaration/default"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnnotationTypeMemberDeclaration/type"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnnotationTypeMemberDeclaration/usages"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//AnonymousClassDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnonymousClassDeclaration/bodyDeclarations"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//AnonymousClassDeclaration/classInstanceCreation"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ArrayAccess">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayAccess/array"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayAccess/index"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ArrayCreation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayCreation/dimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayCreation/initializer"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayCreation/type"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ArrayInitializer">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayInitializer/expressions"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ArrayLengthAccess">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayLengthAccess/array"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ArrayType">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ArrayType/dimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ArrayType/elementType"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Assignment">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Assignment/leftHandSide"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Assignment/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Assignment/rightHandSide"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//BodyDeclaration">
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//BodyDeclaration/abstractTypeDeclaration"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//BodyDeclaration/annotations"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//BodyDeclaration/anonymousClassDeclarationOwner"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//BodyDeclaration/modifier"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//BooleanLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//BooleanLiteral/value"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//BlockComment"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//Block">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Block/statements"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//BreakStatement">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//BreakStatement/label"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//CastExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CastExpression/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CastExpression/type"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//CatchClause">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CatchClause/exception"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CatchClause/body"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//CharacterLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//CharacterLiteral/escapedValue"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ClassFile">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ClassFile/originalFilePath"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassFile/type"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassFile/attachedSource"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassFile/package"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ClassInstanceCreation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassInstanceCreation/anonymousClassDeclaration"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassInstanceCreation/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassInstanceCreation/type"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ConstructorDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ConditionalExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ConditionalExpression/elseExpression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ConditionalExpression/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ConditionalExpression/thenExpression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ConstructorInvocation"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ClassDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ClassDeclaration/superClass"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//ClassDeclaration/getMethods"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//ClassDeclaration/hasEquals"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//ClassDeclaration/hasHashcode"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//ClassDeclaration/hasCompareTo"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//Comment">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Comment/content"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Comment/enclosedByParent"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Comment/prefixOfParent"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//CompilationUnit">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//CompilationUnit/originalFilePath"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CompilationUnit/commentList"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CompilationUnit/imports"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CompilationUnit/package"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//CompilationUnit/types"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ContinueStatement">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ContinueStatement/label"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//DoStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//DoStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//DoStatement/body"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//EmptyStatement"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//EnhancedForStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnhancedForStatement/body"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnhancedForStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnhancedForStatement/parameter"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//EnumConstantDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnumConstantDeclaration/anonymousClassDeclaration"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnumConstantDeclaration/arguments"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//EnumDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//EnumDeclaration/enumConstants"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//Expression"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ExpressionStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ExpressionStatement/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//FieldAccess">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//FieldAccess/field"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//FieldAccess/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//FieldDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ForStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ForStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ForStatement/updaters"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ForStatement/initializers"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ForStatement/body"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//IfStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//IfStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//IfStatement/thenStatement"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//IfStatement/elseStatement"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ImportDeclaration">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ImportDeclaration/static"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ImportDeclaration/importedElement"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//InfixExpression">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//InfixExpression/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//InfixExpression/rightOperand"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//InfixExpression/leftOperand"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//InfixExpression/extendedOperands"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//InfixExpression/operatorIsEquality"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Initializer">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Initializer/body"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//InstanceofExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//InstanceofExpression/rightOperand"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//InstanceofExpression/leftOperand"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//InterfaceDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//Javadoc">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Javadoc/tags"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//LabeledStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//LabeledStatement/body"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//LabeledStatement/usagesInBreakStatements"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//LabeledStatement/usagesInContinueStatements"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//LineComment"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//Manifest">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Manifest/mainAttributes"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Manifest/entryAttributes"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ManifestAttribute">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ManifestAttribute/key"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ManifestAttribute/value"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ManifestEntry">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//ManifestEntry/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ManifestEntry/attributes"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//MemberRef">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MemberRef/member"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MemberRef/qualifier"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//MethodDeclaration">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//MethodDeclaration/extraArrayDimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodDeclaration/returnType"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodDeclaration/redefinedMethodDeclaration"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodDeclaration/redefinitions"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//MethodInvocation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodInvocation/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//MethodRef">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodRef/method"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodRef/qualifier"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodRef/parameters"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//MethodRefParameter">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//MethodRefParameter/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//MethodRefParameter/varargs"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//MethodRefParameter/type"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Model">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Model/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/ownedElements"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/orphanTypes"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/unresolvedItems"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/compilationUnits"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/classFiles"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Model/archives"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//Modifier">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/visibility"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/inheritance"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/static"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/transient"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/volatile"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/native"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/strictfp"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//Modifier/synchronized"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Modifier/bodyDeclaration"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Modifier/singleVariableDeclaration"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Modifier/variableDeclarationStatement"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Modifier/variableDeclarationExpression"/>
+      <genOperations ecoreOperation="java_findbugs.ecore#//Modifier/isLocal"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//NamedElement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//NamedElement/name"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//NamedElement/proxy"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//NamedElement/usagesInImports"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//NamespaceAccess"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//NumberLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//NumberLiteral/tokenValue"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//NullLiteral"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//Package">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Package/ownedElements"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Package/model"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Package/ownedPackages"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//Package/package"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Package/usagesInPackageAccess"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//PackageAccess">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//PackageAccess/package"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//PackageAccess/qualifier"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ParameterizedType">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ParameterizedType/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ParameterizedType/typeArguments"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ParenthesizedExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ParenthesizedExpression/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//PostfixExpression">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//PostfixExpression/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//PostfixExpression/operand"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrefixExpression">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//PrefixExpression/operator"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//PrefixExpression/operand"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveType"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeBoolean"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeByte"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeChar"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeDouble"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeShort"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeFloat"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeInt"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeLong"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//PrimitiveTypeVoid"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ReturnStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ReturnStatement/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SingleVariableAccess">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableAccess/variable"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableAccess/qualifier"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SingleVariableDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/modifier"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//SingleVariableDeclaration/varargs"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/annotations"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/methodDeclaration"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/catchClause"/>
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//SingleVariableDeclaration/enhancedForStatement"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//Statement"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//StringLiteral">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//StringLiteral/escapedValue"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SuperConstructorInvocation">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SuperConstructorInvocation/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SuperFieldAccess">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SuperFieldAccess/field"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SuperMethodInvocation"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//SwitchCase">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//SwitchCase/default"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SwitchCase/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SwitchStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SwitchStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SwitchStatement/statements"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//SynchronizedStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SynchronizedStatement/body"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//SynchronizedStatement/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TagElement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//TagElement/tagName"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TagElement/fragments"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TextElement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//TextElement/text"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//ThisExpression"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//ThrowStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//ThrowStatement/expression"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TryStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TryStatement/body"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TryStatement/finally"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TryStatement/catchClauses"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//Type">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//Type/usagesInTypeAccess"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TypeAccess">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeAccess/type"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeAccess/qualifier"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//TypeDeclaration">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeDeclaration/typeParameters"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TypeDeclarationStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeDeclarationStatement/declaration"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TypeLiteral">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeLiteral/type"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//TypeParameter">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//TypeParameter/bounds"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedItem"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedItemAccess">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//UnresolvedItemAccess/element"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//UnresolvedItemAccess/qualifier"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedAnnotationDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedAnnotationTypeMemberDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedClassDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedEnumDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedInterfaceDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedLabeledStatement"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedMethodDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedSingleVariableDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedType"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedTypeDeclaration"/>
+    <genClasses ecoreClass="java_findbugs.ecore#//UnresolvedVariableDeclarationFragment"/>
+    <genClasses image="false" ecoreClass="java_findbugs.ecore#//VariableDeclaration">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//VariableDeclaration/extraArrayDimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclaration/initializer"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclaration/usageInVariableAccess"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//VariableDeclarationExpression">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclarationExpression/modifier"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclarationExpression/annotations"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//VariableDeclarationFragment">
+      <genFeatures property="None" notify="false" createChild="false" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclarationFragment/variablesContainer"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//VariableDeclarationStatement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//VariableDeclarationStatement/extraArrayDimensions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclarationStatement/modifier"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//VariableDeclarationStatement/annotations"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//WildCardType">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute java_findbugs.ecore#//WildCardType/upperBound"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//WildCardType/bound"/>
+    </genClasses>
+    <genClasses ecoreClass="java_findbugs.ecore#//WhileStatement">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//WhileStatement/expression"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference java_findbugs.ecore#//WhileStatement/body"/>
+    </genClasses>
+  </genPackages>
+</genmodel:GenModel>

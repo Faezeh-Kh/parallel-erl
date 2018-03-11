@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.eclipse.epsilon</groupId>
+    <artifactId>tests</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <groupId>org.eclipse.epsilon</groupId>
+  <artifactId>org.eclipse.epsilon.test</artifactId>
+  <version>1.5.0-SNAPSHOT</version>
+  <packaging>eclipse-test-plugin</packaging>
+
+  <build>
+    <!-- Trick m-surefire-p into running the regular tests -->
+
+    <plugins>
+      <!-- For the "plugged in" tests -->
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-surefire-plugin</artifactId>
+        <version>${tycho.version}</version>
+	<configuration>
+	  <application>org.eclipse.ui.ide.workbench</application>
+
+	  <argLine>-XX:MaxPermSize=256m</argLine>
+	  <!-- To enable remote debugging, comment the <argLine> above
+	       and uncomment this one: the Eclipse instance will
+	       suspend until a remote debugger is attached -->
+	  <!-- <argLine>-XX:MaxPermSize=256m -Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=4000,suspend=y</argLine> -->
+
+	  <useUIThread>true</useUIThread>
+	  <useUIHarness>true</useUIHarness>
+	  <includes>
+	    <include>org/eclipse/epsilon/test/EpsilonHudsonPluggedInTestSuite.class</include>
+	  </includes>
+	  <dependencies>
+	    <dependency>
+	      <type>eclipse-plugin</type>
+	      <artifactId>org.eclipse.equinox.event</artifactId>
+	      <version>0.0.0</version>
+	    </dependency>
+	    <dependency>
+	      <type>eclipse-plugin</type>
+	      <artifactId>org.eclipse.osgi.compatibility.state</artifactId>
+	      <version>0.0.0</version>
+	    </dependency>
+	    <dependency>
+	      <type>eclipse-plugin</type>
+	      <artifactId>org.eclipse.jdt.ui</artifactId>
+	      <version>0.0.0</version>
+	    </dependency>
+	  </dependencies>
+	</configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

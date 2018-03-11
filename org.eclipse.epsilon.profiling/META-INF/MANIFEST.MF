@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Epsilion Profiling Tools
+Bundle-SymbolicName: org.eclipse.epsilon.profiling
+Bundle-Version: 1.5.0.qualifier
+Bundle-Vendor: Eclipse Modeling Project
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Export-Package: org.eclipse.epsilon.profiling
+Require-Bundle: org.eclipse.epsilon.eol.engine

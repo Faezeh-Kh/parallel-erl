@@ -1,0 +1,118 @@
+import java : '../../../../../../../../../../../org.eclipse.epsilon.evl.engine.test.acceptance/src/org/eclipse/epsilon/evl/engine/test/acceptance/metamodels/java.ecore'
+
+package javaMM
+
+context AbstractTypeDeclaration
+	def: implements(type : String) : Boolean = self.superInterfaces->exists(intf | intf.type.name = type)
+
+context ClassDeclaration
+	def: getMethods : Collection(MethodDeclaration) = self.bodyDeclarations->selectByKind(MethodDeclaration)
+
+	def: hasEquals : Boolean =
+		getMethods->exists(method |
+			method.name = 'equals' and
+			method.parameters->size() = 1 and
+			method.parameters->first().type.type.name = 'Object' and
+			method.thrownExceptions->isEmpty() and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind::public and
+			method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)
+		)
+	
+	def: hasHashcode : Boolean =
+		getMethods->exists(method |
+			method.name = 'hashCode' and
+			method.parameters->isEmpty() and
+			method.thrownExceptions->isEmpty() and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind::public and
+			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
+		)
+	
+	def: hasCompareTo : Boolean = 
+		getMethods->exists(method | 
+			method.name = 'compareTo' and
+			method.parameters->size() = 1 and
+			method.parameters->first().type.type.name = 'Object' and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind::public and
+			method.thrownExceptions->isEmpty() and
+			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
+		)
+	
+	inv hashCodeAndEquals:
+		let hasEq : Boolean = hasEquals,
+			hasHc : Boolean = hasHashcode
+		in
+			(hasEq implies hasHc) and
+			(hasHc implies hasEq)
+
+	inv noCovariantEquals:
+		getMethods->exists(method |
+			method.name = 'equals' and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind::public and
+			method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)
+		) implies hasEquals
+
+	inv noCovariantCompareTo:
+		getMethods->exists(method | 
+			method.name = 'compareTo' and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind::public and
+			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
+		) implies hasCompareTo
+
+	inv equalsAndCompareTo:
+		hasCompareTo implies hasEquals
+
+	inv cloneInCloneable:
+		self.implements('Cloneable') implies self.getMethods->exists(md |
+			md.name = 'clone' and
+			md.parameters->isEmpty() and
+			md.thrownExceptions->size() = 1 and
+			md.thrownExceptions->first().type.name = 'CloneNotSupportedException' and
+			md.modifier <> null and
+			md.modifier.visibility = VisibilityKind::public
+		)
+
+	inv serialUIDInSerializableClass:
+		self.implements('Serializable') implies (
+			self.bodyDeclarations->selectByKind(FieldDeclaration) ->
+			exists(bd |
+				bd.name = 'serialVersionUID' and
+				bd.modifier._'static' and
+				bd.modifier.inheritance = InheritanceKind::final and
+				bd.type.type.oclIsTypeOf(PrimitiveTypeLong)
+			)
+		)
+	
+	inv noRedundantInterfaceImpl:
+		(
+			self.superInterfaces <> null and
+			self.superClass <> null and
+			self.superClass.type.oclIsKindOf(ClassDeclaration) and
+			self.superClass.type.oclAsType(ClassDeclaration).superInterfaces <> null
+		) implies (
+			self.superInterfaces->exists(tIface |
+				self.superClass.type.oclIsKindOf(AbstractTypeDeclaration) implies (
+					self.superClass.type.oclAsType(AbstractTypeDeclaration)
+					.superInterfaces->includes(tIface)		
+				)	
+			)
+		)
+		
+	inv comparatorImplementsSerializable:
+		self.implements('Comparator') implies self.implements('Serializable')
+	
+	inv noObscuredVariables:
+		let fields = self.bodyDeclarations->selectByKind(FieldDeclaration) in
+			self.bodyDeclarations->
+				selectByKind(AbstractMethodDeclaration) ->
+				forAll(md | md._'body' <> null implies md._'body'.statements ->
+					selectByKind(VariableDeclaration) ->
+					forAll(vd | fields->forAll(fd | fd.name <> vd.name))
+				)
+
+				
+endpackage
