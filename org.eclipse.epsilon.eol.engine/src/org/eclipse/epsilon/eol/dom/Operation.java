@@ -34,10 +34,8 @@ import org.eclipse.epsilon.eol.types.EolType;
 public class Operation extends AnnotatableModuleElement implements ICompilableModuleElement {
 	
 	protected NameExpression nameExpression;
-	protected TypeExpression contextTypeExpression;
-	protected EolType contextType;
-	protected TypeExpression returnTypeExpression;
-	protected EolType returnType;
+	protected TypeExpression contextTypeExpression, returnTypeExpression;
+	protected EolType contextType, returnType;
 	protected StatementBlock body;
 	protected List<Parameter> formalParameters = new ArrayList<>();
 	protected boolean isCached;

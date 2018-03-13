@@ -135,7 +135,7 @@ public class CachedResourceSet extends ResourceSetImpl {
 			}
 			
 			public void setResource(Resource resource) {
-				resourceReference = new WeakReference<Resource>(resource);
+				resourceReference = new WeakReference<>(resource);
 			}
 			
 			public void setUri(URI uri) {

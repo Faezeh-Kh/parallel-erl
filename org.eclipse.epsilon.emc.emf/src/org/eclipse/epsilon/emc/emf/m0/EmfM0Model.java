@@ -13,8 +13,6 @@ package org.eclipse.epsilon.emc.emf.m0;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.ListIterator;
-
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.emc.emf.EmfModel;
@@ -32,7 +30,6 @@ import org.eclipse.epsilon.eol.execute.introspection.IReflectivePropertySetter;
 import org.eclipse.epsilon.eol.models.IRelativePathResolver;
 
 public class EmfM0Model extends EmfModel {
-	
 	
 	protected File m0SpecificationFile;
 	protected IEolModule eolModule;

@@ -3,11 +3,11 @@ package org.eclipse.epsilon.erl.execute.context.concurrent;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.erl.execute.concurrent.ErlExecutorService;
 import org.eclipse.epsilon.erl.execute.concurrent.ErlThreadPoolExecutor;
-import org.eclipse.epsilon.erl.execute.context.IErlContext;
 
-public interface IErlContextParallel extends IErlContext {
+public interface IErlContextParallel extends IEolContext {
 	
 	/*
 	 * Indicates the scalability of this Context when more processing nodes are added.

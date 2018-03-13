@@ -4,6 +4,7 @@ import static java.lang.System.nanoTime;
 import static org.eclipse.epsilon.emc.emf.EmfModel.PROPERTY_FILE_BASED_METAMODEL_URI;
 import static org.eclipse.epsilon.emc.emf.EmfModel.PROPERTY_MODEL_URI;
 import static org.eclipse.epsilon.eol.models.CachedModel.*;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -55,6 +56,44 @@ public abstract class ErlRunConfiguration<M extends IErlModule> extends Profilab
 	public final StringProperties modelProperties;
 	public final IModel model;
 	public final M module;
+	
+	public static <M extends IErlModule, R extends ErlRunConfiguration<M>> R instantiate(
+		Class<R> subClazz,
+		Path script,
+		StringProperties properties,
+		IModel model,
+		Optional<Boolean> showResults,
+		Optional<Boolean> profileExecution,
+		Optional<M> module,
+		Optional<Integer> id,
+		Optional<Path> outputFile
+	) {
+		try {
+			return subClazz.getConstructor(
+				Path.class,
+				StringProperties.class,
+				IModel.class,
+				Optional.class,
+				Optional.class,
+				Optional.class,
+				Optional.class,
+				Optional.class
+			)
+			.newInstance(
+				script,
+				properties,
+				model,
+				showResults,
+				profileExecution,
+				module,
+				id,
+				outputFile
+			);
+		}
+		catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException ex) {
+			throw new IllegalArgumentException("Can't instantiate '"+subClazz.getName()+"': "+ex.getMessage());
+		}
+	}
 	
 	public ErlRunConfiguration(
 		Path erlFile,

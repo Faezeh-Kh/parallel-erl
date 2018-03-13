@@ -1,6 +1,5 @@
 package org.eclipse.epsilon.erl.engine.launch;
 
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.commons.cli.Option;
@@ -69,17 +68,8 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 			Optional.of(parseModule(cmdLine.getOptionValues(moduleOpt))) :
 			Optional.empty();
 			
-		runConfig = configClass.getConstructor(
-			Path.class,
-			StringProperties.class,
-			IModel.class,
-			Optional.class,
-			Optional.class,
-			Optional.class,
-			Optional.class,
-			Optional.class
-		)
-		.newInstance(
+		runConfig = ErlRunConfiguration.instantiate(
+			configClass,
 			script,
 			properties,
 			model,

@@ -6,11 +6,9 @@ Bundle-Version: 1.5.0.qualifier
 Bundle-Vendor: Eclipse Modeling Project
 Require-Bundle: org.eclipse.epsilon.eol.engine
 Export-Package: org.eclipse.epsilon.erl,
- org.eclipse.epsilon.erl.concurrent,
  org.eclipse.epsilon.erl.dom,
  org.eclipse.epsilon.erl.exceptions,
  org.eclipse.epsilon.erl.execute.concurrent,
- org.eclipse.epsilon.erl.execute.context,
  org.eclipse.epsilon.erl.execute.context.concurrent,
  org.eclipse.epsilon.erl.strategy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

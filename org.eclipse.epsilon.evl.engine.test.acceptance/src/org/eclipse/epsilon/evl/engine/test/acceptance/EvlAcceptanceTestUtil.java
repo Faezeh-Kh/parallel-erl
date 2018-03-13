@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017 The University of York.
+ * Copyright (c) 2018 The University of York.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,42 +14,20 @@
  */
 package org.eclipse.epsilon.evl.engine.test.acceptance;
 
-import static org.junit.Assert.fail;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
+import static org.eclipse.epsilon.erl.engine.test.util.ErlAcceptanceTestUtil.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import org.eclipse.epsilon.common.concurrent.ConcurrencyUtils;
 import org.eclipse.epsilon.common.util.CollectionUtil;
-import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.eol.models.IModel;
-import org.eclipse.epsilon.erl.engine.launch.ErlRunConfiguration;
+import org.eclipse.epsilon.erl.engine.test.util.ErlAcceptanceTestUtil;
 import org.eclipse.epsilon.evl.*;
 import org.eclipse.epsilon.evl.concurrent.*;
+import org.eclipse.epsilon.evl.execute.context.concurrent.*;
 import org.eclipse.epsilon.evl.engine.launch.EvlRunConfiguration;
-import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
-import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 public class EvlAcceptanceTestUtil {
-
 	private EvlAcceptanceTestUtil() {}
-	
-	public static <T> void failIfDifferent(boolean condition, T expected, T actual) {
-		if (condition) {
-			String datatype = expected.getClass().getSimpleName();
-			System.err.println();
-			System.out.println("Expected "+datatype+": ");
-			System.out.println(expected);
-			System.out.println(); System.err.println();
-			System.out.println("Actual "+datatype+": ");
-			System.out.println(actual);
-			
-			fail(datatype+"s differ!");
-		}
-	}
 	
 	public static final String
 		//Core
@@ -60,16 +38,16 @@ public class EvlAcceptanceTestUtil {
 		
 		//Metamodels and scripts:
 		javaMetamodel = "java.ecore",
+		javaModels[] = {
+			"epsilon_profiling_test.xmi",
+			"test001_java.xmi",
+			"emf_cdo-example.xmi",
+		},
 		javaScripts[] = {
 			"java_findbugs",
 			"java_1Constraint",
 			"java_manyConstraint1Context",
 			"java_manyContext1Constraint"
-		},
-		javaModels[] = {
-			"epsilon_profiling_test.xmi",
-			"test001_java.xmi",
-			"emf_cdo-example.xmi",
 		},
 		
 		thriftMetamodel = "thrift.ecore",
@@ -127,33 +105,7 @@ public class EvlAcceptanceTestUtil {
 		);
 	}
 	
-	static final Collection<Supplier<? extends IEvlContextParallel>> PARALLEL_CONTEXTS = parallelContexts(
-		new int[] { // Number of threads
-			0, 1, 2, 3, 4,
-			(ConcurrencyUtils.DEFAULT_PARALLELISM/2)+1,
-			(ConcurrencyUtils.DEFAULT_PARALLELISM*2)-1,
-			//0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-			//Short.MAX_VALUE/8
-		}
-	);
-	
-	public static List<String[]> addAllInputs(String[] scripts, String[] models, String metamodel, String scriptExt, String scriptRoot, String modelRoot, String metamodelRoot) {
-		ArrayList<String[]> inputsCol = new ArrayList<>(scripts.length*models.length);
-		for (String script : scripts) {
-			for (String model : models) {
-				inputsCol.add(new String[] {
-					scriptRoot+script+'.'+scriptExt,
-					modelRoot+model,
-					metamodelRoot+metamodel
-				});
-			}
-		}
-		return inputsCol;
-	}
-	
-	public static int getScenarioID(String[] inputs) {
-		return Arrays.deepHashCode(inputs);
-	}
+	static final Collection<Supplier<? extends IEvlContextParallel>> PARALLEL_CONTEXTS = parallelContexts(THREADS);
 	
 	/*
 	 * A list of pre-configured Runnables which will call the execute() method on the provided module.
@@ -161,62 +113,30 @@ public class EvlAcceptanceTestUtil {
 	 */
 	public static Collection<EvlRunConfiguration> getScenarios(List<String[]> testInputs, boolean includeTest, Collection<Supplier<? extends IEvlModule>> moduleGetters, Function<String[], Integer> idCalculator) {
 		if (testInputs == null) testInputs = allInputs;
-		if (idCalculator == null) idCalculator = EvlAcceptanceTestUtil::getScenarioID;
 		if (moduleGetters == null) moduleGetters = modules();
-		
-		List<EvlRunConfiguration> scenarios = new ArrayList<>(moduleGetters.size()*(testInputs.size()+2));
-		boolean showUnsatisfied = false, profileExecution = false;
-		
-		for (String[] testInput : testInputs) {
-			Path evlScript = Paths.get(testInput[0]);
-			
-			StringProperties testProperties = ErlRunConfiguration.makeProperties(
-				testInput[1],				//Model path
-				testInput[2],				//Metamodel path
-				true,						//Cache model
-				true						//Store on disposal
-			);
-			
-			IModel model = ErlRunConfiguration.getIModelFromPath(testInput[2]);
-			
+		Collection<EvlRunConfiguration> scenarios = ErlAcceptanceTestUtil.getScenarios(EvlRunConfiguration.class, testInputs, moduleGetters, idCalculator);
+				
+		if (includeTest) {
 			for (Supplier<? extends IEvlModule> moduleGetter : moduleGetters) {
-				scenarios.add(new EvlRunConfiguration(
-						evlScript,									//Path to the script to run
-						testProperties,								//Model and metamodel paths
-						model,										//Model object to use
-						Optional.of(showUnsatisfied),				//Whether to show results
-						Optional.of(profileExecution),				//Whether to measure execution time
-						Optional.of(moduleGetter.get()),			//IEvlModule
-						Optional.of(idCalculator.apply(testInput)),	//Unique identifier for this configuration
-						Optional.empty()							//Output file
+				IEvlModule evlStd = moduleGetter.get();
+				int evlStdId = testInputs.size()+1;
+				
+				scenarios.add(
+					new EvlRunConfiguration(
+						EvlTests.getTestScript(evlStd).toPath(),
+						null,
+						EvlTests.getTestModel(false),
+						Optional.of(false),
+						Optional.of(false),
+						Optional.of(evlStd),
+						Optional.of(evlStdId),
+						Optional.empty()
 					)
 				);
-				
-				if (includeTest) {
-					IEvlModule evlStd = moduleGetter.get();
-					int evlStdId = testInputs.size()+1;
-					
-					scenarios.add(
-						new EvlRunConfiguration(
-							EvlTests.getTestScript(evlStd).toPath(),
-							null,
-							EvlTests.getTestModel(false),
-							Optional.of(showUnsatisfied),
-							Optional.of(profileExecution),
-							Optional.of(evlStd),
-							Optional.of(evlStdId),
-							Optional.empty()
-						)
-					);
-				}
 			}
 		}
 		
 		return scenarios;
-	}
-	
-	public static Collection<? extends IEvlModule> unwrapModules(Collection<Supplier<? extends IEvlModule>> moduleGetters) {
-		return moduleGetters.stream().map(Supplier::get).collect(Collectors.toList());
 	}
 	
 	/*
@@ -267,23 +187,9 @@ public class EvlAcceptanceTestUtil {
 		return modules;
 	}
 	
-	/*
-	 * Convenience hack for handling exceptions when resolving this class's package source directory.
-	 */
-	public static String getTestBaseDir(Class<?> clazz) {
-		try {
-			return Paths.get(clazz.getResource("").toURI()).toString().replace("bin", "src")+'/';
-		}
-		catch (URISyntaxException urx) {
-			System.err.println(urx.getMessage());
-			return null;
-		}
-	}
-	
-	
 	//Boilerplate defaults
 	public static List<String[]> addAllInputs(String[] scripts, String[] models, String metamodel) {
-		return addAllInputs(scripts, models, metamodel, "evl", scriptsRoot, modelsRoot, metamodelsRoot);
+		return ErlAcceptanceTestUtil.addAllInputs(scripts, models, metamodel, "evl", scriptsRoot, modelsRoot, metamodelsRoot);
 	}
 	@SafeVarargs
 	public static Collection<? extends EvlRunConfiguration> getScenarios(boolean includeTest, Supplier<? extends IEvlModule>... moduleGetters) {

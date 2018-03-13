@@ -10,6 +10,7 @@
  ******************************************************************************/
 package org.eclipse.epsilon.emc.emf;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -17,7 +18,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
@@ -29,6 +29,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EcorePackage;
+import org.eclipse.emf.ecore.plugin.EcorePlugin;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -139,7 +140,7 @@ public class EmfUtil {
 	
 	//protected HashMap<URI, List<EPackage>> cache = new HashMap<URI, List<EPackage>>();
 	
-	public static void initialiseResourceFactoryRegistry() {
+	private static void initialiseResourceFactoryRegistry() {
 		final Map<String, Object> etfm = Resource.Factory.Registry.INSTANCE.getExtensionToFactoryMap();
 		
 		if (!etfm.containsKey("*")) {
@@ -157,13 +158,13 @@ public class EmfUtil {
 	 * @param uri The URI of the metamodel
 	 * @param registry The registry in which the metamodel's packages are registered
 	 * @param useUriForResource If True, the URI of the resource created for the metamodel would be overwritten
-	 * 	with the URI of the [last] EPackage in the metamodel. 
+	 * 	with the URI of the last EPackage in the metamodel. 
 	 * @return A list of the EPackages registered. 
 	 * @throws Exception If there is an error accessing the resources.  
 	 */
 	public static List<EPackage> register(URI uri, EPackage.Registry registry, boolean useUriForResource) throws Exception {
 		
-		List<EPackage> ePackages = new ArrayList<EPackage>();
+		List<EPackage> ePackages = new ArrayList<>();
 		
 		initialiseResourceFactoryRegistry();
 
@@ -182,36 +183,70 @@ public class EmfUtil {
 			if (next instanceof EPackage) {
 				EPackage p = (EPackage) next;
 				
-				if (p.getNsURI() == null || p.getNsURI().trim().length() == 0) {
-					if (p.getESuperPackage() == null) {
-						p.setNsURI(p.getName());
-					}
-					else {
-						p.setNsURI(p.getESuperPackage().getNsURI() + "/" + p.getName());
-					}
-				}
-				
-				if (p.getNsPrefix() == null || p.getNsPrefix().trim().length() == 0) {
-					if (p.getESuperPackage() != null) {
-						if (p.getESuperPackage().getNsPrefix()!=null) {
-							p.setNsPrefix(p.getESuperPackage().getNsPrefix() + "." + p.getName());
-						}
-						else {
-							p.setNsPrefix(p.getName());
-						}
-					}
-				}
-				
-				if (p.getNsPrefix() == null) p.setNsPrefix(p.getName());
+				adjustNsAndPrefix(metamodel, p, useUriForResource);
 				registry.put(p.getNsURI(), p);
-				if (useUriForResource)
-					metamodel.setURI(URI.createURI(p.getNsURI()));
 				ePackages.add(p);
 			}
 		}
 		
 		return ePackages;
 		
+	}
+	
+	public static List<EPackage> registerXcore(URI locationURI, EPackage.Registry registry) throws IOException {
+		return registerXcore(locationURI, registry, true);
+	}
+	
+	public static List<EPackage> registerXcore(URI locationURI, EPackage.Registry registry, boolean useUriForResource) throws IOException {
+		
+		List<EPackage> ePackages = new ArrayList<>();
+		
+		initialiseResourceFactoryRegistry();
+		
+		ResourceSet resourceSet = new ResourceSetImpl();
+		resourceSet.getURIConverter().getURIMap().putAll(EcorePlugin.computePlatformURIMap(true));
+		Resource metamodel = resourceSet.getResource(locationURI, true);
+		metamodel.load(Collections.EMPTY_MAP);
+		EcoreUtil.resolveAll(metamodel);
+		EPackage ePackage = (EPackage)EcoreUtil.getObjectByType(metamodel.getContents(), EcorePackage.Literals.EPACKAGE);
+		
+        if (ePackage != null)
+        {
+        		adjustNsAndPrefix(metamodel, ePackage, useUriForResource);
+        		registry.put(ePackage.getNsURI(), ePackage);
+        		ePackages.add(ePackage);
+        }
+		
+		return ePackages;
+	}
+	
+	public static List<EPackage> registerXcore(URI locationURI) throws IOException {
+		return registerXcore(locationURI, true);
+	}
+	
+	public static List<EPackage> registerXcore(URI locationURI, boolean useUriForResource) throws IOException {
+		List<EPackage> ePackages = new ArrayList<>();
+		
+		initialiseResourceFactoryRegistry();
+		
+		ResourceSet resourceSet = new ResourceSetImpl();
+	    	resourceSet.getURIConverter().getURIMap().putAll(EcorePlugin.computePlatformURIMap(true));
+		Resource metamodel = resourceSet.createResource(locationURI);
+		metamodel.load(Collections.EMPTY_MAP);
+		
+		setDataTypesInstanceClasses(metamodel);
+		
+		EPackage ePackage = (EPackage)EcoreUtil.getObjectByType(metamodel.getContents(), EcorePackage.Literals.EPACKAGE);
+
+        if (ePackage != null)
+        {
+        		adjustNsAndPrefix(metamodel, ePackage, useUriForResource);
+        		metamodel.getContents().remove(ePackage);
+        		EPackage.Registry.INSTANCE.put(ePackage.getNsURI(), ePackage);
+        		ePackages.add(ePackage);
+        }
+		
+		return ePackages;
 	}
 
 	protected static void setDataTypesInstanceClasses(Resource metamodel) {
@@ -246,7 +281,7 @@ public class EmfUtil {
 	}
 	
 	public static Collection<EClassifier> getAllEClassifiers(EPackage epackage) {
-		Collection<EClassifier> allEClassifiers = new ArrayList<EClassifier>();
+		Collection<EClassifier> allEClassifiers = new ArrayList<>();
 		allEClassifiers.addAll(epackage.getEClassifiers());
 		for (EPackage subpackage : epackage.getESubpackages()) {
 			allEClassifiers.addAll(getAllEClassifiers(subpackage));
@@ -256,7 +291,7 @@ public class EmfUtil {
 	
 	@SuppressWarnings("unchecked")
 	public static <T extends EObject> List<T> getAllModelElementsOfType(EObject modelElement, Class<T> type) {		
-		final List<T> results = new LinkedList<T>();
+		final List<T> results = new LinkedList<>();
 		
 		if (modelElement.eResource() != null) {
 			final TreeIterator<EObject> iterator = modelElement.eResource().getAllContents();
@@ -305,5 +340,37 @@ public class EmfUtil {
 		final T cloned = (T)EcoreUtil.copy(object);
 		org.eclipse.epsilon.emc.emf.EmfUtil.createResource(cloned);
 		return cloned;
+	}
+	
+
+	/**
+	 * @param metamodel
+	 * @param p
+	 * @param useUriForResource
+	 */
+	private static void adjustNsAndPrefix(Resource metamodel, EPackage p, boolean useUriForResource) {
+		if (p.getNsURI() == null || p.getNsURI().trim().length() == 0) {
+			if (p.getESuperPackage() == null) {
+				p.setNsURI(p.getName());
+			}
+			else {
+				p.setNsURI(p.getESuperPackage().getNsURI() + "/" + p.getName());
+			}
+		}
+		
+		if (p.getNsPrefix() == null || p.getNsPrefix().trim().length() == 0) {
+			if (p.getESuperPackage() != null) {
+				if (p.getESuperPackage().getNsPrefix()!=null) {
+					p.setNsPrefix(p.getESuperPackage().getNsPrefix() + "." + p.getName());
+				}
+				else {
+					p.setNsPrefix(p.getName());
+				}
+			}
+		}
+		
+		if (p.getNsPrefix() == null) p.setNsPrefix(p.getName());
+		if (useUriForResource)
+			metamodel.setURI(URI.createURI(p.getNsURI()));
 	}
 }

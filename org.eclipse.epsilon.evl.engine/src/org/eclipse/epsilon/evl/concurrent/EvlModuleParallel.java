@@ -2,12 +2,11 @@ package org.eclipse.epsilon.evl.concurrent;
 
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
-import org.eclipse.epsilon.erl.concurrent.IErlModuleParallel;
 import org.eclipse.epsilon.evl.EvlModule;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
-abstract class EvlModuleParallel extends EvlModule implements IErlModuleParallel {
+abstract class EvlModuleParallel extends EvlModule {
 
 	@Override
 	protected abstract void checkConstraints() throws EolRuntimeException;

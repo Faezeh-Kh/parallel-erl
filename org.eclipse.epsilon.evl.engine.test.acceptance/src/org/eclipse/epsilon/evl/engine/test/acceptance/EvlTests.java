@@ -54,7 +54,7 @@ public class EvlTests {
 		PlainXmlModel model = new PlainXmlModel();
 		model.setFile(new File(EvlAcceptanceTestUtil.modelsRoot+modelName));
 		model.setName(FileUtil.removeExtension(model.getFile().getName()));
-		model.setCachingEnabled(true);
+		//model.setCachingEnabled(true);
 		return model;
 	}
 	
@@ -69,8 +69,10 @@ public class EvlTests {
 	private static File getTestScript(String scriptName, IEvlModule module) {
 		if (scriptName.equals("test")) {
 			FrameStack frameStack = module.getContext().getFrameStack();
-			frameStack.put(Variable.createReadOnlyVariable("frameStack", frameStack));
-			frameStack.put(Variable.createReadOnlyVariable("blackboard", new HashMap<>()));
+			frameStack.putGlobal(
+				Variable.createReadOnlyVariable("frameStack", frameStack),
+				Variable.createReadOnlyVariable("blackboard", new HashMap<>())
+			);
 		}
 		return new File(EvlAcceptanceTestUtil.scriptsRoot+scriptName+".evl");
 	}

@@ -24,6 +24,4 @@ public interface IErlModule extends IEolModule {
 	List<Pre> getDeclaredPre();
 	
 	List<Post> getDeclaredPost();
-	
-	//IErlContext getContext();
 }

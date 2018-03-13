@@ -2,6 +2,7 @@ package org.eclipse.epsilon.evl.engine.test.acceptance.equivalence;
 
 import static org.junit.Assert.*;
 import static org.eclipse.epsilon.evl.engine.test.acceptance.EvlAcceptanceTestUtil.*;
+import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
 import org.eclipse.epsilon.evl.engine.launch.EvlRunConfiguration;
 import java.util.*;
 import java.util.function.Function;
@@ -38,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
  * (for obvious reasons). Note that since the expected configurations are our oracles, they are assumed
  * to pass and are exempt from testing; hence being executed in setUpBeforeClass().
  * 
- * @see EvlAcceptanceTestSuite
+ * @see EvlAcceptanceTestUtil
  * @author Sina Madani
  */
 @RunWith(Parameterized.class)

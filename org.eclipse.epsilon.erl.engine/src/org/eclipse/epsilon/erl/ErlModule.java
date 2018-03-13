@@ -28,10 +28,8 @@ import org.eclipse.epsilon.erl.exceptions.ErlRuleNotFoundException;
 
 public abstract class ErlModule extends EolModule implements IErlModule {
 	
-	protected NamedRuleList<Pre> declaredPre = new NamedRuleList<>();
-	protected NamedRuleList<Post> declaredPost = new NamedRuleList<>();
-	protected NamedRuleList<Pre> pre = null;
-	protected NamedRuleList<Post> post = null;
+	protected NamedRuleList<Pre> pre, declaredPre = new NamedRuleList<>();
+	protected NamedRuleList<Post> post, declaredPost = new NamedRuleList<>();
 	
 	@Override
 	public void build(AST cst, IModule module) {
@@ -104,11 +102,6 @@ public abstract class ErlModule extends EolModule implements IErlModule {
 	public List<Pre> getDeclaredPre() {
 		return declaredPre;
 	}
-	
-	/*@Override
-	public IErlContext getContext() {
-		return (IErlContext) context;
-	}*/
 	
 	protected void prepareExecution() throws EolRuntimeException {
 		prepareContext();
