@@ -63,25 +63,25 @@ public class ErlAcceptanceTestUtil {
 				Path erlScript = Paths.get(testInput[0]);
 				
 				StringProperties testProperties = ErlRunConfiguration.makeProperties(
-					testInput[1],				//Model path
-					testInput[2],				//Metamodel path
-					true,						//Cache model
-					true						//Store on disposal
+					testInput[1],				// Model path
+					testInput[2],				// Metamodel path
+					true,						// Cache model
+					true						// Store on disposal
 				);
 				
 				IModel model = ErlRunConfiguration.getIModelFromPath(testInput[2]);
 				
 				for (Supplier<? extends M> moduleGetter : moduleGetters) {
 					scenarios.add(ErlRunConfiguration.instantiate(
-							clazz,
-							erlScript,									//Path to the script to run
-							testProperties,								//Model and metamodel paths
-							model,										//Model object to use
-							Optional.of(showUnsatisfied),				//Whether to show results
-							Optional.of(profileExecution),				//Whether to measure execution time
-							Optional.of(moduleGetter.get()),			//IErlModule
-							Optional.of(idCalculator.apply(testInput)),	//Unique identifier for this configuration
-							Optional.empty()							//Output file
+							clazz,										// The ErlRunConfiguration subclass
+							erlScript,									// Path to the script to run
+							testProperties,								// Model and metamodel paths
+							model,										// Model object to use
+							Optional.of(showUnsatisfied),				// Whether to show results
+							Optional.of(profileExecution),				// Whether to measure execution time
+							Optional.of(moduleGetter.get()),			// IErlModule
+							Optional.of(idCalculator.apply(testInput)),	// Unique identifier for this configuration
+							Optional.empty()							// Output file
 						)
 					);
 				}

@@ -36,7 +36,7 @@ public class EvlAcceptanceTestUtil {
 		scriptsRoot = testsBase+"scripts/",
 		modelsRoot = testsBase+"models/",
 		
-		//Metamodels and scripts:
+		//Metamodels and scripts
 		javaMetamodel = "java.ecore",
 		javaModels[] = {
 			"epsilon_profiling_test.xmi",
@@ -192,11 +192,11 @@ public class EvlAcceptanceTestUtil {
 		return ErlAcceptanceTestUtil.addAllInputs(scripts, models, metamodel, "evl", scriptsRoot, modelsRoot, metamodelsRoot);
 	}
 	@SafeVarargs
-	public static Collection<? extends EvlRunConfiguration> getScenarios(boolean includeTest, Supplier<? extends IEvlModule>... moduleGetters) {
+	public static Collection<EvlRunConfiguration> getScenarios(boolean includeTest, Supplier<? extends IEvlModule>... moduleGetters) {
 		return getScenarios(null, includeTest, Arrays.asList(moduleGetters), null);
 	}
 	@SafeVarargs
-	public static Collection<? extends EvlRunConfiguration> getScenarios(Supplier<? extends IEvlModule>... moduleGetters) {
+	public static Collection<EvlRunConfiguration> getScenarios(Supplier<? extends IEvlModule>... moduleGetters) {
 		return getScenarios(null, true, Arrays.asList(moduleGetters), null);
 	}
 	public static Collection<EvlRunConfiguration> getScenarios(List<String[]> testInputs, boolean includeTest, Collection<Supplier<? extends IEvlModule>> moduleGetters) {

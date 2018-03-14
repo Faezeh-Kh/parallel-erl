@@ -28,25 +28,15 @@ import org.eclipse.epsilon.launch.ProfilableRunConfiguration;
  * 
  * @author Sina Madani
  */
-public abstract class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConfiguration {
+public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConfiguration {
 
 	/*
 	 * Allows the caller to invoke any subclass of IErlModule.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static void main(String[] args) throws ClassNotFoundException {
-		//Trick to allow instantiation via reflection!
-		class InstantiableErlRunConfiguration<M extends IErlModule> extends ErlRunConfiguration<M> {
-			public InstantiableErlRunConfiguration(Path erlFile, StringProperties properties, IModel model, Optional<Boolean> showResults, Optional<Boolean> profileExecution, Optional<M> erlModule, Optional<Integer> configID, Optional<Path> scratchFile) {
-				super(erlFile, properties, model, showResults, profileExecution, erlModule, configID, scratchFile);
-			}
-			protected M getDefaultModule() {
-				return null;
-			}
-		}
-		
 		if (args.length > 0) {
-			new ErlConfigParser(Class.forName(args[0]), InstantiableErlRunConfiguration.class)
+			new ErlConfigParser(Class.forName(args[0]), ErlRunConfiguration.class)
 				.apply(Arrays.copyOfRange(args, 1, args.length))
 				.run();
 		}
@@ -131,7 +121,12 @@ public abstract class ErlRunConfiguration<M extends IErlModule> extends Profilab
 		);
 	}
 	
-	protected abstract M getDefaultModule();
+	/*
+	 * Should be overriden by subclasses and return a concrete (i.e. non-abstract) implementation of IErlModule.
+	 */
+	protected M getDefaultModule() {
+		return null;
+	}
 	
 	@Override
 	public void preExecute() throws Exception {
