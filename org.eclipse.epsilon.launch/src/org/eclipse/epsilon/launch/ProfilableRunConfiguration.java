@@ -13,7 +13,7 @@ import org.eclipse.epsilon.profiling.BenchmarkUtils;
 import org.eclipse.epsilon.profiling.ProfileDiagnostic;
 import org.eclipse.epsilon.profiling.ProfileDiagnostic.MemoryUnit;
 
-public abstract class ProfilableRunConfiguration implements Runnable {
+public abstract class ProfilableRunConfiguration<R> implements Runnable {
 	
 	protected String printMarker = "-----------------------------------------------------";
 	protected int id;
@@ -21,6 +21,7 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 	public final Path script, outputFile;
 	protected final Collection<ProfileDiagnostic> profiledStages;
 	protected boolean hasRun = false;
+	protected R result;
 	
 	protected ProfilableRunConfiguration(
 		Path scriptFile,
@@ -40,7 +41,7 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 			);
 	}
 	
-	protected ProfilableRunConfiguration(ProfilableRunConfiguration other) {
+	protected ProfilableRunConfiguration(ProfilableRunConfiguration<? extends R> other) {
 		this(
 			other.script,
 			Optional.of(other.showResults),
@@ -48,6 +49,7 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 			Optional.of(other.id),
 			Optional.ofNullable(other.outputFile)
 		);
+		this.result = other.result;
 	}
 	
 	@Override
@@ -59,13 +61,13 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 				long endTime, endMemory,
 				startMemory = BenchmarkUtils.getTotalMemoryUsage(),
 				startTime = nanoTime();
-				execute();
+				result = execute();
 				endTime = nanoTime();
 				endMemory = BenchmarkUtils.getTotalMemoryUsage();
 				recordExecution(endTime-startTime, endMemory-startMemory);
 			}
 			else {
-				execute();
+				result = execute();
 			}
 			
 			postExecute();
@@ -99,7 +101,7 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 		}
 	}
 	
-	protected abstract void execute() throws Exception;
+	protected abstract R execute() throws Exception;
 	
 	protected void postExecute() throws Exception {
 		if (profileExecution) {
@@ -130,6 +132,13 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 			throw new IllegalStateException("Not yet run!");
 		}
 		return BenchmarkUtils.getTotalExecutionTimeFrom(profiledStages);
+	}
+	
+	public R getResult() {
+		if (!hasRun)
+			throw new IllegalStateException("Attempted to get result without calling run()!");
+		
+		return result;
 	}
 	
 	public int getId() {
@@ -176,12 +185,13 @@ public abstract class ProfilableRunConfiguration implements Runnable {
 		if (!(other instanceof ProfilableRunConfiguration))
 			return false;
 		
-		ProfilableRunConfiguration prc = (ProfilableRunConfiguration) other;
+		ProfilableRunConfiguration<?> prc = (ProfilableRunConfiguration<?>) other;
 		return
 			Objects.equals(this.id, prc.id) &&
 			Objects.equals(this.script, prc.script) &&
 			Objects.equals(this.showResults, prc.showResults) &&
 			Objects.equals(this.profileExecution, prc.profileExecution) &&
-			Objects.equals(this.outputFile, prc.outputFile);
+			Objects.equals(this.outputFile, prc.outputFile) &&
+			Objects.equals(this.result, prc.result);
 	}
 }

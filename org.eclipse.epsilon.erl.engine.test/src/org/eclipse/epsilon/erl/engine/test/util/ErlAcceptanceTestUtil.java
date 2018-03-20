@@ -1,19 +1,18 @@
 package org.eclipse.epsilon.erl.engine.test.util;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.eclipse.epsilon.common.concurrent.ConcurrencyUtils;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.models.IModel;
-import org.eclipse.epsilon.erl.engine.launch.ErlRunConfiguration;
+import org.eclipse.epsilon.erl.engine.launch.*;
+import org.eclipse.epsilon.erl.execute.context.concurrent.IErlContextParallel;
 import org.eclipse.epsilon.erl.IErlModule;
 
 public class ErlAcceptanceTestUtil {
@@ -57,7 +56,7 @@ public class ErlAcceptanceTestUtil {
 			if (idCalculator == null) idCalculator = ErlAcceptanceTestUtil::getScenarioID;
 			
 			List<C> scenarios = new ArrayList<>(moduleGetters.size()*(testInputs.size()+2));
-			boolean showUnsatisfied = false, profileExecution = false;
+			Optional<Boolean> showResults = Optional.of(false), profileExecution = Optional.of(false);
 			
 			for (String[] testInput : testInputs) {
 				Path erlScript = Paths.get(testInput[0]);
@@ -72,13 +71,13 @@ public class ErlAcceptanceTestUtil {
 				IModel model = ErlRunConfiguration.getIModelFromPath(testInput[2]);
 				
 				for (Supplier<? extends M> moduleGetter : moduleGetters) {
-					scenarios.add(ErlRunConfiguration.instantiate(
+					scenarios.add(ErlConfigParser.instantiate(
 							clazz,										// The ErlRunConfiguration subclass
 							erlScript,									// Path to the script to run
 							testProperties,								// Model and metamodel paths
 							model,										// Model object to use
-							Optional.of(showUnsatisfied),				// Whether to show results
-							Optional.of(profileExecution),				// Whether to measure execution time
+							showResults,								// Whether to show results
+							profileExecution,							// Whether to measure execution time
 							Optional.of(moduleGetter.get()),			// IErlModule
 							Optional.of(idCalculator.apply(testInput)),	// Unique identifier for this configuration
 							Optional.empty()							// Output file
@@ -92,5 +91,17 @@ public class ErlAcceptanceTestUtil {
 	
 	public static <M extends IErlModule> Collection<? extends M> unwrapModules(Collection<Supplier<? extends M>> moduleGetters) {
 		return moduleGetters.stream().map(Supplier::get).collect(Collectors.toList());
+	}
+	
+	public static <C extends IErlContextParallel> Collection<Supplier<? extends C>> parallelContexts(Function<Integer, C> contextConstructor) {
+		return parallelContexts(contextConstructor, THREADS);
+	}
+	
+	public static <C extends IErlContextParallel> Collection<Supplier<? extends C>> parallelContexts(Function<Integer, C> contextConstructor, int[] parallelisms) {
+		Collection<Supplier<? extends C>> contexts = new ArrayList<>(parallelisms.length);
+		for (int thread : parallelisms) {
+			contexts.add(() -> contextConstructor.apply(thread));
+		}
+		return contexts;
 	}
 }

@@ -48,18 +48,22 @@ public abstract class AbstractModule extends AbstractModuleElement implements IM
 		return sourceFile;
 	}
 	
+	@Override
 	public URI getSourceUri() {
 		return sourceUri;
 	}
 	
+	@Override
 	public List<ParseProblem> getParseProblems() {
 		return parseProblems;
 	}
 	
+	@Override
 	public boolean parse(String code) throws Exception {
 		return parse(code, null);
 	}
 	
+	@Override
 	public boolean parse(String code, File file) throws Exception {
 		this.sourceFile = file;
 		if (file != null) {
@@ -68,10 +72,12 @@ public abstract class AbstractModule extends AbstractModuleElement implements IM
 		return parse(sourceUri, new ByteArrayInputStream(code.getBytes()));
 	}
 
+	@Override
 	public boolean parse(File file) throws Exception {
 		return parse(file.toURI());
 	}
 
+	@Override
 	public boolean parse(URI uri) throws Exception {
 		this.sourceUri = uri;
 
@@ -125,6 +131,7 @@ public abstract class AbstractModule extends AbstractModuleElement implements IM
 		}
 	}
 	
+	@Override
 	public ModuleElement createAst(AST cst, ModuleElement parentAst) {
 		if (cst == null) return null;
 		ModuleElement moduleElement = adapt(cst, parentAst);

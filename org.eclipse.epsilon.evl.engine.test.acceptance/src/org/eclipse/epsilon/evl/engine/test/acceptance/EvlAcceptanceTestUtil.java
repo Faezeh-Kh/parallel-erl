@@ -105,7 +105,7 @@ public class EvlAcceptanceTestUtil {
 		);
 	}
 	
-	static final Collection<Supplier<? extends IEvlContextParallel>> PARALLEL_CONTEXTS = parallelContexts(THREADS);
+	static final Collection<Supplier<? extends IEvlContextParallel>> PARALLEL_CONTEXTS = parallelContexts(EvlContextParallel::new);
 	
 	/*
 	 * A list of pre-configured Runnables which will call the execute() method on the provided module.
@@ -115,11 +115,10 @@ public class EvlAcceptanceTestUtil {
 		if (testInputs == null) testInputs = allInputs;
 		if (moduleGetters == null) moduleGetters = modules();
 		Collection<EvlRunConfiguration> scenarios = ErlAcceptanceTestUtil.getScenarios(EvlRunConfiguration.class, testInputs, moduleGetters, idCalculator);
-				
+		
 		if (includeTest) {
 			for (Supplier<? extends IEvlModule> moduleGetter : moduleGetters) {
 				IEvlModule evlStd = moduleGetter.get();
-				int evlStdId = testInputs.size()+1;
 				
 				scenarios.add(
 					new EvlRunConfiguration(
@@ -129,7 +128,7 @@ public class EvlAcceptanceTestUtil {
 						Optional.of(false),
 						Optional.of(false),
 						Optional.of(evlStd),
-						Optional.of(evlStdId),
+						Optional.of(testInputs.size()+1),
 						Optional.empty()
 					)
 				);
@@ -162,16 +161,6 @@ public class EvlAcceptanceTestUtil {
 		}
 		
 		return modules;
-	}
-	
-	private static Collection<Supplier<? extends IEvlContextParallel>> parallelContexts(int[] parallelisms) {
-		Collection<Supplier<? extends IEvlContextParallel>> contexts = new ArrayList<>(parallelisms.length);
-		
-		for (int threads : parallelisms) {
-			contexts.add(() -> new EvlContextParallel(threads));
-		}
-		
-		return contexts;
 	}
 	
 	/*

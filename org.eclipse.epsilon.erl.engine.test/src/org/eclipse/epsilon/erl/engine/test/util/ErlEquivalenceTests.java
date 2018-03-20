@@ -42,17 +42,13 @@ import org.junit.runner.RunWith;
  * - A setUpBeforeClass static method (annotated with @BeforeClass) which assigns
  * 	 expectedConfigs and subsequently calls setUpEquivalenceTest()
  * 
- * - A static method returning an Iterable<C> annotated with @Parameters.
+ * - A static method returning an Iterable<C> annotated with @Parameters
  * 
- * - A @Test method whose name begins with a very low character value (e.g. _test0)
- *   which simply calls the {@linkplain #beforeTests()} method
- *   
- * - The subclass should be annotated with @FixMethodOrder(MethodSorters.NAME_ASCENDING)
- *   so that the aforementioned method which calls beforeTests() is run first.
+ * - An implementation of #_test0() which simply calls the #beforeTests() method
  * 
- * The complexity of this design is a result of the deficiencies of JUnit. For example, it would
- * be much easier to use a non-static @BeforeAll or even @Before with a flag for running the setup
- * but this doesn't seem to work.
+ * - The class should be annotated with @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+ * 
+ * The last two requirements are a workaround for JUnit's inadequate @Before semantics.
  * 
  * @see ErlAcceptanceTestUtil
  * @author Sina Madani
@@ -60,22 +56,24 @@ import org.junit.runner.RunWith;
 @RunWith(org.junit.runners.Parameterized.class)
 public abstract class ErlEquivalenceTests<M extends IErlModule, C extends ErlRunConfiguration<M>> {
 
-	//The oracle configurations
+	// The oracle configurations
 	protected static Collection<? extends ErlRunConfiguration<? extends IErlModule>> expectedConfigs;
 	
-	//Used to identify which scenario to compare our results with.
-	protected static Map<Integer, IErlModule> expectedModuleIDs;
+	// Used to identify which scenario to compare our results with.
+	protected static Map<Integer, ErlRunConfiguration<?>> expectedConfigIDs;
 	
-	//The scenario and module combination under test. This is the parameterised test variable.
-	protected final C testConfig;
+	// The scenario and module combination under test. This is the parameterised test variable.
+	protected final C expectedConfig, testConfig;
 	
-	//Convenience variables for the tests
+	// Convenience variables for the tests
 	protected final M expectedModule, actualModule;
+	
 	
 	@SuppressWarnings("unchecked")
 	public ErlEquivalenceTests(C configUnderTest) {
 		this.testConfig = configUnderTest;
-		expectedModule = (M) expectedModuleIDs.get(testConfig.getId());
+		expectedConfig = (C) expectedConfigIDs.get(testConfig.getId());
+		expectedModule = expectedConfig.module;
 		actualModule = testConfig.module;
 	}
 	
@@ -84,18 +82,26 @@ public abstract class ErlEquivalenceTests<M extends IErlModule, C extends ErlRun
 	 * setUpBeforeClass().
 	 */
 	protected static void setUpEquivalenceTest() {
-		expectedModuleIDs = new HashMap<>(expectedConfigs.size());
+		expectedConfigIDs = new HashMap<>(expectedConfigs.size());
 		
 		for (ErlRunConfiguration<?> expectedConfig : expectedConfigs) {
-			expectedModuleIDs.put(expectedConfig.getId(), expectedConfig.module);
+			expectedConfigIDs.put(expectedConfig.getId(), expectedConfig);
 			expectedConfig.run();
 		}
 	}
 	
 	/*
-	 * Pre-requisite for testing. This should be called as the first test!
+	 * Subclasses should simply call #beforeTests() in this method.
+	 * Additional setup functionality may also be provided here.
 	 */
-	protected void beforeTests() {
+	@Test
+	public abstract void _test0();
+	
+	
+	/*
+	 * Pre-requisite for testing.
+	 */
+	protected final void beforeTests() {
 		testModuleCanExecute();
 		testScenariosMatch();
 		assert expectedModule != actualModule;
@@ -109,7 +115,7 @@ public abstract class ErlEquivalenceTests<M extends IErlModule, C extends ErlRun
 			fail(ex.getMessage());
 		}
 	}
-	
+
 	protected void testScenariosMatch() {
 		Function<M, Collection<String>> modelCollector = module -> module
 			.getContext().getModelRepository().getModels()
@@ -136,7 +142,7 @@ public abstract class ErlEquivalenceTests<M extends IErlModule, C extends ErlRun
 			.map(Frame::getAll)
 			.map(Map::keySet)
 			.flatMap(Set::stream)
-			.collect(Collectors.toList());	
+			.collect(Collectors.toList());
 		
 		EpsilonTestUtil.testCollectionsHaveSameElements(
 			fsMapper.apply(expectedModule),
@@ -166,5 +172,4 @@ public abstract class ErlEquivalenceTests<M extends IErlModule, C extends ErlRun
 
 		failIfDifferent(actualOCs.size() < expectedOCs.size(), expectedOCs, actualOCs);
 	}
-	
 }

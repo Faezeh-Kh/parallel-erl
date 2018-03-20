@@ -4,7 +4,6 @@ import static java.lang.System.nanoTime;
 import static org.eclipse.epsilon.emc.emf.EmfModel.PROPERTY_FILE_BASED_METAMODEL_URI;
 import static org.eclipse.epsilon.emc.emf.EmfModel.PROPERTY_MODEL_URI;
 import static org.eclipse.epsilon.eol.models.CachedModel.*;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -28,7 +27,7 @@ import org.eclipse.epsilon.launch.ProfilableRunConfiguration;
  * 
  * @author Sina Madani
  */
-public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConfiguration {
+public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConfiguration<Object> {
 
 	/*
 	 * Allows the caller to invoke any subclass of IErlModule.
@@ -46,44 +45,6 @@ public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConf
 	public final StringProperties modelProperties;
 	public final IModel model;
 	public final M module;
-	
-	public static <M extends IErlModule, R extends ErlRunConfiguration<M>> R instantiate(
-		Class<R> subClazz,
-		Path script,
-		StringProperties properties,
-		IModel model,
-		Optional<Boolean> showResults,
-		Optional<Boolean> profileExecution,
-		Optional<M> module,
-		Optional<Integer> id,
-		Optional<Path> outputFile
-	) {
-		try {
-			return subClazz.getConstructor(
-				Path.class,
-				StringProperties.class,
-				IModel.class,
-				Optional.class,
-				Optional.class,
-				Optional.class,
-				Optional.class,
-				Optional.class
-			)
-			.newInstance(
-				script,
-				properties,
-				model,
-				showResults,
-				profileExecution,
-				module,
-				id,
-				outputFile
-			);
-		}
-		catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException ex) {
-			throw new IllegalArgumentException("Can't instantiate '"+subClazz.getName()+"': "+ex.getMessage());
-		}
-	}
 	
 	public ErlRunConfiguration(
 		Path erlFile,
@@ -119,6 +80,7 @@ public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConf
 			Optional.of(other.id),
 			Optional.of(other.outputFile)
 		);
+		this.result = other.result;
 	}
 	
 	/*
@@ -162,15 +124,17 @@ public class ErlRunConfiguration<M extends IErlModule> extends ProfilableRunConf
 	}
 	
 	@Override
-	public void execute() throws EolRuntimeException {
+	public Object execute() throws EolRuntimeException {
+		Object execResult;
 		if (profileExecution && module instanceof ProfilableIErlModule) {
 			ProfilableIErlModule profMod = (ProfilableIErlModule) module;
-			profMod.profileExecution();
+			execResult = profMod.profileExecution();
 			profiledStages.addAll(profMod.getProfiledStages());
 		}
 		else {
-			module.execute();
+			execResult = module.execute();
 		}
+		return execResult;
 	}
 	
 	@Override

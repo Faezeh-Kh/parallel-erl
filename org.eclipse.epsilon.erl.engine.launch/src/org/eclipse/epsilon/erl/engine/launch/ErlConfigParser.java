@@ -1,11 +1,17 @@
 package org.eclipse.epsilon.erl.engine.launch;
 
+import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Function;
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.common.util.StringProperties;
+import org.eclipse.epsilon.eol.execute.context.EolContext;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.erl.IErlModule;
+import org.eclipse.epsilon.erl.execute.context.concurrent.ErlContextParallel;
+import org.eclipse.epsilon.erl.execute.context.concurrent.IErlContextParallel;
 import org.eclipse.epsilon.launch.ConfigParser;
 
 /*
@@ -68,7 +74,7 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 			Optional.of(parseModule(cmdLine.getOptionValues(moduleOpt))) :
 			Optional.empty();
 			
-		runConfig = ErlRunConfiguration.instantiate(
+		runConfig = instantiate(
 			configClass,
 			script,
 			properties,
@@ -85,6 +91,44 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 	public final R apply(String[] args) {
 		accept(args);
 		return runConfig;
+	}
+	
+	public static <M extends IErlModule, R extends ErlRunConfiguration<M>> R instantiate(
+			Class<R> subClazz,
+			Path script,
+			StringProperties properties,
+			IModel model,
+			Optional<Boolean> showResults,
+			Optional<Boolean> profileExecution,
+			Optional<M> module,
+			Optional<Integer> id,
+			Optional<Path> outputFile
+		) {
+			try {
+				return subClazz.getConstructor(
+					Path.class,
+					StringProperties.class,
+					IModel.class,
+					Optional.class,
+					Optional.class,
+					Optional.class,
+					Optional.class,
+					Optional.class
+				)
+				.newInstance(
+					script,
+					properties,
+					model,
+					showResults,
+					profileExecution,
+					module,
+					id,
+					outputFile
+				);
+			}
+			catch (SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException ex) {
+				throw new IllegalArgumentException("Can't instantiate '"+subClazz.getName()+"': "+ex.getMessage());
+			}
 	}
 	
 	/*
@@ -135,21 +179,33 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 			
 			Class<?> moduleClass, contextClassInterface, contextClassConcrete;
 			
+			moduleClass = Class.forName(modulePkg);
+			
 			try {
-				moduleClass = Class.forName(modulePkg);
 				contextClassInterface = Class.forName(contextPkg+"I"+dsl+"Context"+parallelSuffix);
 				contextClassConcrete = Class.forName(contextPkg+dsl+"Context"+parallelSuffix);
 			}
 			catch (ClassNotFoundException cnfx) {
+				if (parallelSuffix.isEmpty()) {
+					contextClassInterface = IEolContext.class;
+					contextClassConcrete = EolContext.class;
+				}
+				else {
+					contextClassInterface = IErlContextParallel.class;
+					contextClassConcrete = ErlContextParallel.class;
+				}
+			}
+			try {
+				return (R) moduleClass.getDeclaredConstructor(contextClassInterface)
+					.newInstance(contextClassConcrete.getConstructor(contextArgTypes)
+						.newInstance(parsedArgs)
+					);
+			}
+			catch (IllegalAccessException ex) {
 				System.err.println("WARNING: Could not find appropriate constructor for supplied parameters. Proceeding with defaults.");
-				System.err.println(cnfx.getMessage());
-				moduleClass = Class.forName(modulePkg+args[0]);
+				System.err.println(ex.getMessage());
 				return (R) moduleClass.getConstructor().newInstance();
 			}
-			return (R) moduleClass.getConstructor(contextClassInterface)
-				.newInstance(contextClassConcrete.getConstructor(contextArgTypes)
-					.newInstance(parsedArgs)
-				);
 		}
 		catch (Exception ex) {
 			throw new IllegalArgumentException("Could not find or instantiate the module: "+ex.getMessage());

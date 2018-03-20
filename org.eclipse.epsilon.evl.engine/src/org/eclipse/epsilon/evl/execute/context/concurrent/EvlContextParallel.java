@@ -13,9 +13,9 @@ import org.eclipse.epsilon.evl.trace.ConstraintTrace;
 public class EvlContextParallel extends ErlContextParallel implements IEvlContextParallel {
 
 	protected final PersistentThreadLocal<Set<UnsatisfiedConstraint>> concurrentUnsatisfiedConstraints;
-	protected Set<UnsatisfiedConstraint> unsatisfiedConstraints;
+	protected final Set<UnsatisfiedConstraint> unsatisfiedConstraints;
+	protected final ConstraintTrace constraintTrace;
 	protected Set<Constraint> constraintsDependedOn;
-	protected ConstraintTrace constraintTrace;
 	
 	public EvlContextParallel() {
 		this(0);

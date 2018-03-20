@@ -35,7 +35,7 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  * 
  * @author Sina Madani
  */
-public class StandaloneOCL extends ProfilableRunConfiguration {
+public class StandaloneOCL extends ProfilableRunConfiguration<Collection<UnsatisfiedOclConstraint>> {
 	
 	protected Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints;
 	protected OCL ocl = OCL.newInstance();
@@ -129,8 +129,8 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	}
 	
 	@Override
-	protected final void execute() {
-		unsatisfiedConstraints = diagnostician.validate();
+	protected final Collection<UnsatisfiedOclConstraint> execute() {
+		return unsatisfiedConstraints = diagnostician.validate();
 	}
 	
 	@Override

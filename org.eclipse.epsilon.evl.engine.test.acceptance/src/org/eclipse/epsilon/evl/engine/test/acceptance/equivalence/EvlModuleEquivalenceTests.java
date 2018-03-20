@@ -14,9 +14,10 @@ import org.eclipse.epsilon.test.util.EpsilonTestUtil;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 import org.junit.runners.Parameterized.Parameters;
 
-@FixMethodOrder(org.junit.runners.MethodSorters.NAME_ASCENDING)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class EvlModuleEquivalenceTests extends ErlEquivalenceTests<IEvlModule, ErlRunConfiguration<IEvlModule>> {
 	
 	public EvlModuleEquivalenceTests(ErlRunConfiguration<IEvlModule> configUnderTest) {
@@ -33,13 +34,13 @@ public class EvlModuleEquivalenceTests extends ErlEquivalenceTests<IEvlModule, E
 	 * @return A collection of pre-configured run configurations, each with their own IEvlModule.
 	 * @see EvlAcceptanceTestSuite.getScenarios
 	 */
-	@Parameters//(name = "0")	//Don't use this as the Eclipse JUnit view won't show failures!
+	@Parameters(name = "0")	//Don't use this as the Eclipse JUnit view won't show failures!
 	public static Iterable<? extends ErlRunConfiguration<IEvlModule>> configurations() {
-		//Used to specify which module configurations we'd like to test in our scenarios
+		// Used to specify which module configurations we'd like to test in our scenarios
 		return getScenarios(
-			allInputs,		//All scripts & models
-			true,			//Include test.evl
-			modules(false) 	//Exclude the standard EvlModule
+			allInputs,		// All scripts & models
+			true,			// Include test.evl
+			modules(false) 	// Exclude the standard EvlModule
 		);
 	}
 	
@@ -58,7 +59,7 @@ public class EvlModuleEquivalenceTests extends ErlEquivalenceTests<IEvlModule, E
 	
 	@Test
 	public void testConstraintTraces() {
-		//Uses Set instead of List for performance reasons when calling containsAll.
+		// Uses Set instead of List for performance reasons when calling containsAll.
 		Function<IEvlModule, Set<ConstraintTraceItem>> ctContents = module ->
 			module.getContext().getConstraintTrace().stream().collect(Collectors.toSet());
 			

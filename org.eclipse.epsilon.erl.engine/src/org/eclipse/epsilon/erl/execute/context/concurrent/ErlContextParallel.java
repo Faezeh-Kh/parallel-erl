@@ -9,7 +9,6 @@ import org.eclipse.epsilon.erl.IErlModule;
 import org.eclipse.epsilon.erl.execute.concurrent.DelegatePersistentThreadLocal;
 import org.eclipse.epsilon.erl.execute.concurrent.ErlExecutorService;
 import org.eclipse.epsilon.erl.execute.concurrent.ErlThreadPoolExecutor;
-import org.eclipse.epsilon.erl.execute.concurrent.PersistentThreadLocal;
 
 /*
  * Skeletal implementation of a parallel IErlContext.
@@ -22,9 +21,9 @@ public class ErlContextParallel extends EolContext implements IErlContextParalle
 	protected boolean isParallel = false;
 	
 	//Data strcutures which will be written to and read from during parallel execution:
-	protected final PersistentThreadLocal<FrameStack> concurrentFrameStacks;
-	protected final PersistentThreadLocal<OperationContributorRegistry> concurrentMethodContributors;
-	protected final PersistentThreadLocal<ExecutorFactory> concurrentExecutors;
+	protected final DelegatePersistentThreadLocal<FrameStack> concurrentFrameStacks;
+	protected final DelegatePersistentThreadLocal<OperationContributorRegistry> concurrentMethodContributors;
+	protected final DelegatePersistentThreadLocal<ExecutorFactory> concurrentExecutors;
 	
 	public ErlContextParallel() {
 		this(0);

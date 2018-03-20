@@ -208,7 +208,8 @@ public class EolModule extends AbstractModule implements IEolModule {
 	
 	@Override
 	public String getMainRule() {
-		return "eolModule";
+		String className = getClass().getSimpleName();
+		return Character.toLowerCase(className.charAt(0)) + className.substring(1);
 	}
 	
 	@Override

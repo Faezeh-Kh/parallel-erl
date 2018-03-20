@@ -28,8 +28,8 @@ public interface ProfilableIErlModule extends IErlModule {
 		BenchmarkUtils.addProfileInfo(getProfiledStages(), stage, nanos, memory);
 	}
 	
-	default void profileExecution() throws EolRuntimeException {
-		BenchmarkUtils.profileExecutionStage(getProfiledStages(), "execute()", this::execute);
+	default Object profileExecution() throws EolRuntimeException {
+		return BenchmarkUtils.profileExecutionStage(getProfiledStages(), "execute()", this::execute);
 	}
 	
 	default <T, R> R profileExecutionStage(String description, CheckedEolFunction<T, R> code, T argument) throws EolRuntimeException {

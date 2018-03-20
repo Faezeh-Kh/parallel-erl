@@ -12,7 +12,7 @@ public class ExtendedProperties {
 		System.err.println(e.getPropertyValue(2, "foo"));
 	}
 	
-	protected Cache<Object, Map<String, Object>> cache = new Cache<>();
+	private final Cache<Object, Map<String, Object>> cache = new Cache<>();
 	
 	public Object getPropertyValue(Object o, String property) {
 		return getPropertyValues(o).get(property);
@@ -26,7 +26,7 @@ public class ExtendedProperties {
 		return getPropertyValues(o, false);
 	}
 	
-	protected Map<String, Object> getPropertyValues(Object o, boolean create) {
+	protected synchronized Map<String, Object> getPropertyValues(Object o, boolean create) {
 		Map<String, Object> propertyValues = cache.get(o);
 		
 		if (propertyValues == null) {
@@ -39,7 +39,7 @@ public class ExtendedProperties {
 		return propertyValues;
 	}
 	
-	public void clear() {
+	public synchronized void clear() {
 		cache.dispose();
 	}
 }
