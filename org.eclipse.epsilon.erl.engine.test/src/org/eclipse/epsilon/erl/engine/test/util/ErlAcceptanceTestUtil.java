@@ -1,7 +1,5 @@
 package org.eclipse.epsilon.erl.engine.test.util;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -12,7 +10,6 @@ import org.eclipse.epsilon.common.concurrent.ConcurrencyUtils;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.erl.engine.launch.*;
-import org.eclipse.epsilon.erl.execute.context.concurrent.IErlContextParallel;
 import org.eclipse.epsilon.erl.IErlModule;
 
 public class ErlAcceptanceTestUtil {
@@ -22,7 +19,8 @@ public class ErlAcceptanceTestUtil {
 		0, 1, 2, 3, 4,
 		(ConcurrencyUtils.DEFAULT_PARALLELISM/2)+1,
 		(ConcurrencyUtils.DEFAULT_PARALLELISM*2)-1,
-		//0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+		Byte.MAX_VALUE,
+		//0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 		//Short.MAX_VALUE/8
 	};
 	
@@ -93,15 +91,22 @@ public class ErlAcceptanceTestUtil {
 		return moduleGetters.stream().map(Supplier::get).collect(Collectors.toList());
 	}
 	
-	public static <C extends IErlContextParallel> Collection<Supplier<? extends C>> parallelContexts(Function<Integer, C> contextConstructor) {
-		return parallelContexts(contextConstructor, THREADS);
+	@SafeVarargs
+	public static <M extends IErlModule> Collection<Supplier<? extends M>> parallelModules(int[] parallelisms, Supplier<M> standardModuleGetter, Function<Integer, M>... parallelModuleConstructors) {
+		Collection<Supplier<? extends M>> modules = new ArrayList<>(1+(parallelModuleConstructors.length*parallelisms.length));
+		if (standardModuleGetter != null) {
+			modules.add(standardModuleGetter);
+		}
+		for (int thread : parallelisms) {
+			for (Function<Integer, M> constructor : parallelModuleConstructors) {
+				modules.add(() -> constructor.apply(thread));
+			}
+		}
+		return modules;
 	}
 	
-	public static <C extends IErlContextParallel> Collection<Supplier<? extends C>> parallelContexts(Function<Integer, C> contextConstructor, int[] parallelisms) {
-		Collection<Supplier<? extends C>> contexts = new ArrayList<>(parallelisms.length);
-		for (int thread : parallelisms) {
-			contexts.add(() -> contextConstructor.apply(thread));
-		}
-		return contexts;
+	@SafeVarargs
+	public static <M extends IErlModule> Collection<Supplier<? extends M>> parallelModules(Supplier<M> standardModuleGetter, Function<Integer, M>... moduleConstructors) {
+		return parallelModules(THREADS, standardModuleGetter, moduleConstructors);
 	}
 }

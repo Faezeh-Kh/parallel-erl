@@ -1,7 +1,9 @@
 package org.eclipse.epsilon.test.util;
 
+import static org.junit.Assert.fail;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
+import java.util.Collection;
 
 public class EpsilonTestUtil {
 	private EpsilonTestUtil() {}
@@ -17,5 +19,26 @@ public class EpsilonTestUtil {
 			System.err.println(urx.getMessage());
 			return null;
 		}
+	}
+	
+	public static <T> void failIfDifferent(boolean condition, T expected, T actual) {
+		if (condition) {
+			String datatype = expected.getClass().getSimpleName();
+			System.err.println();
+			System.out.println("Expected "+datatype+": ");
+			System.out.println(expected);
+			System.out.println(); System.err.println();
+			System.out.println("Actual "+datatype+": ");
+			System.out.println(actual);
+			
+			fail(datatype+"s differ!");
+		}
+	}
+	
+	public static void testCollectionsHaveSameElements(Collection<?> expected, Collection<?> actual) {
+		boolean sizesDiffer = actual.size() != expected.size();
+		boolean contentsDiffer = !actual.containsAll(expected);
+		
+		failIfDifferent(sizesDiffer || contentsDiffer, expected, actual);
 	}
 }

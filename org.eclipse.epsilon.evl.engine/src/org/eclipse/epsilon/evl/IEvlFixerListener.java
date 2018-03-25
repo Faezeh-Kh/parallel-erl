@@ -12,5 +12,5 @@ package org.eclipse.epsilon.evl;
 
 public interface IEvlFixerListener {
 	
-	void fixerFinished();
+	public void fixerFinished();
 }

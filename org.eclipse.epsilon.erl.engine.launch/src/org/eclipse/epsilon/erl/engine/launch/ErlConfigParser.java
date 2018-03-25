@@ -6,12 +6,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.eol.execute.context.EolContext;
-import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.erl.IErlModule;
-import org.eclipse.epsilon.erl.execute.context.concurrent.ErlContextParallel;
-import org.eclipse.epsilon.erl.execute.context.concurrent.IErlContextParallel;
 import org.eclipse.epsilon.launch.ConfigParser;
 
 /*
@@ -151,55 +147,20 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 			if (additionals % 2 != 0)
 				throw new IllegalArgumentException("Must provide the types and arguments for module.");
 			int arrSize = additionals/2;
-			Class<?>[] contextArgTypes = new Class[arrSize];
+			Class<?>[] moduleArgTypes = new Class[arrSize];
 			Object[] parsedArgs = new Object[arrSize];
 			
 			for (int l = 0, a = 0; l < arrSize*2; l += 2, a++) {
 				Class<?>[] type = getType(args[l+1]);
 				Class<?> constructType = type.length == 2 ? type[1] : type[0];
-				contextArgTypes[a] = type[0];
+				moduleArgTypes[a] = type[0];
 				parsedArgs[a] = constructType.getConstructor(String.class).newInstance(args[l+2]);
 			}
 
-			String parallelSuffix = "",
-				modulePkg = basePkg+args[0],
-				contextPkg = basePkg+args[0].substring(0, args[0].indexOf('.'))+".execute.context.",
-				dsl = modulePkg.substring(modulePkg.lastIndexOf('.')+1, modulePkg.indexOf("Module"));
-			
-			String[] pkgSplits = args[0].split("\\.", -1);
-			if (pkgSplits.length > 2) {
-				for (int i = 1; i < pkgSplits.length-1; i++) {
-					contextPkg += pkgSplits[i]+'.';
-				}
-			}
-			
-			if (args[0].contains("Parallel")) {
-				parallelSuffix = "Parallel";
-			}
-			
-			Class<?> moduleClass, contextClassInterface, contextClassConcrete;
-			
-			moduleClass = Class.forName(modulePkg);
-			
+			Class<?> moduleClass = Class.forName(basePkg+args[0]);
+
 			try {
-				contextClassInterface = Class.forName(contextPkg+"I"+dsl+"Context"+parallelSuffix);
-				contextClassConcrete = Class.forName(contextPkg+dsl+"Context"+parallelSuffix);
-			}
-			catch (ClassNotFoundException cnfx) {
-				if (parallelSuffix.isEmpty()) {
-					contextClassInterface = IEolContext.class;
-					contextClassConcrete = EolContext.class;
-				}
-				else {
-					contextClassInterface = IErlContextParallel.class;
-					contextClassConcrete = ErlContextParallel.class;
-				}
-			}
-			try {
-				return (R) moduleClass.getDeclaredConstructor(contextClassInterface)
-					.newInstance(contextClassConcrete.getConstructor(contextArgTypes)
-						.newInstance(parsedArgs)
-					);
+				return (R) moduleClass.getDeclaredConstructor(moduleArgTypes).newInstance(parsedArgs);
 			}
 			catch (IllegalAccessException ex) {
 				System.err.println("WARNING: Could not find appropriate constructor for supplied parameters. Proceeding with defaults.");

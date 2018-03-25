@@ -13,8 +13,8 @@ public class EvlModuleParallelElements extends EvlModuleParallel {
 		super();
 	}
 	
-	public EvlModuleParallelElements(IEvlContextParallel parallelEvlContext) {
-		super(parallelEvlContext);
+	public EvlModuleParallelElements(int parallelism) {
+		super(parallelism);
 	}
 	
 	@Override

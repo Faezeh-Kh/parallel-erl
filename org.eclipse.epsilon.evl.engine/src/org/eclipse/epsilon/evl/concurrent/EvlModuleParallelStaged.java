@@ -28,8 +28,8 @@ public class EvlModuleParallelStaged extends EvlModuleParallel {
 		super();
 	}
 	
-	public EvlModuleParallelStaged(IEvlContextParallel parallelEvlContext) {
-		super(parallelEvlContext);
+	public EvlModuleParallelStaged(int parallelism) {
+		super(parallelism);
 	}
 
 	@Override

@@ -80,7 +80,6 @@ import junit.framework.Test;
                SpreadsheetDriverTestSuite.class,
                CsvModelTestSuite.class})
 public class EpsilonTestSuite {
-	//TODO: see why it doesn't run in Java 9
 	public static Test suite() {
 		return new JUnit4TestAdapter(EpsilonTestSuite.class);
 	}

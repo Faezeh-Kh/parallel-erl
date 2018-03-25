@@ -48,11 +48,7 @@ public class EvlModule extends ErlModule implements IEvlModule {
 	private boolean optimizeConstraints = false;
 	
 	public EvlModule() {
-		this(new EvlContext());
-	}
-	
-	public EvlModule(IEvlContext evlContext) {
-		this.context = evlContext;
+		context = new EvlContext();
 	}
 	
 	@Override

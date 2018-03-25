@@ -2,6 +2,7 @@ package org.eclipse.epsilon.eol.execute.context;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.epsilon.eol.util.Cache;
 
 public class ExtendedProperties {
@@ -26,7 +27,7 @@ public class ExtendedProperties {
 		return getPropertyValues(o, false);
 	}
 	
-	protected synchronized Map<String, Object> getPropertyValues(Object o, boolean create) {
+	protected Map<String, Object> getPropertyValues(Object o, boolean create) {
 		Map<String, Object> propertyValues = cache.get(o);
 		
 		if (propertyValues == null) {
@@ -39,7 +40,7 @@ public class ExtendedProperties {
 		return propertyValues;
 	}
 	
-	public synchronized void clear() {
+	public void clear() {
 		cache.dispose();
 	}
 }

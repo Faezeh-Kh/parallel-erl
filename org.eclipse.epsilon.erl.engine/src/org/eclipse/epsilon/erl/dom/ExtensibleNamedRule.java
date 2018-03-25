@@ -140,14 +140,13 @@ public abstract class ExtensibleNamedRule extends NamedRule {
 		super.build(cst, module);
 		
 		AST superRulesAst = getSuperRulesAst(cst);
-		if (superRulesAst != null){
+		if (superRulesAst != null) {
 			AST superRuleAst = superRulesAst.getFirstChild();
-			while (superRuleAst != null){
+			while (superRuleAst != null) {
 				superRulesIdentifiers.add((NameExpression) module.createAst(superRuleAst, this));
 				superRuleAst = superRuleAst.getNextSibling();
 			}
 		}
-		
 	}
 	
 	public abstract AST getSuperRulesAst(AST cst);

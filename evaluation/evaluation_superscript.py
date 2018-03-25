@@ -3,9 +3,9 @@ import os, argparse, re, csv, statistics, math, multiprocessing
 parser = argparse.ArgumentParser()
 parser.add_argument('mode', choices=['GENERATE', 'ANALYSE'], help='What do you want the program to do?')
 parser.add_argument('--rootDir', help='The base directory. For all unspecified paths, everything will be assumed to be relative to this. Default value is current directory.')
-parser.add_argument('--inDir', help='Input directory')
-parser.add_argument('--resFile', help='Output file for the results (must be full path and CSV extension)')
-parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format (must be full path)')
+parser.add_argument('--inDir', help='Input directory.')
+parser.add_argument('--resFile', help='Output file for the results (must be full path and CSV extension).')
+parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format (must be full path).')
 parser.add_argument('--binDir', help='The directory where executable JAR files are stored (absolute path).')
 parser.add_argument('--scriptDir', help='The scripts directory (absolute path).')
 parser.add_argument('--modelDir', help='The models directory (absolute path).')
@@ -65,7 +65,7 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_vmem='''+str(60/yarccCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -d64 -XX:InitialRAMFraction=16 -XX:MaxRAMFraction=1 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
+jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=72 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
 if sge:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
@@ -141,7 +141,8 @@ def write_benchmark_scenarios(name, scenariosArgs):
     lines = [subCmd+get_scenario_name(module, script, model)+fileExt+nL for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*3)
 
-#(Meta)Models
+# (Meta)Models
+# Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
 javaMM = 'java.ecore'
 imdbMM = 'movies.ecore'
 dblpMM = 'dblp.ecore'

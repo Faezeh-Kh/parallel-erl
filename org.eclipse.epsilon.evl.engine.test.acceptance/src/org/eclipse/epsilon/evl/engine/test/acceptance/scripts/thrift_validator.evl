@@ -3,7 +3,7 @@ import "thrift-helper-functions.eol";
 pre {
 	doSetup();
 
-	// Cache the types as it will be needed in a constraint
+	// Cache the types as it will be needed in a constraint (@see line 155)
 	for (c in Const.allInstances()) {
 		c.thriftType();
 	}
@@ -30,7 +30,7 @@ pre {
 	allIdentifiers.addAll(topLevelIdentifiers);
 	allIdentifiers.addAll(fieldIdentifiers);
 	
-	var reservedWords : Set = Set {
+	var reservedWords = Set {
 		"BEGIN",
 		"END",
 		"__CLASS__",
@@ -152,6 +152,8 @@ constraint noTopLevelClashes {
 context Const {
 	constraint assignmentsAreLegal {
 		check {
+			// This is where the program may crash under parallel execution if self.thriftType()
+			// hasn't been called in the pre block due to extended properties not being thread-safe!
 			return self.constVal.isOfType(self.thriftType());
 		}
 		message: "The constant value '"+self.identifier+"' is assigned to an incompatible type."// '"+self.constVal.deduceType()+"'."

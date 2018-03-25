@@ -14,14 +14,15 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 /*
  * Experimental IEvlModule. Not for public use.
  */
-class EvlModuleParallelThreads extends EvlModuleParallel {
+@Deprecated
+public class EvlModuleParallelThreads extends EvlModuleParallel {
 
 	public EvlModuleParallelThreads() {
 		super();
 	}
 
-	public EvlModuleParallelThreads(IEvlContextParallel parallelEvlContext) {
-		super(parallelEvlContext);
+	public EvlModuleParallelThreads(int parallelism) {
+		super(parallelism);
 	}
 
 	@Override

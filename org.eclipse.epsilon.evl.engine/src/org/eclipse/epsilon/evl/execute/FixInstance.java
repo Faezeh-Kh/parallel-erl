@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.execute;
 
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.FrameStack;
+import org.eclipse.epsilon.eol.models.transactions.ModelRepositoryTransactionSupport;
 import org.eclipse.epsilon.evl.dom.Fix;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 
@@ -50,7 +51,7 @@ public class FixInstance {
 			try {
 				FrameStack oldScope = context.getFrameStack();
 				context.setFrameStack(this.scope);
-				title = fix.getTitle(self,context);
+				title = fix.getTitle(self, context);
 				context.setFrameStack(oldScope);
 			}
 			catch (EolRuntimeException ex) {
@@ -64,19 +65,19 @@ public class FixInstance {
 	public void perform() throws EolRuntimeException {
 		FrameStack oldScope = context.getFrameStack();
 		context.setFrameStack(this.scope);
+		ModelRepositoryTransactionSupport transactionSupport = context.getModelRepository().getTransactionSupport();
 		try {
-			context.getModelRepository().getTransactionSupport().startTransaction();
-			fix.execute(self,context);
-			context.getModelRepository().getTransactionSupport().commitTransaction();
+			transactionSupport.startTransaction();
+			fix.execute(self, context);
+			transactionSupport.commitTransaction();
 		}
-		catch(EolRuntimeException ex) {
-			context.getModelRepository().getTransactionSupport().rollbackTransaction();
+		catch (EolRuntimeException ex) {
+			transactionSupport.rollbackTransaction();
 			throw ex;
 		}
 		finally {
 			context.setFrameStack(oldScope);
 		}
-		
 	}
 	
 	@Override

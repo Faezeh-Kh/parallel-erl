@@ -8,7 +8,7 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 public abstract class EvlModuleParallel extends EvlModule {
 
-	public static EvlModuleParallel getDefaultImpl() {
+	public static final EvlModuleParallel getDefaultImpl() {
 		return new EvlModuleParallelElements();
 	}
 	
@@ -16,11 +16,11 @@ public abstract class EvlModuleParallel extends EvlModule {
 	protected abstract void checkConstraints() throws EolRuntimeException;
 	
 	public EvlModuleParallel() {
-		this(new EvlContextParallel());
+		context = new EvlContextParallel();
 	}
 	
-	public EvlModuleParallel(IEvlContextParallel parallelEvlContext) {
-		super(parallelEvlContext);
+	public EvlModuleParallel(int parallelism) {
+		context = new EvlContextParallel(parallelism);
 	}
 	
 	@Override

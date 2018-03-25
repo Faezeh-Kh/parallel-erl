@@ -9,15 +9,10 @@ public class NamedRuleList<T extends NamedRule> extends ArrayList<T> {
 	
 	@Override
 	public boolean add(T namedRule) {
-		NamedRule toRemove = null;
-		for (NamedRule rule : this) {
-			if (namedRule.getName().equals(rule.getName())) {
-				toRemove = rule;
-			}
-		}
-		if (toRemove != null) {
-			remove(toRemove);
-		}
+		this.stream()
+			.filter(nr -> namedRule.getName().equals(nr.getName()))
+			.findAny()
+			.ifPresent(this::remove);
 		return super.add(namedRule);
 	}
 	
@@ -35,9 +30,10 @@ public class NamedRuleList<T extends NamedRule> extends ArrayList<T> {
 		return super.addAll(c);
 	}
 	
+	@Override
 	public void add(int index, T element) {
 		throw new UnsupportedOperationException();
-	};
+	}
 	
 	@Override
 	public boolean addAll(int index, Collection<? extends T> c) {

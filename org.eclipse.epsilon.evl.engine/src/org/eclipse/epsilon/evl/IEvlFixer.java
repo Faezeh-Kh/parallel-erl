@@ -14,5 +14,5 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 
 public interface IEvlFixer {
 
-	void fix(IEvlModule module) throws EolRuntimeException;
+	public void fix(IEvlModule module) throws EolRuntimeException;
 }

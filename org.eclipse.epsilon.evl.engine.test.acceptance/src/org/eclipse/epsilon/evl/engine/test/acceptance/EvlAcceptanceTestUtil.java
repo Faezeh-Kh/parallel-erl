@@ -23,7 +23,6 @@ import org.eclipse.epsilon.common.util.CollectionUtil;
 import org.eclipse.epsilon.erl.engine.test.util.ErlAcceptanceTestUtil;
 import org.eclipse.epsilon.evl.*;
 import org.eclipse.epsilon.evl.concurrent.*;
-import org.eclipse.epsilon.evl.execute.context.concurrent.*;
 import org.eclipse.epsilon.evl.engine.launch.EvlRunConfiguration;
 
 public class EvlAcceptanceTestUtil {
@@ -105,8 +104,6 @@ public class EvlAcceptanceTestUtil {
 		);
 	}
 	
-	static final Collection<Supplier<? extends IEvlContextParallel>> PARALLEL_CONTEXTS = parallelContexts(EvlContextParallel::new);
-	
 	/*
 	 * A list of pre-configured Runnables which will call the execute() method on the provided module.
 	 * @param modules A collection of IEvlModules to use in combination with each set of test data.
@@ -138,51 +135,18 @@ public class EvlAcceptanceTestUtil {
 		return scenarios;
 	}
 	
-	/*
-	 * @param includeStandard Whether to include the default IEvlModule
-	 * @param others An array indicating which modules to include. [0] is EvlModuleParallel, [1] is EvlModuleParallelStaged, [2] is EvlModuleParallelGraph.
-	 * @param contexts The IEvlContextParallel configurations to use.
-	 * @param repeats How many times to duplicate (cycle) the modules in the returned collection.
-	 * @return A collection of Suppliers which return the specified IEvlModules.
-	 */
-	static Collection<Supplier<? extends IEvlModule>> parallelModules(boolean[] moduleIncludes, Collection<Supplier<? extends IEvlContextParallel>> contexts, int repeats) {
-		if (contexts == null) contexts = Collections.singleton(EvlContextParallel::new);
-		ArrayList<Supplier<? extends IEvlModule>> modules = new ArrayList<>(moduleIncludes.length*repeats*contexts.size());
-		
-		for (int r = 0; r < repeats; r++) {
-			for (Supplier<? extends IEvlContextParallel> contextGetter : contexts) {
-				if (moduleIncludes[0])
-					modules.add(() -> new EvlModuleParallelStaged(contextGetter.get()));
-				if (moduleIncludes[1])
-					modules.add(() -> new EvlModuleParallelConstraints(contextGetter.get()));
-				if (moduleIncludes[2])
-					modules.add(() -> new EvlModuleParallelElements(contextGetter.get()));
-			}
-		}
-		
-		return modules;
-	}
-	
-	/*
-	 * @param moduleIncludes [0]=EvlModule, [1]=EvlModuleParallelStaged, [2]=EvlModuleParallelConstraints, [3]=EvlModuleParallelElements.
-	 */
-	public static Collection<Supplier<? extends IEvlModule>> modules(boolean[] moduleIncludes, int repeats) {
-		Collection<Supplier<? extends IEvlModule>> modules = parallelModules(Arrays.copyOfRange(moduleIncludes, 1, moduleIncludes.length), PARALLEL_CONTEXTS, repeats);
-		if (moduleIncludes[0]) {
-			for (int r = 0; r < repeats; r++) {
-				modules.add(EvlModule::new);
-			}
-		}
-		return modules;
+	public static Collection<Supplier<? extends IEvlModule>> modules(boolean includeStandard) {
+		return parallelModules(
+			EvlModule::new,
+			EvlModuleParallelElements::new,
+			EvlModuleParallelStaged::new,
+			EvlModuleParallelConstraints::new
+		);
 	}
 	
 	//Boilerplate defaults
 	public static List<String[]> addAllInputs(String[] scripts, String[] models, String metamodel) {
 		return ErlAcceptanceTestUtil.addAllInputs(scripts, models, metamodel, "evl", scriptsRoot, modelsRoot, metamodelsRoot);
-	}
-	@SafeVarargs
-	public static Collection<EvlRunConfiguration> getScenarios(boolean includeTest, Supplier<? extends IEvlModule>... moduleGetters) {
-		return getScenarios(null, includeTest, Arrays.asList(moduleGetters), null);
 	}
 	@SafeVarargs
 	public static Collection<EvlRunConfiguration> getScenarios(Supplier<? extends IEvlModule>... moduleGetters) {
@@ -191,22 +155,7 @@ public class EvlAcceptanceTestUtil {
 	public static Collection<EvlRunConfiguration> getScenarios(List<String[]> testInputs, boolean includeTest, Collection<Supplier<? extends IEvlModule>> moduleGetters) {
 		return getScenarios(testInputs, includeTest, moduleGetters, null);
 	}
-	
-	public static Collection<Supplier<? extends IEvlModule>> modules(int repeats, boolean... moduleIncludes) {
-		boolean[] fixedIncludes = new boolean[4];
-		for (int i = 0; i < moduleIncludes.length; i++) {
-			fixedIncludes[i] = moduleIncludes[i];
-		}
-		for (int i = fixedIncludes.length-1; i >= moduleIncludes.length; i--) {
-			fixedIncludes[i] = true;
-		}
-		return modules(fixedIncludes, repeats);
-	}
-	
-	public static Collection<Supplier<? extends IEvlModule>> modules(boolean... moduleIncludes) {
-		return modules(1, moduleIncludes);
-	}
 	public static Collection<Supplier<? extends IEvlModule>> modules() {
-		return modules(1);
+		return modules(true);
 	}
 }

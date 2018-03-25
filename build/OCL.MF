@@ -1,0 +1,54 @@
+Manifest-Version: 1.0
+Main-Class: org.eclipse.ocl.standalone.StandaloneOCL
+Class-Path: dependencies/org.eclipse.emf.edit.ui_2.14.0.v20180213-0527.ja
+ r dependencies/org.eclipse.ui.views_3.9.0.v20170226-1833.jar dependencies/org.e
+ clipse.ui.workbench_3.110.1.v20170704-1208.jar dependencies/org.eclipse.e4
+ .ui.workbench3_0.14.0.v20160630-0740.jar dependencies/org.eclipse.emf.edit
+ _2.13.0.v20180211-1534.jar dependencies/org.eclipse.emf.common_2.14.0.v201
+ 80308-1144.jar dependencies/org.eclipse.emf.ecore_2.14.0.v20180213-0937.ja
+ r dependencies/org.eclipse.emf.ecore.change_2.12.0.v20180125-1130.jar OCL_
+ lib/org.eclipse.emf.common.ui_2.13.0.v20180127-1015.jar dependencies/org.e
+ clipse.ui_3.109.0.v20170411-1742.jar dependencies/org.eclipse.swt_3.106.3.
+ v20180214-0345.jar dependencies/org.eclipse.swt.gtk.linux.x86_64_3.106.3.v
+ 20180214-0345.jar dependencies/org.eclipse.jface_3.13.2.v20171022-1656.jar
+  dependencies/org.eclipse.core.commands_3.9.0.v20170530-1048.jar dependencies/c
+ om.google.inject_3.0.0.v201605172100.jar dependencies/com.google.inject.mu
+ ltibindings_3.0.0.v201605172100.jar dependencies/org.apache.log4j_1.2.15.v
+ 201012070815.jar dependencies/org.eclipse.core.runtime_3.13.0.v20170207-10
+ 30.jar dependencies/javax.inject_1.0.0.v20091030.jar dependencies/org.eclipse.o
+ sgi_3.12.100.v20180210-1608.jar dependencies/org.eclipse.osgi.compatibilit
+ y.state_1.1.0.v20170516-1513.jar dependencies/org.eclipse.equinox.common_3
+ .9.0.v20170207-1454.jar dependencies/org.eclipse.core.jobs_3.9.3.v20180115
+ -1757.jar dependencies/org.eclipse.equinox.registry_3.7.0.v20170222-1344.j
+ ar dependencies/org.eclipse.equinox.preferences_3.7.0.v20170126-2132.jar O
+ CL_lib/org.eclipse.core.contenttype_3.6.0.v20170207-1037.jar dependencies/
+ org.eclipse.equinox.app_1.3.400.v20150715-1528.jar dependencies/org.eclips
+ e.ocl.pivot_1.4.0.v20180312-0833.jar dependencies/org.eclipse.jdt.annotati
+ on_2.1.100.v20170511-1408.jar dependencies/org.eclipse.emf.ecore.xmi_2.14.
+ 0.v20180129-1548.jar dependencies/org.eclipse.ocl.common_1.4.300.v20180312
+ -0833.jar dependencies/org.eclipse.emf.codegen_2.13.0.v20180308-1144.jar O
+ CL_lib/org.eclipse.xtext_2.13.0.v20171012-0934.jar dependencies/org.antlr.
+ runtime_3.2.0.v201101311130.jar dependencies/org.eclipse.emf.mwe.core_1.3.
+ 21.201705291011.jar dependencies/org.apache.commons.cli_1.2.0.v20140427022
+ 0.jar dependencies/org.eclipse.emf.mwe2.runtime_2.9.1.201705291011.jar OCL
+ _lib/org.eclipse.emf.mwe.utils_1.3.21.201705291011.jar dependencies/org.ec
+ lipse.xtext.util_2.13.0.v20171012-0934.jar dependencies/com.google.guava_2
+ 1.0.0.v20170206-1425.jar dependencies/org.eclipse.xtext.common.types_2.13.
+ 0.v20171012-0953.jar dependencies/org.eclipse.xtext.common.types.ui_2.13.0
+ .v20171012-1724.jar dependencies/org.eclipse.xtext.common.types.edit_2.13.
+ 0.v20171012-1724.jar dependencies/org.eclipse.xtext.ui_2.13.0.v20171012-17
+ 24.jar dependencies/org.eclipse.core.resources_3.12.0.v20170417-1558.jar O
+ CL_lib/org.eclipse.ui.editors_3.11.0.v20170202-1823.jar dependencies/org.e
+ clipse.core.filebuffers_3.6.100.v20170203-1130.jar dependencies/org.eclips
+ e.jface.text_3.12.2.v20180112-1341.jar dependencies/org.eclipse.text_3.6.1
+ 00.v20170203-0814.jar dependencies/org.eclipse.ltk.core.refactoring_3.8.0.
+ v20170105-1156.jar dependencies/org.eclipse.xtext.ide_2.13.0.v20171012-093
+ 4.jar dependencies/org.eclipse.xtext.ui.shared_2.13.0.v20171012-1724.jar O
+ CL_lib/org.eclipse.ocl_3.9.0.v20180312-0833.jar dependencies/lpg.runtime.j
+ ava_2.0.17.v201004271640.jar dependencies/org.eclipse.ocl.xtext.essentialo
+ cl_1.4.0.v20180312-0833.jar dependencies/org.eclipse.ocl.xtext.base_1.4.0.
+ v20180312-0833.jar dependencies/org.eclipse.ocl.xtext.completeocl_1.4.0.v2
+ 0180312-0833.jar dependencies/org.eclipse.ocl.xtext.oclinecore_1.4.0.v2018
+ 0312-0833.jar dependencies/org.eclipse.ui.workbench.texteditor_3.10.100.v2
+ 0170426-2021.jar
+

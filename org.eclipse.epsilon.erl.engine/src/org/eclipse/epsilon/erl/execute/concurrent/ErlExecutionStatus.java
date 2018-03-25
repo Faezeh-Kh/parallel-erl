@@ -40,7 +40,7 @@ public class ErlExecutionStatus {
 			while (!stop) wait();
 		}
 		catch (InterruptedException ix) {
-			
+			ix.printStackTrace();
 		}
 		return exception;
 	}

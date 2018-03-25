@@ -70,7 +70,6 @@ public class StandaloneOCL extends ProfilableRunConfiguration<Collection<Unsatis
 		}
 		catch (IllegalArgumentException iax) {
 			System.err.println(iax.getMessage());
-			System.exit(1);
 		}
 	}
 

@@ -1,0 +1,1 @@
+jar cfm %EPSILON_BENCH_DIR%/bin/%1.jar  %EPSILON_BENCH_DIR%/bin/build/%1.MF -C  %EPSILON_BENCH_DIR%/bin/build/%1 .
