@@ -65,7 +65,7 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_vmem='''+str(60/yarccCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=72 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
+jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=70 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
 if sge:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
@@ -167,6 +167,8 @@ evlParallelModules = [
     'EvlModuleParallelStaged',
     'EvlModuleParallelElements',
     'EvlModuleParallelConstraints'
+    # 'EvlModuleParallelContexts',
+    # 'EvlModuleParallelThreads
 ]
 evlModules = ['EvlModule'] + evlParallelModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
