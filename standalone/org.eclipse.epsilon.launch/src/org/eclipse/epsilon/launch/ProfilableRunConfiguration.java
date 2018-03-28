@@ -112,6 +112,9 @@ public abstract class ProfilableRunConfiguration<R> implements Runnable {
 				printMarker
 			);
 		}
+		if (showResults) {
+			writeOut("Result: ", "", result, printMarker);
+		}
 	}
 	
 	protected void recordExecution(long nanos, long memory) {

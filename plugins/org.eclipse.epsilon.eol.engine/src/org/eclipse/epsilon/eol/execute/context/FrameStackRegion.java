@@ -34,7 +34,8 @@ import org.eclipse.epsilon.eol.dom.WhileStatement;
  */
 class FrameStackRegion {
 
-	/* We use the newer Deque class rather than a java.util.Stack,
+	/**
+	 * We use the newer Deque class rather than a java.util.Stack,
 	 * as the latter uses the legacy Vector class and is slower due to synchronization.
 	 */
 	private Deque<SingleFrame> frames;

@@ -24,17 +24,14 @@ public abstract class EolPrimitive extends EolAny implements Comparable<Object> 
 	
 	@Override
 	public int compareTo(Object opposite) {
-		if (opposite == null) return -1;
-		if (opposite.getClass() == this.getClass()) {
+		if (opposite != null && opposite.getClass() == this.getClass()) {
 			return this.toString().compareTo(opposite.toString());
 		}
 		return -1;
 	}
 	
-	/*
 	@Override
 	public int hashCode() {
-		return getValue().hashCode();
+		return super.hashCode();
 	}
-	*/
 }

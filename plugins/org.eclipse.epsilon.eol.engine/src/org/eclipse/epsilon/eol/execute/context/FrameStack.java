@@ -13,6 +13,7 @@
 package org.eclipse.epsilon.eol.execute.context;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -271,6 +272,10 @@ public class FrameStack implements ConcurrentBaseDelegate<FrameStack> {
 		leaveLocal(entryPoint, true);
 	}
 
+	public void putAll(Collection<Variable> variables) {
+		activeGroup().put(variables.toArray(new Variable[variables.size()]));
+	}
+	
 	/**
 	 * Puts one or more new variables in the topmost frame of the scope.
 	 * Note that the topmost frame can be either a local or a global frame,
@@ -520,7 +525,7 @@ public class FrameStack implements ConcurrentBaseDelegate<FrameStack> {
 		}
 	}
 	
-	/*
+	/**
 	 * Adds all of this FrameStack's frames into its base FrameStack.
 	 */
 	@Override
@@ -530,7 +535,7 @@ public class FrameStack implements ConcurrentBaseDelegate<FrameStack> {
 		}
 	}
 	
-	/*
+	/**
 	 * Adds all the frames and variables from the first argument to the second one.
 	 */
 	protected static void mergeFrameStacks(FrameStack from, FrameStack to) {

@@ -42,7 +42,7 @@ public class EolModule extends AbstractModule implements IEolModule {
 	protected OperationList declaredOperations = new OperationList();
 	protected List<Import> imports = new ArrayList<>();
 	protected OperationList operations = new OperationList();
-	protected List<ModelDeclaration> declaredModelDeclarations = new ArrayList<>();
+	protected List<ModelDeclaration> declaredModelDeclarations;
 	protected Set<ModelDeclaration> modelDeclarations;
 	protected EolCompilationContext compilationContext;
 	private IEolModule parent;
@@ -61,7 +61,9 @@ public class EolModule extends AbstractModule implements IEolModule {
 			declaredOperations.add((Operation) createAst(operationAst, this));
 		}
 		
-		for (AST modelDeclarationAst : AstUtil.getChildren(cst, EolParser.MODELDECLARATION)) {
+		List<AST> modelDeclarationAsts = AstUtil.getChildren(cst, EolParser.MODELDECLARATION);
+		declaredModelDeclarations = new ArrayList<>(modelDeclarationAsts.size());
+		for (AST modelDeclarationAst : modelDeclarationAsts) {
 			declaredModelDeclarations.add((ModelDeclaration) createAst(modelDeclarationAst, this));
 		}
 		
@@ -208,8 +210,9 @@ public class EolModule extends AbstractModule implements IEolModule {
 	
 	@Override
 	public String getMainRule() {
-		String className = getClass().getSimpleName();
-		return Character.toLowerCase(className.charAt(0)) + className.substring(1);
+//		String className = getClass().getSimpleName();
+//		return Character.toLowerCase(className.charAt(0)) + className.substring(1);
+		return "eolModule";
 	}
 	
 	@Override
@@ -291,9 +294,10 @@ public class EolModule extends AbstractModule implements IEolModule {
 	}
 	
 	protected Collection<Import> getImportsByExtension(AST cst, String extension, Class<?> moduleImplClass) {
-		final List<Import> imports = new ArrayList<>();
+		List<AST> importAsts = AstUtil.getChildren(cst, EolParser.IMPORT);
+		List<Import> imports = new ArrayList<>(importAsts.size());
 		
-		for (AST importAst : AstUtil.getChildren(cst, EolParser.IMPORT)) {
+		for (AST importAst : importAsts) {
 			IModule module = null;
 			try {
 				module = (IModule) moduleImplClass.getDeclaredConstructor().newInstance();
@@ -321,7 +325,7 @@ public class EolModule extends AbstractModule implements IEolModule {
 			} else {
 				import_.load(sourceFile.toURI());
 			}
-			if (!import_.isLoaded()){
+			if (!import_.isLoaded()) {
 				ParseProblem problem = new ParseProblem();
 				problem.setLine(import_.getRegion().getStart().getLine());
 				String reason;

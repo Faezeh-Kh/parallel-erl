@@ -19,8 +19,7 @@ public class ExecutableBlock<T> extends AbstractExecutableModuleElement {
 	
 	protected IExecutableModuleElement body = null;
 	protected Class<?> expectedResultClass = null;
-	protected String role = "";
-	protected String text = "";
+	protected String role = "", text = "";
 	
 	public ExecutableBlock(Class<?> expectedResultClass) {
 		this.expectedResultClass = expectedResultClass;

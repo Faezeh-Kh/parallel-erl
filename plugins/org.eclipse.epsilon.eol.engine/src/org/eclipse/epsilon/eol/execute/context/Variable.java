@@ -10,6 +10,7 @@
  ******************************************************************************/
 package org.eclipse.epsilon.eol.execute.context;
 
+import java.util.Map.Entry;
 import java.util.Objects;
 import org.eclipse.epsilon.eol.exceptions.EolIllegalVariableAssignmentException;
 import org.eclipse.epsilon.eol.exceptions.EolReadOnlyVariableException;
@@ -30,6 +31,10 @@ public class Variable {
 		return new Variable(name, value, EolAnyType.Instance, true);
 	}
 
+	public static Variable createReadOnlyVariable(Entry<String, ? extends Object> entry) {
+		return createReadOnlyVariable(entry.getKey(), entry.getValue());
+	}
+	
 	public Variable() {
 		
 	}

@@ -20,7 +20,7 @@ import org.eclipse.epsilon.test.util.EpsilonTestUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/*
+/**
  * A series of tests which use the standard ErlModule as an oracle and test the concurrent implementations
  * in various configurations (different number of threads) against it to ensure identical results
  * and behavioural equivalence. The tests are carried out in the context of scenarios. A scenario
@@ -28,25 +28,35 @@ import org.junit.runner.RunWith;
  * is independent, it requires its own IErlModule. For this reason, each EvlRunConfiguration has an
  * identifier so that each scenario can be uniquely identified and different modules under the same
  * scenario can then be compared.
- * 
+ * <br/><br/>
  * Regarding test ordering, only the testModuleCanExecute() method is required to be run before the others
  * (for obvious reasons). Note that since the expected configurations are our oracles, they are assumed
  * to pass and are exempt from testing; hence being executed in setUpBeforeClass().
- * 
+ * <br/><br/>
  * This test class is intended to be extended by tests for extensions of ERL. For a reference
  * implementation/example, please see EvlModuleEquivalenceTests.
  * A basic implementation would need to provide the following:
+ * <br/><ul>
+ * <li> A constructor which calls super(C configUnderTest)
  * 
- * - A constructor which calls super(C configUnderTest)
+ * 	<br/> 
  * 
- * - A setUpBeforeClass static method (annotated with @BeforeClass) which assigns
+ * <li> A setUpBeforeClass static method (annotated with @BeforeClass) which assigns
  * 	 expectedConfigs and subsequently calls setUpEquivalenceTest()
  * 
- * - A static method returning an Iterable<C> annotated with @Parameters
+ * 	<br/>
  * 
- * - An implementation of #_test0() which simply calls the #beforeTests() method
+ * <li> A static method returning an Iterable<C> annotated with @Parameters
  * 
- * - The class should be annotated with @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+ * 	<br/>
+ * 
+ * <li> An implementation of #_test0() which simply calls the #beforeTests() method
+ *
+ * 	<br/>
+ *
+ * <li> The class should be annotated with @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+ * 
+ * 	<br/></ul>
  * 
  * The last two requirements are a workaround for JUnit's inadequate @Before semantics.
  * 

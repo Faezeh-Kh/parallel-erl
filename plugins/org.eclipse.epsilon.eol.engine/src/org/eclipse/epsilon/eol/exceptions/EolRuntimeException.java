@@ -121,7 +121,7 @@ public class EolRuntimeException extends Exception {
 		}
 	}
 	
-	/*
+	/**
 	 * Traverses the causes of the (usually unchecked) exception to find an EolRuntimeException.
 	 * If not found, it will wrap the root cause into an instance of EolRuntimeException.
 	 * This method accounts for any depth of cyclic causes, so it is guaranteed to terminate;

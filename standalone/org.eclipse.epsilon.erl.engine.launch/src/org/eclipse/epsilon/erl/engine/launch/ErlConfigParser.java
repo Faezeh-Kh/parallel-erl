@@ -29,7 +29,7 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 	protected final Class<? extends M> moduleClass;
 	protected String moduleName, lang, moduleOpt = "module";
 	
-	/*
+	/**
 	 * @param args command-line arguments.
 	 * @param configClass the subclass of ErlRunConfiguration.
 	 * @param moduleClass the interface of the appropriate module (must be a subclass of IErlModule).
@@ -48,7 +48,7 @@ public class ErlConfigParser<M extends IErlModule, R extends ErlRunConfiguration
 		
 		options.addOption(Option.builder(moduleOpt)
 			.hasArg()
-			.desc("Specify the module and arguments to the I"+lang+"Context in key-value pairs. "
+			.desc("Specify the module and arguments to the "+lang+"Module in key-value pairs. "
 				+ "Please note: the arguments type must be a fully qualified class and the class must have a String constructor"
 				+ "which is used to parse the provided argument."
 			)

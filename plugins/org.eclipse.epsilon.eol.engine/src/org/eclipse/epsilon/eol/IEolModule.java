@@ -56,4 +56,5 @@ public interface IEolModule extends IModule {
 	EolCompilationContext getCompilationContext();
 	
 	List<ParseProblem> getParseProblems();
+	
 }

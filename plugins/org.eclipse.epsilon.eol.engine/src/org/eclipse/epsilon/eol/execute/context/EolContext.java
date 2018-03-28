@@ -181,16 +181,16 @@ public class EolContext implements IEolContext {
 		String userInputVarName = "UserInput";
 		this.userInput = userInput;
 		FrameStack fs = getFrameStack();
-		Variable var = fs.get(userInputVarName);
-		if (var == null) {
-			var = Variable.createReadOnlyVariable(userInputVarName, userInput);
+		Variable variable = fs.get(userInputVarName);
+		if (variable == null) {
+			variable = Variable.createReadOnlyVariable(userInputVarName, userInput);
 			DeprecationInfo deprecationInfo = new DeprecationInfo();
 			deprecationInfo.setMessage("Variable UserInput is deprecated. Use System.user instead.");
-			var.setDeprecationInfo(deprecationInfo);
-			fs.putGlobal(var);
+			variable.setDeprecationInfo(deprecationInfo);
+			fs.putGlobal(variable);
 		}
 		else {
-			var.setValueBruteForce(userInput);
+			variable.setValueBruteForce(userInput);
 		}
 	}
 
