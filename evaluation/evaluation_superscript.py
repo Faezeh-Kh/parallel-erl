@@ -71,7 +71,8 @@ if sge:
 if jmc:
     jvmFlags += ' -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
-subCmd = 'qsub ' if sge else 'call ' if os.name == 'nt' else 'bash '
+subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else ''
+subCmdSuffix = nL
 threads = [1]
 threadCounter = 1
 while threadCounter < logicalCores:
@@ -138,7 +139,7 @@ def write_generated_file(filename, lines):
         qsbFile.writelines(lines)
 
 def write_benchmark_scenarios(name, scenariosArgs):
-    lines = [subCmd+get_scenario_name(module, script, model)+fileExt+nL for (module, script, model) in scenariosArgs]
+    lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*3)
 
 # (Meta)Models
@@ -166,7 +167,7 @@ javaValidationScripts = [
 evlParallelModules = [
     'EvlModuleParallelStaged',
     'EvlModuleParallelElements',
-    'EvlModuleParallelConstraints'
+    'EvlModuleParallelConstraints',
     # 'EvlModuleParallelContexts',
     # 'EvlModuleParallelThreads
 ]
@@ -183,13 +184,13 @@ evlModulesAndArgs = [['evl.', evlModulesDefault[0]]]
 for evlModule in evlParallelModules:
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append(['evl.concurrent.', evlModule, evlModule+threadStr, 'int='+threadStr])
+        evlModulesAndArgs.append([evlModule+threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
 programs.append(['EVL', evlScenarios, evlModulesAndArgs])
 
 #OCL
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
-programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [['', oclModules[0]]]])
-programs.append(['OCL_'+javaValidationScripts[0], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [['', oclModules[1]]]])
+programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
+programs.append(['OCL_'+javaValidationScripts[0], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [[oclModules[1]]]])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
@@ -206,8 +207,8 @@ if isGenerate:
                     modelSubset = []
                     modelName = os.path.splitext(model)[0]
                     for margs in modulesAndArgs:
-                        moduleName = margs[1]
-                        fileName = get_scenario_name(margs[2] if len(margs) > 2 else moduleName, scriptName, modelName)
+                        moduleName = margs[0]
+                        fileName = get_scenario_name(moduleName, scriptName, modelName)
                         stdFile = genDir + fileName + fileExt
                         command = sgeDirectives if sge else ''
                         command += jvmFlags
@@ -217,18 +218,16 @@ if isGenerate:
                             binDir + program + jar +'" "'+ \
                             scriptDir+script +'" "'+ \
                             modelDir+model +'" "'+ \
-                            metamodelDir+metamodel +'" -profile '
+                            metamodelDir+metamodel +'" -profile'
+                        if (len(margs) > 1 and margs[1]):
+                            command += ' '+margs[1]
                         if len(stdDir) > 1:
-                            command += ('-outfile "' + stdDir + fileName + intermediateExt + '" ')
-                        command += '-module ' + margs[0]+moduleName
-
-                        if (len(margs) > 2 and margs[3]):
-                            command += ' '+margs[3]
+                            command += ' -outfile "' + stdDir + fileName + intermediateExt + '"'
 
                         with open(stdFile, 'w') as output:
                             output.write(command + nL)
 
-                        modelSubset.append(subCmd +'"'+ fileName + fileExt + '"'+ nL)
+                        modelSubset.append(subCmdPrefix +'"'+ fileName + fileExt + '"'+ subCmdSuffix)
 
                     if (len(models) > 1 and len(modulesAndArgs) > 1):
                         write_generated_file(progFilePre+scriptName+'_'+modelName, modelSubset)
