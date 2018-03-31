@@ -1,0 +1,11 @@
+Manifest-Version: 1.1
+Bundle-ManifestVersion: 2
+Bundle-Name: EVL OCL equivalence
+Bundle-SymbolicName: org.eclipse.epsilon.evl.engine.test.ocl
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.epsilon.evl.engine.test.acceptance,
+ org.eclipse.epsilon.evl.engine.launch,
+ org.eclipse.ocl.standalone
+Import-Package: org.junit
