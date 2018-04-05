@@ -4,14 +4,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('mode', choices=['GENERATE', 'ANALYSE'], help='What do you want the program to do?')
 parser.add_argument('--rootDir', help='The base directory. For all unspecified paths, everything will be assumed to be relative to this. Default value is current directory.')
 parser.add_argument('--inDir', help='Input directory.')
-parser.add_argument('--resFile', help='Output file for the results (must be full path and CSV extension).')
-parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format (must be full path).')
+parser.add_argument('--csvFile', help='Output file for the results (must be full path and CSV extension).')
+parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format (must be full path). Leave blank for default.')
 parser.add_argument('--binDir', help='The directory where executable JAR files are stored (absolute path).')
 parser.add_argument('--scriptDir', help='The scripts directory (absolute path).')
 parser.add_argument('--modelDir', help='The models directory (absolute path).')
 parser.add_argument('--metamodelDir', help='The metamodels directory (absolute path).')
 parser.add_argument('--stdDir', help='The directory to send program output to (absolute path).')
 parser.add_argument('--genDir', help='The directory to place all generated files (absolute path).')
+parser.add_argument('--resultsDir', help='The directory to place analysis results.')
 parser.add_argument('--jmc', help='Enable application profiling using Java Flight Recorder.', action='store_true')
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
@@ -23,6 +24,10 @@ def defaultPath(parsedArg, defaultValue):
         thePath = os.path.abspath(os.path.join(os.getcwd(), thePath))
     return os.path.normpath(thePath).replace('\\', '/')+'/'
 
+def makePathIfNotExists(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+
 isGenerate = args.mode == 'GENERATE'
 nL = '\n'
 jar = '.jar'
@@ -30,16 +35,21 @@ xmi = '.xmi'
 intermediateExt = '.txt'
 resultsExt = '.csv'
 rootDir = defaultPath(args.rootDir, os.getcwd())
-binDir = defaultPath(args.binDir, rootDir+'bin')
-scriptDir = defaultPath(args.scriptDir, rootDir+'scripts')
-modelDir = defaultPath(args.modelDir, rootDir+'models')
-metamodelDir = defaultPath(args.metamodelDir, rootDir+'metamodels')
-stdDir = defaultPath(args.stdDir, rootDir+'output')
-genDir = defaultPath(args.genDir, rootDir+'generated')
-inDir = defaultPath(args.inDir, rootDir+'output')
-resultsFileName = defaultPath(args.resFile, rootDir+'results.csv')[:-1]
-resultsFileName += resultsExt if not resultsFileName.endswith(resultsExt) else ''
-texFileName = defaultPath(args.texFile, rootDir+'results.tex')[:-1]
+if isGenerate:
+    binDir = defaultPath(args.binDir, rootDir+'bin')
+    scriptDir = defaultPath(args.scriptDir, rootDir+'scripts')
+    modelDir = defaultPath(args.modelDir, rootDir+'models')
+    metamodelDir = defaultPath(args.metamodelDir, rootDir+'metamodels')
+    stdDir = defaultPath(args.stdDir, rootDir+'output')
+    genDir = defaultPath(args.genDir, rootDir+'generated')
+    makePathIfNotExists(genDir)
+if not isGenerate:
+    inDir = defaultPath(args.inDir, rootDir+'output')
+    resultsDir = defaultPath(args.resultsDir, rootDir+'results')
+    makePathIfNotExists(resultsDir)
+    resultsFileName = defaultPath(args.csvFile, resultsDir+'results.csv')[:-1]
+    resultsFileName += resultsExt if not resultsFileName.endswith(resultsExt) else ''
+    texFileName = defaultPath(args.texFile, resultsDir+'results.tex')[:-1] if args.texFile else None
 sge = args.sge
 jmc = args.jmc
 smt = args.smt
@@ -128,9 +138,6 @@ def compute_descriptive_stats(data, roundToInt = True):
         stats = [(round(ds) if ds else None) for ds in stats]
     return tuple(stats)
 
-if not os.path.exists(genDir):
-    os.makedirs(genDir)
-
 def get_scenario_name(moduleConfig, script, model):
     return moduleConfig+'_'+script+'_'+model
 
@@ -180,7 +187,7 @@ evlScenarios = [
     #(imdbMM, ['imdb_validator.evl'], imdbModels),
     #(dblpMM, ['dblp_isbn.evl'], dblpModels)
 ]
-evlModulesAndArgs = [['evl.', evlModulesDefault[0]]]
+evlModulesAndArgs = [[evlModulesDefault[0]]]
 for evlModule in evlParallelModules:
     for numThread in threads:
         threadStr = str(numThread)
@@ -350,17 +357,19 @@ else:
         rows[i] = rowResults
 
     resultsFile.close()
-    texFile = open(texFileName, 'w')
 
-    # Third pass - write results to LaTeX file
-    # see https://www.sharelatex.com/learn/Tables
-    texFile.write(r'''\documentclass{article}
+    if texFileName:
+        # Third pass - write results to LaTeX file
+        # see https://www.sharelatex.com/learn/Tables
+        texFile = open(texFileName, 'w')
+        texFile.write(
+r'''\documentclass{article}
 \usepackage{longtable}
 \begin{document}
 \LTcapwidth=\textwidth\setlength\LTleft{-3cm}
 ''')
 
-    write_table(columns[:5]+columns[6:7]+columns[8:9], (row[:5]+row[6:7]+row[8:9] for row in rows), 'All results', 1, True)
+        write_table(columns[:5]+columns[6:7]+columns[8:9], (row[:5]+row[6:7]+row[8:9] for row in rows), 'All results', 1, True)
 
-    texFile.write(r'\end{document}')
-    texFile.close()
+        texFile.write(r'\end{document}')
+        texFile.close()
