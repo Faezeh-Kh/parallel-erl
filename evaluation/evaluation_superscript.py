@@ -167,7 +167,8 @@ javaValidationScripts = [
     'java_findbugs',
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
-    'java_1Constraint'
+    'java_1Constraint',
+    'java_noguard'
 ]
 
 #EVL

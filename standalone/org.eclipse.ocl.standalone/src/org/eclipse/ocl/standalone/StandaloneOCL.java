@@ -14,7 +14,7 @@ import org.eclipse.ocl.pivot.utilities.OCL;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
 import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
 
-/*
+/**
  * A way to run Eclipse OCL (Pivot) without Eclipse.
  * This class essentially makes OCL behave like EVL,
  * allowing you to provide an EMF model, metamodel
@@ -27,11 +27,11 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  * Alternatively, embedded constraints in the metamodel
  * via OCLinEcore are also supported.
  * 
- * The @link{StandaloneOCL#ConstraintDiagnostician} provides
+ * The {@link StandaloneOCL#ConstraintDiagnostician} provides
  * a convenient extension point for optimising execution. In
  * particular, concurrent validation is supported by the
  * ConstraintDiagnostician but may not be by the underlying
- * @linkplain{EValidator}.
+ * {@linkplain EValidator}.
  * 
  * @author Sina Madani
  */
@@ -239,8 +239,8 @@ public class StandaloneOCL extends ProfilableRunConfiguration<Collection<Unsatis
 		return cocl;
 	}
 	
-	/*
-	 * Copy constructor
+	/**
+	 * Copy constructor.
 	 */
 	public StandaloneOCL(StandaloneOCL other) {
 		super(other);

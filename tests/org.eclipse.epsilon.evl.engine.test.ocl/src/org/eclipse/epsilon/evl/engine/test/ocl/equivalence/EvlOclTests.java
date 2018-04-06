@@ -19,7 +19,7 @@ import org.junit.runners.MethodSorters;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-/*
+/**
  * Evaluates the correctness of EvlModule implementations against
  * Eclipse OCL by comparing their unsatisfied constraints for given
  * model and script combinations (same approach as EvlModuleEquivalenceTests).
@@ -44,15 +44,19 @@ public class EvlOclTests {
 	
 	static final List<String[]>
 		oclTestInputs = addAllInputs(
-			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
+			// Exclude the java_noguard script
+			Arrays.copyOfRange(javaScripts, 0, javaScripts.length-1), new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
 		),
 		evlTestInputs = addAllInputs(
 			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
 		);
 	
 	//This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
-	static final Function<String[], Integer> idCalculator = uris ->
-		Objects.hash(getFileName(uris[0], false), uris[1], uris[2]);
+	static final Function<String[], Integer> idCalculator = uris -> {
+		String scriptNoExt = getFileName(uris[0], false);
+		// java_noguard is equivalent to java_findbugs
+		return Objects.hash(scriptNoExt.equals(javaScripts[javaScripts.length-1]) ? javaScripts[0] : scriptNoExt, uris[1], uris[2]);
+	};
 	
 	//The oracle scenario.
 	final StandaloneOCL expectedConfig;

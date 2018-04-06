@@ -9,3 +9,4 @@ Require-Bundle: org.eclipse.epsilon.evl.engine.test.acceptance,
  org.eclipse.epsilon.evl.engine.launch,
  org.eclipse.ocl.standalone
 Import-Package: org.junit
+Automatic-Module-Name: org.eclipse.epsilon.evl.engine.test.ocl

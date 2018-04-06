@@ -1,0 +1,96 @@
+import java : '../metamodels/java.ecore'
+
+package javaMM
+
+context Modifier
+	def: isLocal : Boolean = self.visibility = VisibilityKind::none or self.visibility = VisibilityKind::private
+
+context MethodInvocation
+	inv doesNotCallExit:
+		not (
+			self.method.name = 'exit' and
+			self.method.parameters->size() = 1 and
+			self.method.parameters->first().type.type.oclIsTypeOf(PrimitiveTypeInt)
+		)
+
+context MethodDeclaration
+	inv shouldStartWithLowerCase:
+		self.name.at(1).toLowerCase() = self.name.at(1)
+
+context AbstractMethodDeclaration
+	inv localMethodIsUsed:
+		(self.modifier <> null and self.modifier.isLocal) implies self.usages->notEmpty()
+
+context Assignment
+	inv noRedundantAssignment:
+		self.operator = AssignmentKind::ASSIGN implies self.leftHandSide <> self.rightHandSide
+
+context VariableDeclaration
+	inv variableIsUsed:
+		self.usageInVariableAccess->notEmpty()
+
+context VariableDeclarationStatement
+	inv publicVariableIsFinal:
+		self.modifier.visibility = VisibilityKind::public implies self.modifier.inheritance = InheritanceKind::final
+
+context VariableDeclarationExpression
+	inv publicVariableIsFinal:
+		self.modifier.visibility = VisibilityKind::public implies self.modifier.inheritance = InheritanceKind::final
+
+context CatchClause
+	inv exceptionIsUsed:
+		self.exception.usageInVariableAccess->notEmpty()
+
+context Block
+	inv emptyBlockIsDocumented:
+		self.statements->isEmpty() implies self.comments->notEmpty()
+
+context SwitchStatement
+	inv moreThan3Cases:
+		self.statements->size() > 3
+		
+context SuperConstructorInvocation
+	inv noRedundantSuperCall:
+		self.arguments->notEmpty()
+context IfStatement
+	inv noDeadCode:
+		not self.expression.oclIsKindOf(TypeLiteral)
+
+context ClassDeclaration
+	inv noObscuredVariables:
+		let fields = self.bodyDeclarations->selectByKind(FieldDeclaration) in
+			self.bodyDeclarations->
+				selectByKind(AbstractMethodDeclaration) ->
+				forAll(md | md._'body' <> null implies md._'body'.statements ->
+					selectByKind(VariableDeclaration) ->
+					forAll(vd | fields->forAll(fd | fd.name <> vd.name))
+				)
+
+context CompilationUnit
+	inv allImportsAreUsed:
+		self.imports->forAll(imp |
+			NamedElement.allInstances()->exists(ne | ne.originalCompilationUnit = self)
+		)
+
+context InfixExpression
+	def: operatorIsEquality : Boolean = (self.operator = InfixExpressionKind::EQUALS or self.operator = InfixExpressionKind::NOT_EQUALS)
+
+	inv equalsNotOnLiterals:
+		operatorIsEquality implies (
+			self.leftOperand.oclIsTypeOf(self.rightOperand.oclType()) and
+				(not (
+					self.leftOperand.oclIsTypeOf(StringLiteral) or
+					self.leftOperand.oclIsTypeOf(NumberLiteral) or
+					self.leftOperand.oclIsTypeOf(CharacterLiteral) or
+					self.leftOperand.oclIsTypeOf(BooleanLiteral) or
+					self.leftOperand.oclIsTypeOf(NullLiteral) or
+					self.leftOperand.oclIsTypeOf(TypeLiteral)	
+				)
+			)
+		)
+
+context SynchronizedStatement
+	inv hasStatements:
+		self._'body'.statements->notEmpty()
+
+endpackage
