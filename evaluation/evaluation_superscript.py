@@ -16,6 +16,7 @@ parser.add_argument('--resultsDir', help='The directory to place analysis result
 parser.add_argument('--jmc', help='Enable application profiling using Java Flight Recorder.', action='store_true')
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
+parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
 args = parser.parse_args()
 
 def defaultPath(parsedArg, defaultValue):
@@ -35,6 +36,7 @@ xmi = '.xmi'
 intermediateExt = '.txt'
 resultsExt = '.csv'
 rootDir = defaultPath(args.rootDir, os.getcwd())
+
 if isGenerate:
     binDir = defaultPath(args.binDir, rootDir+'bin')
     scriptDir = defaultPath(args.scriptDir, rootDir+'scripts')
@@ -50,14 +52,16 @@ if not isGenerate:
     resultsFileName = defaultPath(args.csvFile, resultsDir+'results.csv')[:-1]
     resultsFileName += resultsExt if not resultsFileName.endswith(resultsExt) else ''
     texFileName = defaultPath(args.texFile, resultsDir+'results.tex')[:-1] if args.texFile else None
+
 sge = args.sge
 jmc = args.jmc
 smt = args.smt
+numa = args.numa
 yarccCores = 12
 logicalCores = yarccCores if sge else multiprocessing.cpu_count()	#os.cpu_count() doesn't work on Linux
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
 resultsRegex = r'(?i)(?:execute\(\)).{2}((?:[0-9]{1,2}:){0,3}(?:[0-9]{2})\.[0-9]{3}).{1,2}(?:([0-9]+).{0,1}(?:ms|(?:millis(?:econds)?)).).{2}([0-9]+).{2,3}'
-fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' #Script name must be preceded by metamodel!
+fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
 resultsFile = open(resultsFileName, 'w') if not isGenerate else None
 writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else None
 rows = []
@@ -76,7 +80,7 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_rt=7:59:59
 '''
 jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=70 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
-if sge:
+if sge or numa:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
     jvmFlags += ' -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
@@ -162,7 +166,7 @@ eclipseRanges = imdbRanges + imdbRanges + ['3.5', '4.0']
 imdbModels = [imdbPrefix + imdbR + xmi for imdbR in imdbRanges]
 javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
 
-#Scripts
+# Scripts
 javaValidationScripts = [
     'java_findbugs',
     'java_manyConstraint1Context',
@@ -171,13 +175,14 @@ javaValidationScripts = [
     'java_noguard'
 ]
 
-#EVL
+# EVL
 evlParallelModules = [
     'EvlModuleParallelStaged',
     'EvlModuleParallelElements',
-    'EvlModuleParallelConstraints',
-    # 'EvlModuleParallelContexts',
-    # 'EvlModuleParallelThreads
+    #'EvlModuleParallelConstraints',
+    #'EvlModuleParallelContexts',
+    #'EvlModuleParallelThreads',
+    #'EvlModuleParallelModel'
 ]
 evlModules = ['EvlModule'] + evlParallelModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
