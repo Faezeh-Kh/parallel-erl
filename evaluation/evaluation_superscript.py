@@ -4,8 +4,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('mode', choices=['GENERATE', 'ANALYSE'], help='What do you want the program to do?')
 parser.add_argument('--rootDir', help='The base directory. For all unspecified paths, everything will be assumed to be relative to this. Default value is current directory.')
 parser.add_argument('--inDir', help='Input directory.')
-parser.add_argument('--csvFile', help='Output file for the results (must be full path and CSV extension).')
-parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format (must be full path). Leave blank for default.')
+parser.add_argument('--csvFile', help='Output file for the results.')
+parser.add_argument('--texFile', help='Output file for the results in LaTeX tabluar format. Leave blank for default.')
 parser.add_argument('--binDir', help='The directory where executable JAR files are stored (absolute path).')
 parser.add_argument('--scriptDir', help='The scripts directory (absolute path).')
 parser.add_argument('--modelDir', help='The models directory (absolute path).')
@@ -17,6 +17,7 @@ parser.add_argument('--jmc', help='Enable application profiling using Java Fligh
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
 parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
+parser.add_argument('--g1gc', help='Use the default G1 garbage collector.', action='store_true')
 args = parser.parse_args()
 
 def defaultPath(parsedArg, defaultValue):
@@ -49,11 +50,12 @@ if not isGenerate:
     inDir = defaultPath(args.inDir, rootDir+'output')
     resultsDir = defaultPath(args.resultsDir, rootDir+'results')
     makePathIfNotExists(resultsDir)
-    resultsFileName = defaultPath(args.csvFile, resultsDir+'results.csv')[:-1]
+    resultsFileName = resultsDir + (args.csvFile if args.csvFile else 'results.csv')
     resultsFileName += resultsExt if not resultsFileName.endswith(resultsExt) else ''
     texFileName = defaultPath(args.texFile, resultsDir+'results.tex')[:-1] if args.texFile else None
 
 sge = args.sge
+g1gc = args.g1gc
 jmc = args.jmc
 smt = args.smt
 numa = args.numa
@@ -79,8 +81,9 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_vmem='''+str(60/yarccCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=70 -XX:+UseParallelOldGC -XX:+AggressiveOpts'
-if sge or numa:
+jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=75 -XX:+AggressiveOpts -XX:'
+jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
+if numa:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
     jvmFlags += ' -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
@@ -281,6 +284,12 @@ if isGenerate:
         ]+[
             # Single constraint
             (module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]
+        ]+[
+            # No guard
+            (module, 'java_noguard', 'eclipseModel-3.0') for module in evlModulesDefault
+        ]+[
+            # No guard OCL equivalent
+            (module, 'java_findbugs', 'eclipseModel-3.0') for module in oclModules
         ]
     )
 else:
