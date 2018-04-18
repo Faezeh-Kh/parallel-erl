@@ -44,30 +44,30 @@ public class EvlOclTests {
 	
 	static final List<String[]>
 		oclTestInputs = addAllInputs(
-			// Exclude the java_noguard script
-			Arrays.copyOfRange(javaScripts, 0, javaScripts.length-1), new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
+			// Exclude the java_noguard and java_equals scripts
+			Arrays.copyOfRange(javaScripts, 0, javaScripts.length-2), new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
 		),
 		evlTestInputs = addAllInputs(
 			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
 		);
 	
-	//This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
+	// This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
 	static final Function<String[], Integer> idCalculator = uris -> {
 		String scriptNoExt = getFileName(uris[0], false);
 		// java_noguard is equivalent to java_findbugs
 		return Objects.hash(scriptNoExt.equals(javaScripts[javaScripts.length-1]) ? javaScripts[0] : scriptNoExt, uris[1], uris[2]);
 	};
 	
-	//The oracle scenario.
+	// The oracle scenario.
 	final StandaloneOCL expectedConfig;
 	
-	//The scenario and module combination under test. This is the parameterised test variable.
+	// The scenario and module combination under test. This is the parameterised test variable.
 	final EvlRunConfiguration actualConfig;
 	
-	//Used to identify which scenario to compare our results with.
+	// Used to identify which scenario to compare our results with.
 	static final Map<Integer, StandaloneOCL> expectedConfigIDs = new HashMap<>();
 	
-	//The oracle configurations
+	// The oracle configurations
 	static final Collection<StandaloneOCL> expectedConfigs = getStandaloneOCLConfigsFrom(oclTestInputs);
 	
 	public EvlOclTests(EvlRunConfiguration configUnderTest) {
