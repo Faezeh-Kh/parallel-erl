@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Main-Class: org.eclipse.epsilon.evl.engine.launch.EvlRunConfiguration
+Main-Class: org.eclipse.epsilon.evl.cli.EvlConfigParser
 Class-Path: ERL.jar 
  dependencies/org.apache.commons.cli_1.4.jar 
  dependencies/org.apache.antlr.runtime_3.1.b1.jar 

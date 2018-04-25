@@ -175,6 +175,7 @@ javaValidationScripts = [
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
     'java_1Constraint',
+    'java_equals',
     'java_noguard'
 ]
 
@@ -196,7 +197,7 @@ evlScenarios = [
     #(imdbMM, ['imdb_validator.evl'], imdbModels),
     #(dblpMM, ['dblp_isbn.evl'], dblpModels)
 ]
-evlModulesAndArgs = [[evlModulesDefault[0]]]
+evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
     for numThread in threads:
         threadStr = str(numThread)
