@@ -184,6 +184,7 @@ evlParallelModules = [
     'EvlModuleParallelStaged',
     'EvlModuleParallelElements',
     #'EvlModuleParallelConstraints',
+    'EvlModuleParallelRandom',
     #'EvlModuleParallelContexts',
     #'EvlModuleParallelThreads',
     #'EvlModuleParallelModel'
@@ -233,9 +234,14 @@ if isGenerate:
                             command += stdDir + fileName + '.jfr'
                         command += ' -jar "'+ \
                             binDir + program + jar +'" "'+ \
-                            scriptDir+script +'" "'+ \
-                            modelDir+model +'" "'+ \
-                            metamodelDir+metamodel +'" -profile'
+                            scriptDir+script +'" '
+                        if program.startswith('OCL'):
+                            command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
+                        else:
+                            command += '-models "emf.EmfModel#storeOnDisposal=true'+ \
+                            ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
+                            ',modelUri=file:///' + modelDir+model
+                        command += '" -profile'
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:

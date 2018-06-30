@@ -7,7 +7,9 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: org.eclipse.ocl.standalone
-Require-Bundle: org.eclipse.emf.edit.ui;visibility:=reexport,
+Require-Bundle: org.eclipse.epsilon.common,
+ org.eclipse.epsilon.common.cli;visibility:=reexport,
+ org.eclipse.emf.edit.ui;visibility:=reexport,
  com.google.inject;visibility:=reexport,
  org.apache.log4j;visibility:=reexport,
  org.eclipse.emf.common;visibility:=reexport,
@@ -26,6 +28,4 @@ Require-Bundle: org.eclipse.emf.edit.ui;visibility:=reexport,
  org.eclipse.ocl.xtext.essentialocl;visibility:=reexport,
  org.eclipse.ocl.xtext.completeocl;visibility:=reexport,
  org.eclipse.ocl.xtext.oclinecore;visibility:=reexport,
- org.eclipse.ocl.common;visibility:=reexport,
- org.eclipse.epsilon.common.cli;visibility:=reexport,
- org.eclipse.epsilon.common
+ org.eclipse.ocl.common;visibility:=reexport

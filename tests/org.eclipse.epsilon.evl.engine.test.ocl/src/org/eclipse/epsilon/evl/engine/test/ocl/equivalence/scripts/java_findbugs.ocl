@@ -2,7 +2,7 @@
 * @see http://findbugs.sourceforge.net/bugDescriptions.html
 */
 
-import java : '../../../../../../../../../../../org.eclipse.epsilon.evl.engine.test.acceptance/src/org/eclipse/epsilon/evl/engine/test/acceptance/metamodels/java.ecore'
+import java : '../metamodels/java.ecore'
 
 package javaMM
 

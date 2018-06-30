@@ -13,10 +13,13 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.emf.ecore.util.EObjectValidator;
 import org.eclipse.emf.edit.ui.EMFEditUIPlugin;
+import org.eclipse.epsilon.common.concurrent.ConcurrentCASList;
 //import org.eclipse.epsilon.common.concurrent.ConcurrentCASList;
 import org.eclipse.ocl.pivot.internal.labels.LabelSubstitutionLabelProvider;
 
-//@see org.eclipse.ocl.examples.test.xtext.PivotDocumentationExamples.java
+/**
+ * @see org.eclipse.ocl.examples.test.xtext.PivotDocumentationExamples.java
+ **/
 public class ConstraintDiagnostician extends Diagnostician {
 	public final Resource resource;
 	public final boolean isConcurrent;
@@ -25,7 +28,7 @@ public class ConstraintDiagnostician extends Diagnostician {
 		this(model, false);
 	}
 	
-	protected ConstraintDiagnostician(Resource model, boolean concurrent) {
+	public ConstraintDiagnostician(Resource model, boolean concurrent) {
 		this.resource = model;
 		this.isConcurrent = concurrent;
 	}
@@ -52,9 +55,9 @@ public class ConstraintDiagnostician extends Diagnostician {
 		) {
 			@Override
 			public void add(Diagnostic diagnostic) {
-				/*if (isConcurrent && children == null) {
+				if (isConcurrent && children == null) {
 					children = new ConcurrentCASList<>();
-			    }*/
+			    }
 				super.add(diagnostic);
 			}
 		};

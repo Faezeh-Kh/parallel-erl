@@ -51,23 +51,23 @@ public class EvlOclTests {
 			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
 		);
 	
-	//This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
+	// This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
 	static final Function<String[], Integer> idCalculator = uris -> {
 		String scriptNoExt = getFileName(uris[0], false);
 		// java_noguard is equivalent to java_findbugs
 		return Objects.hash(scriptNoExt.equals(javaScripts[javaScripts.length-1]) ? javaScripts[0] : scriptNoExt, uris[1], uris[2]);
 	};
 	
-	//The oracle scenario.
+	// The oracle scenario.
 	final StandaloneOCL expectedConfig;
 	
-	//The scenario and module combination under test. This is the parameterised test variable.
+	// The scenario and module combination under test. This is the parameterised test variable.
 	final EvlRunConfiguration actualConfig;
 	
-	//Used to identify which scenario to compare our results with.
+	// Used to identify which scenario to compare our results with.
 	static final Map<Integer, StandaloneOCL> expectedConfigIDs = new HashMap<>();
 	
-	//The oracle configurations
+	// The oracle configurations
 	static final Collection<StandaloneOCL> expectedConfigs = getStandaloneOCLConfigsFrom(oclTestInputs);
 	
 	public EvlOclTests(EvlRunConfiguration configUnderTest) {
@@ -78,7 +78,7 @@ public class EvlOclTests {
 	private static List<StandaloneOCL> getStandaloneOCLConfigsFrom(Collection<String[]> uriss) {
 		return uriss
 			.stream()
-			.map(uris -> StandaloneOCL.newTestInstance(uris, idCalculator.apply(uris)))
+			.map(uris -> StandaloneOCLBuilder.newTestInstance(uris, idCalculator.apply(uris)))
 			.collect(Collectors.toList());
 	}
 	
@@ -87,9 +87,9 @@ public class EvlOclTests {
 		return getScenarios(
 			evlTestInputs,
 			false,
-			//Original module should be sufficient, since we already do equivalence testing
-			//for other implementations in EvlModuleEquivalenceTests. Nevertheless, it's
-			//worth running everything as it doesn't take long.
+			// Original module should be sufficient, since we already do equivalence testing
+			// for other implementations in EvlModuleEquivalenceTests. Nevertheless, it's
+			// worth running everything as it doesn't take long.
 			modules(),
 			idCalculator
 		);
@@ -103,7 +103,7 @@ public class EvlOclTests {
 		}
 	}
 	
-	@Test //Must be run first as setup
+	@Test	// Must be run first as setup
 	public void _test0ModuleCanExecute() {
 		try {
 			actualConfig.run();
@@ -113,7 +113,7 @@ public class EvlOclTests {
 		}
 	}
 	
-	@Test	//Ensure we're not comparing different scenarios!
+	@Test	// Ensure we're not comparing different scenarios!
 	public void _test1ScenarioMatches() {
 		assertEquals("Same IDs", expectedConfig.getId(), actualConfig.getId());
 	}

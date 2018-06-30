@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Main-Class: org.eclipse.ocl.standalone.StandaloneOCL
+Main-Class: org.eclipse.ocl.standalone.StandaloneOCLBuilder
 Class-Path: dependencies/com.google.guava_21.0.0.v20170206-1425.jar 
  dependencies/com.google.inject.multibindings_3.0.0.v201605172100.jar 
  dependencies/com.google.inject_3.0.0.v201605172100.jar 
