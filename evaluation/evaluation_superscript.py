@@ -1,4 +1,4 @@
-import os, argparse, re, csv, statistics, math, multiprocessing
+import os, argparse, re, csv, statistics, math
 
 parser = argparse.ArgumentParser()
 parser.add_argument('mode', choices=['GENERATE', 'ANALYSE'], help='What do you want the program to do?')
@@ -60,7 +60,7 @@ jmc = args.jmc
 smt = args.smt
 numa = args.numa
 yarccCores = 12
-logicalCores = yarccCores if sge else multiprocessing.cpu_count()	#os.cpu_count() doesn't work on Linux
+logicalCores = yarccCores if sge else os.cpu_count()
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
 resultsRegex = r'(?i)(?:execute\(\)).{2}((?:[0-9]{1,2}:){0,3}(?:[0-9]{2})\.[0-9]{3}).{1,2}(?:([0-9]+).{0,1}(?:ms|(?:millis(?:econds)?)).).{2}([0-9]+).{2,3}'
 fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
@@ -81,7 +81,7 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_vmem='''+str(60/yarccCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms640m -XX:MaxRAMPercentage=75 -XX:+AggressiveOpts -XX:'
+jvmFlags = 'java -Xms768m -XX:MaxRAMPercentage=90 -XX:+AggressiveOpts -XX:'
 jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
 if numa:
     jvmFlags += ' -XX:+UseNUMA'
@@ -165,11 +165,10 @@ dblpModels = ['dblp-all'+xmi]
 eclipsePrefix = 'eclipseModel-'
 imdbPrefix = 'imdb-'
 imdbRanges = ['all', '0.1', '0.2'] + [str(round(i/10, 1)) for i in range(5, 35, 5)]
-eclipseRanges = imdbRanges + imdbRanges + ['3.5', '4.0']
+eclipseRanges = imdbRanges + ['3.5', '4.0']
 imdbModels = [imdbPrefix + imdbR + xmi for imdbR in imdbRanges]
 javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
 
-# Scripts
 javaValidationScripts = [
     'java_findbugs',
     'java_manyConstraint1Context',
@@ -205,12 +204,31 @@ for evlModule in evlParallelModules:
         evlModulesAndArgs.append([evlModule+threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
 programs.append(['EVL', evlScenarios, evlModulesAndArgs])
 
-#OCL
+# OCL
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
 programs.append(['OCL_'+javaValidationScripts[0], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [[oclModules[1]]]])
 
 validationModulesDefault = evlModulesDefault + oclModules
+
+# First-Order Operations
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOrdered', 'imdb_parallelSelectOne']
+imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
+eolModules = ['EolModule', 'EolModuleParallel']
+foopParams = '-parameters threshold=3'
+eolParallelModulesAndArgs = []
+for numThread in threads:
+    threadStr = str(numThread)
+    eolParallelModulesAndArgs.append([eolModules[1]+threadStr, '-module eol.concurrent.'+eolModules[1]+' int='+threadStr+' '+foopParams])
+
+programs.append(['ERL',
+    [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)],
+    eolParallelModulesAndArgs
+])
+programs.append(['ERL',
+    [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)],
+    [[eolModules[0], foopParams]]
+])
 
 if isGenerate:
     allSubs = []

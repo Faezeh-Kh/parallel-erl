@@ -1,0 +1,3 @@
+import "imdb_foop.eol";
+
+Movie.allInstances().parallelSelectOne(m | m.movieQuery()).println();

@@ -1,0 +1,3 @@
+import "imdb_foop.eol";
+
+Person.allInstances().parallelSelect(a | a.coupleCoactors()).size().println();

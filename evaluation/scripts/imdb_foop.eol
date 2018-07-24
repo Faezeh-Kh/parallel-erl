@@ -1,0 +1,42 @@
+/**
+ * @see http://atenea.lcc.uma.es/Descargas/LinTra/casestudies/imdb/transformations/FindCouples.etl
+**/
+
+var threshold : Integer = 3;
+
+operation Movie movieQuery() : Boolean {
+	var magicPerson = Person.all.get((Person.all.size()/2).asInteger());
+	return self.persons
+		.collect(p | p.coactorsCached())
+		.exists(a |
+			a.movies <> null and
+			a.hashCode() == magicPerson.hashCode() and
+			a.name = magicPerson.name
+		);
+}
+
+operation Person coupleCoactors() : Set(movies!Person) {
+	return self.coactors().select(co |
+		self.name.compareTo(co.name) < 0 and
+		co.movies.size() >= threshold.asInteger() and
+		self.areCouple(co)
+	);
+}
+
+@cached
+operation Person coactorsCached() : Set(movies!Person) {
+	return self.coactors();
+}
+
+operation Person coactors() : Set(movies!Person) {
+	var coactors : Set;
+	for (m in self.movies) { 
+		coactors.addAll(m.persons); 
+	}
+	return coactors;
+}
+
+@cached
+operation Person areCouple(p : Person) : Boolean {
+	return self.movies.excludingAll(p.movies).size() <= (self.movies.size() - threshold.asInteger());
+}

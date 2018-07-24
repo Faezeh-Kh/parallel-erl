@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Automatic-Module-Name: org.eclipse.epsilon.eol.engine.test.acceptance
+Bundle-SymbolicName: org.eclipse.epsilon.eol.engine.test.acceptance
+Export-Package: org.eclipse.epsilon.eol.engine.test.acceptance,org.ecl
+ ipse.epsilon.eol.engine.test.acceptance.util
+Bundle-Name: Epsilon Object Language Acceptance Tests (Incubation)
+Bundle-Version: 0.8.4.201807081523
+Require-Bundle: org.eclipse.epsilon.test.dependencies
+Bundle-ManifestVersion: 2
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-Vendor: Eclipse.org
+
