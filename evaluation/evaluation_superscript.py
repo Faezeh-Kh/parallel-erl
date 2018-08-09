@@ -90,15 +90,40 @@ if jmc:
 
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else ''
 subCmdSuffix = nL
+
+#Author: A.Polino
+def is_power2(num):
+    'states if a number is a power of two'
+    return num != 0 and ((num & (num - 1)) == 0)
+
+# https://stackoverflow.com/a/14267557/5870336
+def next_power_of_2(x):  
+    return 1 if x == 0 else 2**(x - 1).bit_length()
+
+# https://stackoverflow.com/a/15672117/5870336
+def next_6(x):
+    return 6 if x <= 6 else ((x/6)+1)*x
+
 threads = [1]
-threadCounter = 1
-while threadCounter < logicalCores:
-    threadCounter *= 2
-    if (threadCounter >= logicalCores):
-        threads.append(logicalCores)
-        break
-    threads.append(threadCounter)
+if logicalCores >= 2:
+    threads.append(2)
+if logicalCores == 3:
+    threads.append(3)
+if logicalCores >= 4:
+    threads.append(4)
+    isNormal = is_power2(logicalCores)
+    isWeird = not isNormal and logicalCores % 6 == 0
+    if isWeird:
+        threads.append(3)
+    for i in range(4, logicalCores, 2):
+        threadCounter = next_power_of_2(i) if isNormal else next_6(i)
+        if (threadCounter >= logicalCores):
+            threads.append(logicalCores)
+            break
+        else:
+            threads.append(threadCounter)    
 maxThreadsStr = str(round(threads[-1]/2) if smt else threads[-1])
+
 programs = []
 
 def write_table(colHeadings, tabRows, tabCaption, tabNum = 0, longtable = False):
@@ -171,6 +196,7 @@ javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
 
 javaValidationScripts = [
     'java_findbugs',
+    'java_findbugs_simple'
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
     'java_1Constraint',
@@ -180,13 +206,11 @@ javaValidationScripts = [
 
 # EVL
 evlParallelModules = [
+    'EvlModuleParallelAnnotation',
     'EvlModuleParallelStaged',
     'EvlModuleParallelElements',
     #'EvlModuleParallelConstraints',
-    'EvlModuleParallelRandom',
-    #'EvlModuleParallelContexts',
-    #'EvlModuleParallelThreads',
-    #'EvlModuleParallelModel'
+    'EvlModuleParallelRandom'
 ]
 evlModules = ['EvlModule'] + evlParallelModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
@@ -212,7 +236,7 @@ programs.append(['OCL_'+javaValidationScripts[0], [(javaMM, [javaValidationScrip
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOrdered', 'imdb_parallelSelectOne']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne']
 imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
 eolModules = ['EolModule', 'EolModuleParallel']
 foopParams = '-parameters threshold=3'
@@ -256,7 +280,7 @@ if isGenerate:
                         if program.startswith('OCL'):
                             command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                         else:
-                            command += '-models "emf.EmfModel#storeOnDisposal=true'+ \
+                            command += '-models "emf.EmfModel#cached=true,storeOnDisposal=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
                             ',modelUri=file:///' + modelDir+model
                         command += '" -profile'
