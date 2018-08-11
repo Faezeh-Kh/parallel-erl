@@ -91,18 +91,17 @@ if jmc:
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else ''
 subCmdSuffix = nL
 
-#Author: A.Polino
+# Author: A.Polino
 def is_power2(num):
-    'states if a number is a power of two'
     return num != 0 and ((num & (num - 1)) == 0)
 
 # https://stackoverflow.com/a/14267557/5870336
 def next_power_of_2(x):  
     return 1 if x == 0 else 2**(x - 1).bit_length()
 
-# https://stackoverflow.com/a/15672117/5870336
+# https://in.mathworks.com/matlabcentral/answers/368590-how-to-find-next-number-divisible-by-n
 def next_6(x):
-    return 6 if x <= 6 else ((x/6)+1)*x
+    return round(6*math.ceil(x/6))
 
 threads = [1]
 if logicalCores >= 2:
@@ -196,7 +195,7 @@ javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
 
 javaValidationScripts = [
     'java_findbugs',
-    'java_findbugs_simple'
+    'java_simple'
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
     'java_1Constraint',
