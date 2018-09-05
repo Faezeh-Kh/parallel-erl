@@ -12,7 +12,72 @@ context Modifier
 context AbstractTypeDeclaration
 	def: implements(type : String) : Boolean = self.superInterfaces->exists(si | si.type.name = type)
 
+context NamedElement
+	inv notReservedWord:
+		self.name <> 'var' and
+			self.name <> '_' and
+			self.name <> 'strictfp' and
+			self.name <> 'assert' and
+			self.name <> 'enum'
+
+context TypeDeclaration
+	inv shouldStartWithUpperCase:
+		self.name.at(1) = self.name.at(1).toUpperCase()
+
 context MethodDeclaration
+	def: isEquals : Boolean = self.name = 'equals' and
+		self.parameters->size() = 1 and
+		self.parameters->first().type.type.name = 'Object' and
+		self.thrownExceptions->isEmpty() and
+		self.returnType <> null and
+		self.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean) and
+		self.modifier <> null and
+		self.modifier.visibility = VisibilityKind::public
+
+	def: isHashcode : Boolean = self.name = 'hashCode' and
+		self.parameters->isEmpty() and
+		self.thrownExceptions->isEmpty() and
+		self.returnType <> null and
+		self.returnType.type.oclIsTypeOf(PrimitiveTypeInt) and
+		self.modifier <> null and
+		self.modifier.visibility = VisibilityKind::public
+
+	def: isToString : Boolean = self.name = 'toString' and
+		self.parameters->isEmpty() and
+		self.thrownExceptions->isEmpty() and
+		self.returnType <> null and
+		(self.returnType.type.name = 'String' or
+		self.returnType.type.name = 'java.lang.String') and
+		self.modifier <> null and
+		self.modifier.visibility = VisibilityKind::public
+
+	def: isFinalize : Boolean = self.name = 'finalize' and
+		self.parameters->isEmpty() and
+		self.thrownExceptions->size() = 1 and
+		self.thrownExceptions->first().type.name = 'Throwable' and
+		(self.returnType = null or self.returnType.type.oclIsTypeOf(PrimitiveTypeVoid)) and
+		self.modifier <> null and
+		(self.modifier.visibility = VisibilityKind::public or
+		self.modifier.visibility = VisibilityKind::protected)
+
+	def: isClone : Boolean = self.name = 'clone' and
+		self.parameters->isEmpty() and
+		self.thrownExceptions->size() = 1 and
+		self.thrownExceptions->first().type.name = 'CloneNotSupportedException' and
+		self.returnType <> null and
+		self.modifier <> null and
+		self.modifier.visibility = VisibilityKind::public
+
+	def: isCompareTo : Boolean =
+		self.name = 'compareTo' and
+			self.parameters->size() = 1 and
+			self.parameters->first().type.type.name = 'Object' and
+			self.modifier <> null and
+			self.modifier.visibility = VisibilityKind::public and
+			self.thrownExceptions->isEmpty() and
+			self.returnType <> null and
+			self.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
+
 	inv shouldStartWithLowerCase:
 		self.name.at(1).toLowerCase() = self.name.at(1)
 
@@ -38,6 +103,10 @@ context MethodInvocation
 		)
 
 context AbstractMethodDeclaration
+	inv canBeLocal:
+		self.modifier <> null and not self.modifier.isLocal implies
+		self.usages->exists(m | m.originalClassFile <> self.originalClassFile)
+	
 	inv localMethodIsUsed:
 		(self.modifier <> null and self.modifier.isLocal) implies self.usages->notEmpty()
 		
@@ -101,42 +170,26 @@ context IfStatement
 
 context ClassDeclaration
 	def: getMethods : Collection(MethodDeclaration) = self.bodyDeclarations->selectByKind(MethodDeclaration)
-
-	def: hasEquals : Boolean =
-		getMethods->exists(method |
-			method.name = 'equals' and
-			method.parameters->size() = 1 and
-			method.parameters->first().type.type.name = 'Object' and
-			method.thrownExceptions->isEmpty() and
-			method.modifier <> null and
-			method.modifier.visibility = VisibilityKind::public and
-			method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)
-		)
 	
-	def: hasHashcode : Boolean =
-		getMethods->exists(method |
-			method.name = 'hashCode' and
-			method.parameters->isEmpty() and
-			method.thrownExceptions->isEmpty() and
-			method.modifier <> null and
-			method.modifier.visibility = VisibilityKind::public and
-			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
-		)
+	def: getPublicFields : Collection(FieldDeclaration) = self.bodyDeclarations
+		->select(bd | bd.oclIsKindOf(FieldDeclaration))
+		->collect(bd | bd.oclAsType(FieldDeclaration))
+		->select(fd | fd.modifier <> null and fd.modifier.visibility = VisibilityKind::public
+	)
 	
-	def: hasCompareTo : Boolean = 
-		getMethods->exists(method | 
-			method.name = 'compareTo' and
-			method.parameters->size() = 1 and
-			method.parameters->first().type.type.name = 'Object' and
-			method.modifier <> null and
-			method.modifier.visibility = VisibilityKind::public and
-			method.thrownExceptions->isEmpty() and
-			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
-		)
+	inv publicFieldsOnlyInPOJO:
+		self.getPublicFields->notEmpty() implies self.bodyDeclarations
+			->select(bd | bd.oclIsKindOf(MethodDeclaration))
+			->collect(bd | bd.oclAsType(MethodDeclaration))
+			->select(md | (md.modifier = null or md.modifier._'static') and not (
+				md.isEquals or md.isHashcode or md.isToString
+				or md.isFinalize or md.isClone or md.isCompareTo
+			)
+			)->isEmpty()
 	
 	inv hashCodeAndEquals:
-		let hasEq : Boolean = hasEquals,
-			hasHc : Boolean = hasHashcode
+		let hasEq : Boolean = getMethods->exists(method | method.isEquals),
+			hasHc : Boolean = getMethods->exists(method | method.isHashcode)
 		in
 			(hasEq implies hasHc) and
 			(hasHc implies hasEq)
@@ -147,7 +200,7 @@ context ClassDeclaration
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind::public and
 			method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)
-		) implies hasEquals
+		) implies getMethods->exists(method | method.isEquals)
 
 	inv noCovariantCompareTo:
 		getMethods->exists(method | 
@@ -155,20 +208,13 @@ context ClassDeclaration
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind::public and
 			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
-		) implies hasCompareTo
+		) implies getMethods->exists(method | method.isCompareTo)
 
 	inv equalsAndCompareTo:
-		hasCompareTo implies hasEquals
+		getMethods->exists(method | method.isCompareTo) implies getMethods->exists(method | method.isEquals)
 
 	inv cloneInCloneable:
-		self.implements('Cloneable') implies self.getMethods->exists(md |
-			md.name = 'clone' and
-			md.parameters->isEmpty() and
-			md.thrownExceptions->size() = 1 and
-			md.thrownExceptions->first().type.name = 'CloneNotSupportedException' and
-			md.modifier <> null and
-			md.modifier.visibility = VisibilityKind::public
-		)
+		self.implements('Cloneable') implies self.getMethods->exists(md | md.isClone)
 
 	inv serialUIDInSerializableClass:
 		self.implements('Serializable') implies (

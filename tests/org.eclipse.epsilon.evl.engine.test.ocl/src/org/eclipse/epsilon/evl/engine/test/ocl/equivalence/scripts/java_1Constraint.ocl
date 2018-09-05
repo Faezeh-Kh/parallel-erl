@@ -2,20 +2,10 @@ import java : '../metamodels/java.ecore'
 
 package javaMM
 
-context AbstractMethodDeclaration
-	inv parametersEffectivelyFinal:
-		(self._'body' <> null and self.parameters->notEmpty()) implies (
-			self._'body'.statements ->
-			selectByKind(ExpressionStatement) ->
-			collect(expression) ->
-			selectByKind(Assignment) ->
-			select(assignment |
-				assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and
-				assignment.operator = AssignmentKind::ASSIGN and
-				assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and
-				self.parameters->excludes(assignment.leftHandSide.oclAsType(SingleVariableAccess).variable)
-			) ->
-			isEmpty()
+context CompilationUnit
+	inv allImportsAreUsed:
+		self.imports->forAll(imp |
+			NamedElement.allInstances()->exists(originalCompilationUnit = self)
 		)
 
 endpackage

@@ -1,18 +1,8 @@
-context AbstractMethodDeclaration {
-	constraint parametersEffectivelyFinal {
-		guard: self.body.isDefined() and self.parameters.notEmpty()
-		check: self.body.statements
-				.select(s |
-					s.isKindOf(ExpressionStatement) and
-					s.expression.isKindOf(Assignment)
-				)
-				.collect(s | s.expression)
-				.select(assignment |
-					assignment.leftHandSide.isKindOf(SingleVariableAccess) and
-					assignment.operator == AssignmentKind#ASSIGN and
-					assignment.leftHandSide.isKindOf(SingleVariableAccess) and
-					self.parameters.excludes(assignment.leftHandSide.variable)
-				)
-				.isEmpty()
+context CompilationUnit {
+	$parallel self.imports.size() > 2
+	constraint allImportsAreUsed {
+		check: self.imports.forAll(imp |
+			NamedElement.allInstances().exists(ne | ne.originalCompilationUnit == self)
+		)
 	}
 }

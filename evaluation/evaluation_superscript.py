@@ -88,7 +88,7 @@ if numa:
 if jmc:
     jvmFlags += ' -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
-subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else ''
+subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
 subCmdSuffix = nL
 
 # Author: A.Polino
@@ -178,7 +178,7 @@ def write_generated_file(filename, lines):
 
 def write_benchmark_scenarios(name, scenariosArgs):
     lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
-    write_generated_file(name+'_benchmarks', lines*3)
+    write_generated_file(name+'_benchmarks', lines*5)
 
 # (Meta)Models
 # Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
@@ -195,7 +195,7 @@ javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
 
 javaValidationScripts = [
     'java_findbugs',
-    'java_simple'
+    'java_simple',
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
     'java_1Constraint',
@@ -230,7 +230,7 @@ programs.append(['EVL', evlScenarios, evlModulesAndArgs])
 # OCL
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
-programs.append(['OCL_'+javaValidationScripts[0], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [[oclModules[1]]]])
+programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [[oclModules[1]]]])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
@@ -312,17 +312,17 @@ if isGenerate:
 
     write_benchmark_scenarios('validation', # 34 unique scenarios
         [
-            # 4m elements
-            (module, 'java_findbugs', 'eclipseModel-4.0') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
+            # 4.35m elements
+            (module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
         ]+[
             # 1m elements
-            (module, 'java_findbugs', 'eclipseModel-1.0') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
+            (module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
         ]+[
             # 200k elements
-            (module, 'java_findbugs', 'eclipseModel-0.2') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
+            (module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
         ]+[
             # Single-threaded efficiency
-            (module.replace(maxThreadsStr, '1'), 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault#[:-1]
+            (module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault#[:-1]
         ]+[
             # Thread scalability for 2m elements
             (module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]
@@ -330,14 +330,13 @@ if isGenerate:
             # Single context
             (module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
         ]+[
-            # Single constraint
+        #    (module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
+        #]+[
+            # Single constraint demanding
             (module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]
         ]+[
-            # No guard
-            (module, 'java_noguard', 'eclipseModel-3.0') for module in evlModulesDefault
-        ]+[
-            # No guard OCL equivalent
-            (module, 'java_findbugs', 'eclipseModel-3.0') for module in oclModules
+            # 3m elements demanding
+            (module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault
         ]
     )
 else:

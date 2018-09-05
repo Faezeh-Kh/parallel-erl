@@ -11,11 +11,12 @@
   </eAnnotations>
   <eClassifiers xsi:type="ecore:EClass" name="AbstractMethodDeclaration" abstract="true" eSuperTypes="#//BodyDeclaration">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="localMethodIsUsed parametersEffectivelyFinal"/>
+      <details key="constraints" value="canBeLocal localMethodIsUsed parametersEffectivelyFinal"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="canBeLocal" value="&#xA;&#x9;&#x9;&#x9;self.modifier &lt;> null and not self.modifier.isLocal() implies&#xA;&#x9;&#x9;&#x9;self.usages->exists(m | m.originalClassFile &lt;> self.originalClassFile)"/>
       <details key="localMethodIsUsed" value="&#xA;&#x9;&#x9;&#x9;(self.modifier &lt;> null and self.modifier.isLocal()) implies self.usages->notEmpty()"/>
-      <details key="parametersEffectivelyFinal" value="&#xA;&#x9;&#x9;&#x9;(self.body &lt;> null and self.parameters->notEmpty()) implies (&#xA;&#x9;&#x9;&#x9;&#x9;self._'body'.statements ->&#xA;&#x9;&#x9;&#x9;&#x9;selectByKind(ExpressionStatement) ->&#xA;&#x9;&#x9;&#x9;&#x9;collect(s | s.expression) ->&#xA;&#x9;&#x9;&#x9;&#x9;selectByKind(Assignment) ->&#xA;&#x9;&#x9;&#x9;&#x9;select(assignment |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.operator = AssignmentKind::ASSIGN and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;self.parameters->excludes(assignment.leftHandSide.oclAsType(SingleVariableAccess).variable)&#xA;&#x9;&#x9;&#x9;&#x9;) ->&#xA;&#x9;&#x9;&#x9;&#x9;isEmpty()&#xA;&#x9;&#x9;&#x9;)"/>
+      <details key="parametersEffectivelyFinal" value="&#xA;&#x9;&#x9;&#x9;(self.body &lt;> null and self.parameters->notEmpty()) implies (&#xA;&#x9;&#x9;&#x9;&#x9;self._'body'.statements ->&#xA;&#x9;&#x9;&#x9;&#x9;selectByKind(ExpressionStatement) ->&#xA;&#x9;&#x9;&#x9;&#x9;collect(expression) ->&#xA;&#x9;&#x9;&#x9;&#x9;selectByKind(Assignment) ->&#xA;&#x9;&#x9;&#x9;&#x9;select(assignment |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.operator = AssignmentKind::ASSIGN and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;assignment.leftHandSide.oclIsKindOf(SingleVariableAccess) and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;self.parameters->excludes(assignment.leftHandSide.oclAsType(SingleVariableAccess).variable)&#xA;&#x9;&#x9;&#x9;&#x9;) ->&#xA;&#x9;&#x9;&#x9;&#x9;isEmpty()&#xA;&#x9;&#x9;&#x9;)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="body" eType="#//Block" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1" eType="#//SingleVariableDeclaration" containment="true"
@@ -179,13 +180,14 @@
   <eClassifiers xsi:type="ecore:EClass" name="ConstructorInvocation" eSuperTypes="#//Statement #//AbstractMethodInvocation"/>
   <eClassifiers xsi:type="ecore:EClass" name="ClassDeclaration" eSuperTypes="#//TypeDeclaration">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="hashCodeAndEquals noCovariantEquals noCovariantCompareTo equalsAndCompareTo cloneInCloneable serialUIDInSerializableClass noRedundantInterfaceImpl comparatorImplementsSerializable noObscuredVariables"/>
+      <details key="constraints" value="publicFieldsOnlyInPOJO hashCodeAndEquals noCovariantEquals noCovariantCompareTo equalsAndCompareTo cloneInCloneable serialUIDInSerializableClass noRedundantInterfaceImpl comparatorImplementsSerializable noObscuredVariables"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-      <details key="hashCodeAndEquals" value="&#xA;&#x9;&#x9;&#x9;let hasEq : Boolean = hasEquals(),&#xA;&#x9;&#x9;&#x9;&#x9;hasHc : Boolean = hasHashcode()&#xA;&#x9;&#x9;&#x9;in&#xA;&#x9;&#x9;&#x9;&#x9;(hasEq implies hasHc) and&#xA;&#x9;&#x9;&#x9;&#x9;(hasHc implies hasEq)"/>
-      <details key="noCovariantEquals" value="&#xA;&#x9;&#x9;&#x9;getMethods()->exists(method |&#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'equals' and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)&#xA;&#x9;&#x9;&#x9;) implies hasEquals()"/>
-      <details key="noCovariantCompareTo" value="&#xA;&#x9;&#x9;&#x9;getMethods()->exists(method | &#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'compareTo' and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)&#xA;&#x9;&#x9;&#x9;) implies hasCompareTo()"/>
-      <details key="equalsAndCompareTo" value="&#xA;&#x9;&#x9;&#x9;hasCompareTo() implies hasEquals()"/>
+      <details key="publicFieldsOnlyInPOJO" value="&#xA;&#x9;&#x9;&#x9;self.bodyDeclarations&#xA;&#x9;&#x9;&#x9;&#x9;->select(oclIsKindOf(FieldDeclaration))&#xA;&#x9;&#x9;&#x9;&#x9;->collect(oclAsType(FieldDeclaration))&#xA;&#x9;&#x9;&#x9;&#x9;->select(modifier &lt;> null and modifier.visibility = VisibilityKind::public)&#xA;&#x9;&#x9;&#x9;&#x9;->notEmpty() implies self.bodyDeclarations&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;->select(bd | bd.oclIsKindOf(MethodDeclaration))&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;->collect(bd | bd.oclAsType(MethodDeclaration))&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;->select(md | (md.modifier = null or md.modifier._'static') and not (&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;md.isEquals() or md.isHashcode() or md.isToString()&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;or md.isFinalize() or md.isClone() or md.isCompareTo()&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;&#x9;)->isEmpty()"/>
+      <details key="hashCodeAndEquals" value="&#xA;&#x9;&#x9;&#x9;let hasEq : Boolean = getMethods()->exists(isEquals()),&#xA;&#x9;&#x9;&#x9;&#x9;hasHc : Boolean = getMethods()->exists(isHashcode())&#xA;&#x9;&#x9;&#x9;in&#xA;&#x9;&#x9;&#x9;&#x9;(hasEq implies hasHc) and&#xA;&#x9;&#x9;&#x9;&#x9;(hasHc implies hasEq)"/>
+      <details key="noCovariantEquals" value="&#xA;&#x9;&#x9;&#x9;getMethods()->exists(method |&#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'equals' and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)&#xA;&#x9;&#x9;&#x9;) implies getMethods()->exists(isEquals())"/>
+      <details key="noCovariantCompareTo" value="&#xA;&#x9;&#x9;&#x9;getMethods()->exists(method | &#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'compareTo' and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)&#xA;&#x9;&#x9;&#x9;) implies getMethods()->exists(isCompareTo())"/>
+      <details key="equalsAndCompareTo" value="&#xA;&#x9;&#x9;&#x9;getMethods()->exists(isCompareTo()) implies getMethods()->exists(isEquals())"/>
       <details key="cloneInCloneable" value="&#xA;&#x9;&#x9;&#x9;self.implements('Cloneable') implies self.getMethods()->exists(md |&#xA;&#x9;&#x9;&#x9;&#x9;md.name = 'clone' and&#xA;&#x9;&#x9;&#x9;&#x9;md.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;md.thrownExceptions->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;md.thrownExceptions->first().type.name = 'CloneNotSupportedException' and&#xA;&#x9;&#x9;&#x9;&#x9;md.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;md.modifier.visibility = VisibilityKind::public&#xA;&#x9;&#x9;&#x9;)"/>
       <details key="serialUIDInSerializableClass" value="&#xA;&#x9;&#x9;&#x9;self.implements('Serializable') implies (&#xA;&#x9;&#x9;&#x9;&#x9;self.bodyDeclarations->selectByKind(FieldDeclaration) ->&#xA;&#x9;&#x9;&#x9;&#x9;exists(bd |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;bd.name = 'serialVersionUID' and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;bd.modifier._'static' and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;bd.modifier.inheritance = InheritanceKind::final and&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;bd.type.type.oclIsTypeOf(PrimitiveTypeLong)&#xA;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;)"/>
       <details key="noRedundantInterfaceImpl" value="&#xA;&#x9;&#x9;&#x9;(&#xA;&#x9;&#x9;&#x9;&#x9;self.superInterfaces &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.superClass &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.superClass.type.oclIsKindOf(ClassDeclaration) and&#xA;&#x9;&#x9;&#x9;&#x9;self.superClass.type.oclAsType(ClassDeclaration).superInterfaces &lt;> null&#xA;&#x9;&#x9;&#x9;) implies (&#xA;&#x9;&#x9;&#x9;&#x9;self.superInterfaces->exists(tIface |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;self.superClass.type.oclIsKindOf(AbstractTypeDeclaration) implies (&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;self.superClass.type.oclAsType(AbstractTypeDeclaration)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;.superInterfaces->includes(tIface)&#x9;&#x9;&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;)&#x9;&#xA;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;)"/>
@@ -195,21 +197,6 @@
     <eOperations name="getMethods" upperBound="-1" eType="#//MethodDeclaration">
       <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
         <details key="body" value="self.bodyDeclarations->selectByKind(MethodDeclaration)"/>
-      </eAnnotations>
-    </eOperations>
-    <eOperations name="hasEquals" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-        <details key="body" value="getMethods()->exists(method |&#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'equals' and&#xA;&#x9;&#x9;&#x9;&#x9;method.parameters->first().type.type.name = 'Object' and&#xA;&#x9;&#x9;&#x9;&#x9;method.parameters->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;method.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)&#xA;&#x9;&#x9;&#x9;)"/>
-      </eAnnotations>
-    </eOperations>
-    <eOperations name="hasHashcode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-        <details key="body" value="getMethods()->exists(method |&#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'hashCode' and&#xA;&#x9;&#x9;&#x9;&#x9;method.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;method.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)&#xA;&#x9;&#x9;&#x9;)"/>
-      </eAnnotations>
-    </eOperations>
-    <eOperations name="hasCompareTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-        <details key="body" value="getMethods()->exists(method | &#xA;&#x9;&#x9;&#x9;&#x9;method.name = 'compareTo' and&#xA;&#x9;&#x9;&#x9;&#x9;method.parameters->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;method.parameters->first().type.type.name = 'Object' and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;method.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;method.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)&#xA;&#x9;&#x9;&#x9;)"/>
       </eAnnotations>
     </eOperations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="superClass" eType="#//TypeAccess" containment="true"/>
@@ -340,6 +327,36 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
       <details key="shouldStartWithLowerCase" value="&#xA;&#x9;&#x9;&#x9;self.name.at(1).toLowerCase() = self.name.at(1)"/>
     </eAnnotations>
+    <eOperations name="isEquals" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'equals' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->first().type.type.name = 'Object' and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean) and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::public"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isHashcode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'hashCode' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType.type.oclIsTypeOf(PrimitiveTypeInt) and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::public"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isToString" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'toString' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;(self.returnType.type.name = 'String' or&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType.type.name = 'java.lang.String') and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::public"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isFinalize" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'finalize' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->first().type.name = 'Throwable' and&#xA;&#x9;&#x9;&#x9;&#x9;(self.returnType = null or self.returnType.type.oclIsTypeOf(PrimitiveTypeVoid)) and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;(self.modifier.visibility = VisibilityKind::public or&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::protected)"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isClone" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'clone' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->first().type.name = 'CloneNotSupportedException' and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::public"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isCompareTo" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.name = 'compareTo' and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->size() = 1 and&#xA;&#x9;&#x9;&#x9;&#x9;self.parameters->first().type.type.name = 'Object' and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.modifier.visibility = VisibilityKind::public and&#xA;&#x9;&#x9;&#x9;&#x9;self.thrownExceptions->isEmpty() and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType &lt;> null and&#xA;&#x9;&#x9;&#x9;&#x9;self.returnType.type.oclIsTypeOf(PrimitiveTypeInt)"/>
+      </eAnnotations>
+    </eOperations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="extraArrayDimensions" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="returnType" eType="#//TypeAccess" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="redefinedMethodDeclaration" eType="#//MethodDeclaration" eOpposite="#//MethodDeclaration/redefinitions"/>
@@ -399,6 +416,12 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="variableDeclarationExpression" eType="#//VariableDeclarationExpression" eOpposite="#//VariableDeclarationExpression/modifier"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true" eSuperTypes="#//ASTNode">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="notReservedWord"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="notReservedWord" value="&#xA;&#x9;&#x9;&#x9;self.name &lt;> 'var' and&#xA;&#x9;&#x9;&#x9;&#x9;self.name &lt;> '_' and&#xA;&#x9;&#x9;&#x9;&#x9;self.name &lt;> 'strictfp' and&#xA;&#x9;&#x9;&#x9;&#x9;self.name &lt;> 'assert' and&#xA;&#x9;&#x9;&#x9;&#x9;self.name &lt;> 'enum'"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="proxy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="usagesInImports" ordered="false" upperBound="-1" eType="#//ImportDeclaration"
@@ -529,6 +552,12 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="qualifier" eType="#//NamespaceAccess" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TypeDeclaration" abstract="true" eSuperTypes="#//AbstractTypeDeclaration">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="shouldStartWithUpperCase"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="shouldStartWithUpperCase" value="&#xA;&#x9;&#x9;&#x9;self.name.at(1) = self.name.at(1).toUpperCase()"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="typeParameters" upperBound="-1" eType="#//TypeParameter" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TypeDeclarationStatement" eSuperTypes="#//Statement">

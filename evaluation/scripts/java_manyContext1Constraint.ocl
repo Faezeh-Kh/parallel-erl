@@ -13,6 +13,10 @@ context MethodInvocation
 			self.method.parameters->first().type.type.oclIsTypeOf(PrimitiveTypeInt)
 		)
 
+context TypeDeclaration
+	inv shouldStartWithUpperCase:
+		self.name.at(1) = self.name.at(1).toUpperCase()
+
 context MethodDeclaration
 	inv shouldStartWithLowerCase:
 		self.name.at(1).toLowerCase() = self.name.at(1)
@@ -65,12 +69,6 @@ context ClassDeclaration
 					selectByKind(VariableDeclaration) ->
 					forAll(vd | fields->forAll(fd | fd.name <> vd.name))
 				)
-
-context CompilationUnit
-	inv allImportsAreUsed:
-		self.imports->forAll(imp |
-			NamedElement.allInstances()->exists(ne | ne.originalCompilationUnit = self)
-		)
 
 context InfixExpression
 	def: operatorIsEquality : Boolean = (self.operator = InfixExpressionKind::EQUALS or self.operator = InfixExpressionKind::NOT_EQUALS)

@@ -1,9 +1,18 @@
+/*********************************************************************
+ * Copyright (c) 2017 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.epsilon.evl.engine.test.ocl.equivalence;
 
 import static org.junit.Assert.*;
 import static org.eclipse.epsilon.evl.engine.test.acceptance.EvlAcceptanceTestUtil.*;
-import static org.eclipse.epsilon.erl.engine.test.util.ErlAcceptanceTestUtil.*;
 import static org.eclipse.epsilon.common.util.FileUtil.getFileName;
+import static org.eclipse.epsilon.eol.engine.test.acceptance.util.EolAcceptanceTestUtil.*;
 import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
 import java.util.*;
 import java.util.function.Function;
@@ -45,7 +54,7 @@ public class EvlOclTests {
 	static final List<String[]>
 		oclTestInputs = addAllInputs(
 			// Exclude the java_noguard script
-			Arrays.copyOfRange(javaScripts, 0, javaScripts.length-1), new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
+			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
 		),
 		evlTestInputs = addAllInputs(
 			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
@@ -54,8 +63,7 @@ public class EvlOclTests {
 	// This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
 	static final Function<String[], Integer> idCalculator = uris -> {
 		String scriptNoExt = getFileName(uris[0], false);
-		// java_noguard is equivalent to java_findbugs
-		return Objects.hash(scriptNoExt.equals(javaScripts[javaScripts.length-1]) ? javaScripts[0] : scriptNoExt, uris[1], uris[2]);
+		return Objects.hash(scriptNoExt, uris[1], uris[2]);
 	};
 	
 	// The oracle scenario.

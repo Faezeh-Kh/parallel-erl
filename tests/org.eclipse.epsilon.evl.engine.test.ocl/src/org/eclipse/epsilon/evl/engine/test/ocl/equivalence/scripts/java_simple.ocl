@@ -172,15 +172,15 @@ context ClassDeclaration
 	def: getMethods : Collection(MethodDeclaration) = self.bodyDeclarations->selectByKind(MethodDeclaration)
 	
 	def: getPublicFields : Collection(FieldDeclaration) = self.bodyDeclarations
-		->select(oclIsKindOf(FieldDeclaration))
-		->collect(oclAsType(FieldDeclaration))
-		->select(modifier <> null and modifier.visibility = VisibilityKind::public
+		->select(bd | bd.oclIsKindOf(FieldDeclaration))
+		->collect(bd | bd.oclAsType(FieldDeclaration))
+		->select(fd | fd.modifier <> null and fd.modifier.visibility = VisibilityKind::public
 	)
 	
 	inv publicFieldsOnlyInPOJO:
 		self.getPublicFields->notEmpty() implies self.bodyDeclarations
-			->select(oclIsKindOf(MethodDeclaration))
-			->collect(oclAsType(MethodDeclaration))
+			->select(bd | bd.oclIsKindOf(MethodDeclaration))
+			->collect(bd | bd.oclAsType(MethodDeclaration))
 			->select(md | (md.modifier = null or md.modifier._'static') and not (
 				md.isEquals or md.isHashcode or md.isToString
 				or md.isFinalize or md.isClone or md.isCompareTo
@@ -188,8 +188,8 @@ context ClassDeclaration
 			)->isEmpty()
 	
 	inv hashCodeAndEquals:
-		let hasEq : Boolean = getMethods->exists(isEquals),
-			hasHc : Boolean = getMethods->exists(isHashcode)
+		let hasEq : Boolean = getMethods->exists(method | method.isEquals),
+			hasHc : Boolean = getMethods->exists(method | method.isHashcode)
 		in
 			(hasEq implies hasHc) and
 			(hasHc implies hasEq)
@@ -200,7 +200,7 @@ context ClassDeclaration
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind::public and
 			method.returnType.type.oclIsTypeOf(PrimitiveTypeBoolean)
-		) implies getMethods->exists(isEquals)
+		) implies getMethods->exists(method | method.isEquals)
 
 	inv noCovariantCompareTo:
 		getMethods->exists(method | 
@@ -208,13 +208,13 @@ context ClassDeclaration
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind::public and
 			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
-		) implies getMethods->exists(isCompareTo)
+		) implies getMethods->exists(method | method.isCompareTo)
 
 	inv equalsAndCompareTo:
-		getMethods->exists(isCompareTo) implies getMethods->exists(isEquals)
+		getMethods->exists(method | method.isCompareTo) implies getMethods->exists(method | method.isEquals)
 
 	inv cloneInCloneable:
-		self.implements('Cloneable') implies self.getMethods->exists(isClone)
+		self.implements('Cloneable') implies self.getMethods->exists(md | md.isClone)
 
 	inv serialUIDInSerializableClass:
 		self.implements('Serializable') implies (
@@ -253,12 +253,6 @@ context ClassDeclaration
 					selectByKind(VariableDeclaration) ->
 					forAll(vd | fields->forAll(fd | fd.name <> vd.name))
 				)
-
-context CompilationUnit
-	inv allImportsAreUsed:
-		self.imports->forAll(imp |
-			NamedElement.allInstances()->exists(originalCompilationUnit = self)
-		)
 
 context InfixExpression
 	def: operatorIsEquality : Boolean = (self.operator = InfixExpressionKind::EQUALS or self.operator = InfixExpressionKind::NOT_EQUALS)

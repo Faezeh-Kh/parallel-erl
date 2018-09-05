@@ -40,6 +40,9 @@ context ClassDeclaration
 			method.returnType.type.oclIsTypeOf(PrimitiveTypeInt)
 		)
 	
+	inv shouldStartWithUpperCase:
+		self.name.at(1) = self.name.at(1).toUpperCase()
+	
 	inv hashCodeAndEquals:
 		let hasEq : Boolean = hasEquals,
 			hasHc : Boolean = hasHashcode
