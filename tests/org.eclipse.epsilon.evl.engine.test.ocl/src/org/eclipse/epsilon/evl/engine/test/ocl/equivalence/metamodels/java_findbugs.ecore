@@ -207,12 +207,6 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="prefixOfParent" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="CompilationUnit" eSuperTypes="#//NamedElement">
-    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="allImportsAreUsed"/>
-    </eAnnotations>
-    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-      <details key="allImportsAreUsed" value="&#xA;&#x9;&#x9;&#x9;self.imports->forAll(imp |&#xA;&#x9;&#x9;&#x9;&#x9;NamedElement.allInstances()->exists(originalCompilationUnit = self)&#xA;&#x9;&#x9;&#x9;)"/>
-    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="originalFilePath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="commentList" upperBound="-1" eType="#//Comment"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="imports" upperBound="-1" eType="#//ImportDeclaration" containment="true"/>
@@ -268,6 +262,12 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="elseStatement" eType="#//Statement" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ImportDeclaration" eSuperTypes="#//ASTNode">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="allImportsAreUsed"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="allImportsAreUsed" value="&#xA;&#x9;&#x9;&#x9;NamedElement.allInstances()->exists(ne | ne = self.importedElement)"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="static" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="importedElement" lowerBound="1" eType="#//NamedElement" eOpposite="#//NamedElement/usagesInImports"/>
   </eClassifiers>

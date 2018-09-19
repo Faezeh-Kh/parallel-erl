@@ -1,8 +1,9 @@
-context CompilationUnit {
-	$parallel self.imports.size() > 2
+context ImportDeclaration {
+	@parallel
 	constraint allImportsAreUsed {
-		check: self.imports.forAll(imp |
-			NamedElement.allInstances().exists(ne | ne.originalCompilationUnit == self)
+		check: NamedElement.allInstances().exists(ne |
+			ne == self.importedElement and
+			ne.originalCompilationUnit == self.originalCompilationUnit
 		)
 	}
 }

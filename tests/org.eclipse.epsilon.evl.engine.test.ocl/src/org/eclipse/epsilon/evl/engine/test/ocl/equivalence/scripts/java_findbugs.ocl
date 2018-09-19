@@ -12,6 +12,10 @@ context Modifier
 context AbstractTypeDeclaration
 	def: implements(type : String) : Boolean = self.superInterfaces->exists(si | si.type.name = type)
 
+context ImportDeclaration
+	inv allImportsAreUsed:
+		NamedElement.allInstances()->exists(ne | ne = self.importedElement)
+
 context NamedElement
 	inv notReservedWord:
 		self.name <> 'var' and
@@ -253,12 +257,6 @@ context ClassDeclaration
 					selectByKind(VariableDeclaration) ->
 					forAll(vd | fields->forAll(fd | fd.name <> vd.name))
 				)
-
-context CompilationUnit
-	inv allImportsAreUsed:
-		self.imports->forAll(imp |
-			NamedElement.allInstances()->exists(originalCompilationUnit = self)
-		)
 
 context InfixExpression
 	def: operatorIsEquality : Boolean = (self.operator = InfixExpressionKind::EQUALS or self.operator = InfixExpressionKind::NOT_EQUALS)

@@ -199,17 +199,17 @@ javaValidationScripts = [
     'java_manyConstraint1Context',
     'java_manyContext1Constraint',
     'java_1Constraint',
-    'java_equals',
-    'java_noguard'
+    'java_equals'
+    #'java_noguard'
 ]
 
 # EVL
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
     'EvlModuleParallelStaged',
-    'EvlModuleParallelElements',
+    'EvlModuleParallelElements'
     #'EvlModuleParallelConstraints',
-    'EvlModuleParallelRandom'
+    #'EvlModuleParallelRandom'
 ]
 evlModules = ['EvlModule'] + evlParallelModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
@@ -217,7 +217,7 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
-    #(imdbMM, ['imdb_validator.evl'], imdbModels),
+    (imdbMM, ['imdb_validator.evl'], imdbModels),
     #(dblpMM, ['dblp_isbn.evl'], dblpModels)
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
@@ -237,12 +237,13 @@ validationModulesDefault = evlModulesDefault + oclModules
 # First-Order Operations
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne']
 imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
-eolModules = ['EolModule', 'EolModuleParallel']
+eolModule = 'EolModule'
+eolModuleParallel = 'EolModuleParallel'
 foopParams = '-parameters threshold=3'
 eolParallelModulesAndArgs = []
 for numThread in threads:
     threadStr = str(numThread)
-    eolParallelModulesAndArgs.append([eolModules[1]+threadStr, '-module eol.concurrent.'+eolModules[1]+' int='+threadStr+' '+foopParams])
+    eolParallelModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
 
 programs.append(['ERL',
     [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)],
@@ -250,7 +251,7 @@ programs.append(['ERL',
 ])
 programs.append(['ERL',
     [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)],
-    [[eolModules[0], foopParams]]
+    [[eolModule, foopParams]]
 ])
 
 if isGenerate:
@@ -310,7 +311,22 @@ if isGenerate:
 
     # Specific benchmark scenarios
 
-    write_benchmark_scenarios('validation', # 34 unique scenarios
+    write_benchmark_scenarios('firstorder', [
+        (eolModule, imdbFOOPScripts[0], 'imdb-all'),
+        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[0], 'imdb-all'),
+        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[0], 'imdb-all'),
+        (eolModule, imdbFOOPScripts[1], 'imdb-0.5'),
+        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-0.5'),
+        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-0.5'),
+        (eolModule, imdbFOOPScripts[1], 'imdb-1.0'),
+        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-1.0'),
+        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-1.0'),
+        (eolModule, imdbFOOPScripts[1], 'imdb-2.0'),
+        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-2.0'),
+        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-2.0')
+    ])
+
+    write_benchmark_scenarios('validation',
         [
             # 4.35m elements
             (module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
