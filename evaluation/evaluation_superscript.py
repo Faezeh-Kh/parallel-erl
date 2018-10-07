@@ -81,12 +81,12 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
 #$ -l h_vmem='''+str(60/yarccCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms768m -XX:MaxRAMPercentage=90 -XX:+AggressiveOpts -XX:'
+jvmFlags = 'java -Xms768m -XX:MaxRAMPercentage=90 -XX:'
 jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
 if numa:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
-    jvmFlags += ' -XX:+UnlockCommercialFeatures -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
+    jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
 subCmdSuffix = nL
@@ -230,29 +230,23 @@ programs.append(['EVL', evlScenarios, evlModulesAndArgs])
 # OCL
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
-programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[0]+'.ocl'], javaModels)], [[oclModules[1]]]])
+programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]]])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne']
 imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
-eolModule = 'EolModule'
-eolModuleParallel = 'EolModuleParallel'
 foopParams = '-parameters threshold=3'
-eolParallelModulesAndArgs = []
+eolModule = 'EolModule'
+eolModuleParallel = eolModule+'Parallel'
+eolModulesAndArgs = [eolModule, foopParams]
 for numThread in threads:
     threadStr = str(numThread)
-    eolParallelModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
 
-programs.append(['ERL',
-    [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)],
-    eolParallelModulesAndArgs
-])
-programs.append(['ERL',
-    [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)],
-    [[eolModule, foopParams]]
-])
+programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs])
+eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
+
 
 if isGenerate:
     allSubs = []
@@ -312,49 +306,55 @@ if isGenerate:
     # Specific benchmark scenarios
 
     write_benchmark_scenarios('firstorder', [
-        (eolModule, imdbFOOPScripts[0], 'imdb-all'),
-        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[0], 'imdb-all'),
-        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[0], 'imdb-all'),
-        (eolModule, imdbFOOPScripts[1], 'imdb-0.5'),
-        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-0.5'),
-        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-0.5'),
-        (eolModule, imdbFOOPScripts[1], 'imdb-1.0'),
-        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-1.0'),
-        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-1.0'),
-        (eolModule, imdbFOOPScripts[1], 'imdb-2.0'),
-        (eolModuleParallel+str(threads[-1]), imdbParallelFOOPScripts[1], 'imdb-2.0'),
-        (eolModuleParallel+str(int(threads[-1]/2)), imdbParallelFOOPScripts[1], 'imdb-2.0')
+        (module, imdbFOOPScripts[0], 'imdb-all') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[0], 'imdb-2.5') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[0], 'imdb-1.0') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[0], 'imdb-0.2') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[1], 'imdb-all') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[1], 'imdb-2.5') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[1], 'imdb-1.0') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[1], 'imdb-0.5') for module in eolModulesDefault
+    ]+[
+        (module, imdbFOOPScripts[1], 'imdb-0.2') for module in eolModulesDefault
     ])
 
-    write_benchmark_scenarios('validation',
-        [
-            # 4.35m elements
-            (module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
-        ]+[
-            # 1m elements
-            (module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
-        ]+[
-            # 200k elements
-            (module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault[:-2]+validationModulesDefault[-1:]
-        ]+[
-            # Single-threaded efficiency
-            (module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault#[:-1]
-        ]+[
-            # Thread scalability for 2m elements
-            (module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]
-        ]+[
-            # Single context
-            (module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
-        ]+[
-        #    (module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
-        #]+[
-            # Single constraint demanding
-            (module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]
-        ]+[
-            # 3m elements demanding
-            (module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault
-        ]
-    )
+    write_benchmark_scenarios('validation', [
+        # 4.35m elements
+        (module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault
+    ]+[
+        # 2.5m elements
+        (module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault
+    ]+[
+        # 1m elements
+        (module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault
+    ]+[
+        # 200k elements
+        (module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault
+    ]+[
+        # Single-threaded efficiency
+        (module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault#[:-1]
+    ]+[
+        # Thread scalability for 2m elements
+        (module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]
+    ]+[
+        # Single context
+        (module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
+    ]+[
+    #    (module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
+    #]+[
+        # Single constraint demanding
+        (module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]
+    ]+[
+        # 3m elements demanding
+        (module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]
+    ])
 else:
     if (not os.path.isfile(resultsFileName) or os.stat(resultsFileName).st_size == 0):
         writer.writerow(columns)
