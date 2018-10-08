@@ -1,4 +1,4 @@
-import os, argparse, re, csv, statistics, math
+import os, argparse, re, csv, statistics, math, sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('mode', choices=['GENERATE', 'ANALYSE'], help='What do you want the program to do?')
@@ -114,15 +114,14 @@ if logicalCores >= 4:
     isWeird = not isNormal and logicalCores % 6 == 0
     if isWeird:
         threads.append(3)
-    for i in range(4, logicalCores, 2):
+    for i in range(5, logicalCores+1, 2):
         threadCounter = next_power_of_2(i) if isNormal else next_6(i)
-        if (threadCounter >= logicalCores):
+        if threadCounter >= logicalCores:
             threads.append(logicalCores)
             break
-        else:
-            threads.append(threadCounter)    
+        elif not threadCounter in threads:
+            threads.append(threadCounter)
 maxThreadsStr = str(round(threads[-1]/2) if smt else threads[-1])
-
 programs = []
 
 def write_table(colHeadings, tabRows, tabCaption, tabNum = 0, longtable = False):
@@ -247,7 +246,6 @@ for numThread in threads:
 programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs])
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
 
-
 if isGenerate:
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
@@ -274,7 +272,7 @@ if isGenerate:
                         if program.startswith('OCL'):
                             command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                         else:
-                            command += '-models "emf.EmfModel#cached=true,storeOnDisposal=true'+ \
+                            command += '-models "emf.EmfModel#cached=true,concurrent=true,storeOnDisposal=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
                             ',modelUri=file:///' + modelDir+model
                         command += '" -profile'
@@ -305,56 +303,31 @@ if isGenerate:
 
     # Specific benchmark scenarios
 
-    write_benchmark_scenarios('firstorder', [
-        (module, imdbFOOPScripts[0], 'imdb-all') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[0], 'imdb-2.5') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[0], 'imdb-1.0') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[0], 'imdb-0.2') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[1], 'imdb-all') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[1], 'imdb-2.5') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[1], 'imdb-1.0') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[1], 'imdb-0.5') for module in eolModulesDefault
-    ]+[
-        (module, imdbFOOPScripts[1], 'imdb-0.2') for module in eolModulesDefault
-    ])
+    write_benchmark_scenarios('firstorder',
+        [(module, imdbFOOPScripts[0], 'imdb-all') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[0], 'imdb-2.5') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[0], 'imdb-1.0') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[0], 'imdb-0.2') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[1], 'imdb-all') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[1], 'imdb-2.5') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[1], 'imdb-1.0') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[1], 'imdb-0.5') for module in eolModulesDefault]+
+        [(module, imdbFOOPScripts[1], 'imdb-0.2') for module in eolModulesDefault]
+    )
 
-    write_benchmark_scenarios('validation', [
-        # 4.35m elements
-        (module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault
-    ]+[
-        # 2.5m elements
-        (module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault
-    ]+[
-        # 1m elements
-        (module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault
-    ]+[
-        # 200k elements
-        (module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault
-    ]+[
-        # Single-threaded efficiency
-        (module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault#[:-1]
-    ]+[
-        # Thread scalability for 2m elements
-        (module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]
-    ]+[
-        # Single context
-        (module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
-    ]+[
-    #    (module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]
-    #]+[
-        # Single constraint demanding
-        (module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]
-    ]+[
-        # 3m elements demanding
-        (module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]
-    ])
+    write_benchmark_scenarios('validation', 
+        [(module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault]+
+        [(module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault]+
+        [(module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault]+
+        [(module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault]+
+        [(module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault]+
+        [(module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]]+
+        [(module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
+        #[(module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
+        [(module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]]+
+        [(module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]]
+    )
+
 else:
     if (not os.path.isfile(resultsFileName) or os.stat(resultsFileName).st_size == 0):
         writer.writerow(columns)
