@@ -235,16 +235,18 @@ validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations
 imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne']
 foopParams = '-parameters threshold=3'
 eolModule = 'EolModule'
 eolModuleParallel = eolModule+'Parallel'
-eolModulesAndArgs = [eolModule, foopParams]
+eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
+eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule+' '+foopParams]]
 for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
 
-programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs])
-eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
+programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
+programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 
 if isGenerate:
     allSubs = []
@@ -261,7 +263,6 @@ if isGenerate:
                     for margs in modulesAndArgs:
                         moduleName = margs[0]
                         fileName = get_scenario_name(moduleName, scriptName, modelName)
-                        stdFile = genDir + fileName + fileExt
                         command = sgeDirectives if sge else ''
                         command += jvmFlags
                         if jmc:
@@ -281,9 +282,7 @@ if isGenerate:
                         if len(stdDir) > 1:
                             command += ' -outfile "' + stdDir + fileName + intermediateExt + '"'
 
-                        with open(stdFile, 'w') as output:
-                            output.write(command + nL)
-
+                        write_generated_file(fileName, [command])
                         modelSubset.append(subCmdPrefix +'"'+ fileName + fileExt + '"'+ subCmdSuffix)
 
                     if (len(models) > 1 and len(modulesAndArgs) > 1):
@@ -303,17 +302,17 @@ if isGenerate:
 
     # Specific benchmark scenarios
 
-    write_benchmark_scenarios('firstorder',
-        [(module, imdbFOOPScripts[0], 'imdb-all') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[0], 'imdb-2.5') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[0], 'imdb-1.0') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[0], 'imdb-0.2') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[1], 'imdb-all') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[1], 'imdb-2.5') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[1], 'imdb-1.0') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[1], 'imdb-0.5') for module in eolModulesDefault]+
-        [(module, imdbFOOPScripts[1], 'imdb-0.2') for module in eolModulesDefault]
-    )
+    def write_eol_benchmark_scenarios(modelSizes, name = 'firstorder'):
+        firstOrderScenarios = []
+        for modelSize in modelSizes:
+            for foopScript in imdbFOOPScripts:
+                firstOrderScenarios.append((eolModulesDefault[0], foopScript, 'imdb-'+modelSize))
+            for module in eolModulesDefault[1:]:
+                for foopScript in imdbParallelFOOPScripts:
+                    firstOrderScenarios.append((module, foopScript, 'imdb-'+modelSize))
+        write_benchmark_scenarios(name, firstOrderScenarios)
+
+    write_eol_benchmark_scenarios(['all', '2.5', '1.0', '0.5', '0.1'])
 
     write_benchmark_scenarios('validation', 
         [(module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault]+
