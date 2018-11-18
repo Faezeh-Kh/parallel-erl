@@ -266,7 +266,7 @@
       <details key="constraints" value="allImportsAreUsed"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
-      <details key="allImportsAreUsed" value="&#xA;&#x9;&#x9;&#x9;NamedElement.allInstances()->exists(ne | ne = self.importedElement)"/>
+      <details key="allImportsAreUsed" value="&#xA;&#x9;&#x9;&#x9;NamedElement.allInstances()->exists(ne |&#xA;&#x9;&#x9;&#x9;&#x9;ne = self.importedElement and&#xA;&#x9;&#x9;&#x9;&#x9;ne.originalCompilationUnit = self.originalCompilationUnit&#xA;&#x9;&#x9;&#x9;)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="static" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="importedElement" lowerBound="1" eType="#//NamedElement" eOpposite="#//NamedElement/usagesInImports"/>

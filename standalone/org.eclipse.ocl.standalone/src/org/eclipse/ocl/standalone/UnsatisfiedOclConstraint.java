@@ -1,3 +1,12 @@
+/*********************************************************************
+ * Copyright (c) 2017 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.ocl.standalone;
 
 import java.util.Collection;
@@ -12,7 +21,12 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
+/**
+ * 
+ * @author Sina Madani
+ */
 public class UnsatisfiedOclConstraint {
+	
 	private static final String preamble = "Diagnostic [A-Z]* source=[a-zA-Z0-9\\.]* code=[0-9]* The ";
 	private static final Pattern pattern = Pattern.compile("The '[^\\s]+::[^\\s]+' constraint is violated for ");
 	

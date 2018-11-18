@@ -1,81 +1,98 @@
+/*********************************************************************
+ * Copyright (c) 2017 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.ocl.standalone;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Optional;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.epsilon.common.cli.ConfigParser;
+import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 
-public class StandaloneOCLBuilder {
+/**
+ * 
+ * @author Sina Madani
+ */
+public class StandaloneOCLBuilder extends ProfilableRunConfiguration.Builder<StandaloneOCL, StandaloneOCLBuilder> {
 
 	public static void main(String[] args) throws Exception {
 		try {
-			newInstance(args).run();
+			new OCLConfigParser(true).parseAndRun(args);
 		}
 		catch (IllegalArgumentException iax) {
 			System.err.println(iax.getMessage());
 		}
 	}
 	
-	public static StandaloneOCL newTestInstance(String[] uris, int configID) throws IllegalArgumentException {
-		return newInstance(uris[0], uris[1], uris[2], Optional.of(false), Optional.of(false), Optional.of(configID), Optional.empty());
-	}
-	
-	public static StandaloneOCL newInstance(
-		String oclPath,
-		String modelPath,
-		String metamodelPath,
-		Optional<Boolean> showUnsatisfied,
-		Optional<Boolean> showExecTime,
-		Optional<Integer> configID,
-		Optional<Path> scratchFile) throws IllegalArgumentException {
-			try {
-				URI
-					modelUri = URI.createFileURI(modelPath),
-					metamodelUri = metamodelPath != null && metamodelPath.length() > 4 ? URI.createFileURI(metamodelPath) : null;
-				Path oclDoc = oclPath != null && oclPath.length() > 4 ? Paths.get(oclPath) : null;
-				
-				return new StandaloneOCL(oclDoc, modelUri, metamodelUri, showUnsatisfied, showExecTime, configID, scratchFile);
-			}
-			catch (IllegalArgumentException iax) {
-				throw new IllegalArgumentException("Invalid path: "+iax.getMessage());
-			}
-	}
-	
-	public static StandaloneOCL newInstance(String... args) throws IllegalArgumentException {
-		return newInstance(true, args);
-	}
-	
-	public static StandaloneOCL newInstance(boolean checkArgs, String... args) throws IllegalArgumentException {
-		ConfigParser<StandaloneOCL> parser = new ConfigParser<>() {
-			{
-				requiredUsage = "Must provide absolute path to "+nL
-				  + "  [Complete OCL Document] (if metamodel doesn't contain constraints) "+nL
-				  + "  [XMI model file] "+nL
-				  + "  [Ecore metamodel file] ";
-			}
-			@Override
-			protected void parseArgs(String[] args) throws Exception {
-				if (checkArgs && args.length < 3) {
-					throw new IllegalArgumentException();
-				}
-				super.parseArgs(args);
-			}
-		};
+	static class OCLConfigParser extends ConfigParser<StandaloneOCL, StandaloneOCLBuilder> {
+		final boolean checkArguments;
 		
-		parser.accept(args);
+		private OCLConfigParser(boolean checkArgs) {
+			super(new StandaloneOCLBuilder());
+			this.checkArguments = checkArgs;
+			
+			requiredUsage = "Must provide absolute path to "+nL
+			  + "  [Complete OCL Document] (if metamodel doesn't contain constraints) "+nL
+			  + "  [XMI model file] "+nL
+			  + "  [Ecore metamodel file] ";
+		}
 		
-		return newInstance(
-			args[0],
-			args[1],
-			args[2],
-			parser.showResults,
-			parser.profileExecution,
-			parser.id,
-			parser.outputFile
-		);
+		@Override
+		protected void parseArgs(String[] args) throws Exception {
+			if (checkArguments && args.length < 3) {
+				throw new IllegalArgumentException();
+			}
+			
+			super.parseArgs(args);
+			if (args.length > 1) builder.withModel(args[1]);
+			if (args.length > 2) builder.withMetamodel(args[2]);
+		}
+	}
+	
+	public URI modelUri, metamodelUri;
+	public EPackage rootPackage;
+	public EValidator customValidator;
+	
+	public StandaloneOCLBuilder withModel(URI uri) {
+		this.modelUri = uri;
+		return this;
+	}
+	public StandaloneOCLBuilder withModel(String path) {
+		return withModel(URI.createFileURI(path));
+	}
+	public StandaloneOCLBuilder withMetamodel(URI uri) {
+		this.metamodelUri = uri;
+		return this;
+	} 
+	public StandaloneOCLBuilder withMetamodel(String path) {
+		return withMetamodel(URI.createFileURI(path));
+	}
+	public StandaloneOCLBuilder withPackage(EPackage root) {
+		this.rootPackage = root;
+		return this;
+	}
+	public StandaloneOCLBuilder withValidator(EValidator validator) {
+		this.customValidator = validator;
+		return this;
+	}
+	public StandaloneOCLBuilder withURIs(String[] uris) {
+		if (uris != null) {
+			if (uris.length > 0) withScript(uris[0]);
+			if (uris.length > 1) withModel(uris[2]);
+			if (uris.length > 2) withMetamodel(uris[3]);
+		}
+		return this;
+	}
+	
+	@Override
+	public StandaloneOCL build() throws IllegalArgumentException, IllegalStateException {
+		return new StandaloneOCL(this);
 	}
 	
 	public static StandaloneOCL newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) {
@@ -85,20 +102,13 @@ public class StandaloneOCLBuilder {
 		) {
 			throw new IllegalArgumentException("Must provide absolute path to EMF model!");
 		}
-		if (args.length == 1)
-			return compiledOCL(rootPackage, customValidator, URI.createFileURI(args[0]));
-		else
-			return compiledOCL(newInstance(false, args), rootPackage, customValidator);
+		StandaloneOCLBuilder builder = new StandaloneOCLBuilder()
+				.withPackage(rootPackage)
+				.withValidator(customValidator);
+		
+		if (args.length >= 1)
+			builder = builder.withModel(args[0]);
+		
+		return builder.build();
 	}
-	
-	public static StandaloneOCL compiledOCL(EPackage rootPackage, EValidator customValidator, URI model) {
-		return compiledOCL(new StandaloneOCL(null, model, null, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()), rootPackage, customValidator);
-	}
-	
-	public static StandaloneOCL compiledOCL(StandaloneOCL cocl, EPackage rootPackage, EValidator customValidator) {
-		cocl.metamodelPackage = rootPackage;
-		cocl.validator = customValidator;
-		return cocl;
-	}
-	
 }

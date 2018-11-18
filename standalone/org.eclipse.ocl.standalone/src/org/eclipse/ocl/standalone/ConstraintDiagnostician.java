@@ -1,3 +1,12 @@
+/*********************************************************************
+ * Copyright (c) 2017 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.ocl.standalone;
 
 import java.util.Collection;
@@ -14,13 +23,14 @@ import org.eclipse.emf.ecore.util.Diagnostician;
 import org.eclipse.emf.ecore.util.EObjectValidator;
 import org.eclipse.emf.edit.ui.EMFEditUIPlugin;
 import org.eclipse.epsilon.common.concurrent.ConcurrentCASList;
-//import org.eclipse.epsilon.common.concurrent.ConcurrentCASList;
 import org.eclipse.ocl.pivot.internal.labels.LabelSubstitutionLabelProvider;
 
 /**
+ * @author Sina Madani
  * @see org.eclipse.ocl.examples.test.xtext.PivotDocumentationExamples.java
  **/
 public class ConstraintDiagnostician extends Diagnostician {
+	
 	public final Resource resource;
 	public final boolean isConcurrent;
 	

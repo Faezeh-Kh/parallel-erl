@@ -245,12 +245,13 @@ for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
 
-programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
-programs.append(['ERL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
+programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
+programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 
 if isGenerate:
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
+        isOCL = program.startswith('OCL')
         programSubset = []
         progFilePre = program+'_run_'
         for metamodel, scripts, models in scenarios:
@@ -267,10 +268,10 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ \
-                            binDir + program + jar +'" "'+ \
-                            scriptDir+script +'" '
-                        if program.startswith('OCL'):
+                        command += ' -jar "'+ binDir
+                        command += 'OCL' if isOCL else 'epsilon-engine'
+                        command += jar +'" "'+ scriptDir+script +'" '
+                        if isOCL:
                             command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                         else:
                             command += '-models "emf.EmfModel#cached=true,concurrent=true,storeOnDisposal=true'+ \
@@ -379,15 +380,23 @@ else:
         break   #Non-recursive
 
     # For reference, each row = [module, threads, script, model, timeMean, timeStdev, memoryMean, memoryStdev, memoryDelta, program]
-    def compute_metrics_closure(currentMetrics, relModule, row, filterCondition, decimalPlaces = 3):
-        if (row[0] != relModule and filterCondition):
+    def compute_metrics_closure(currentMetrics, relModule, row, filterCondition, relScript = row[2], decimalPlaces = 3):
+        if (filterCondition):
             for nestedRow in rows:
-                if (nestedRow[0] == relModule and nestedRow[2] == row[2] and nestedRow[3] == row[3]):
+                if (nestedRow[0] == relModule and (nestedRow[2] == relScript or nestedRow[2] == row[2]) and nestedRow[3] == row[3]):
                     speedup = round(nestedRow[4]/row[4], decimalPlaces) if nestedRow[4] and row[4] else None
                     efficiency = round(speedup/row[1], decimalPlaces) if speedup else None
                     memDelta = round(nestedRow[6]/row[6], decimalPlaces) if nestedRow[6] and row[6] else None
                     return (speedup, efficiency, memDelta)
         return currentMetrics
+
+    def normalize_foop(script):
+        normalFOOP = script.replace('_parallel', '_')
+        if len(normalFOOP) == len(script):
+            return script
+        metamodelScriptIndex = script.index('_')+1
+        normalFOOP = normalFOOP[0:metamodelScriptIndex] + normalFOOP[metamodelScriptIndex].lower() + normalFOOP[metamodelScriptIndex+1:] if normalFOOP else script
+        return normalFOOP
 
     # Second pass - compute performance metrics, update rows and write to CSV file
     for i in range(0, len(rows)):
@@ -398,6 +407,7 @@ else:
         # Only one of the following will change the value in this iteration!
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[-1].upper() == 'EVL' or row[0] == oclModules[0])
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[0] == oclModules[1])
+        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
 
         rowResults.insert(6, metrics[0])
         rowResults.insert(7, metrics[1])

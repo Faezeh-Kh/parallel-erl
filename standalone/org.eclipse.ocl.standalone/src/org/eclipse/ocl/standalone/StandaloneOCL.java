@@ -1,6 +1,14 @@
+/*********************************************************************
+ * Copyright (c) 2017 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.ocl.standalone;
 
-import java.nio.file.Path;
 import java.util.*;
 import org.eclipse.emf.common.util.*;
 import org.eclipse.emf.ecore.EPackage;
@@ -36,7 +44,7 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  * 
  * @author Sina Madani
  */
-public class StandaloneOCL extends ProfilableRunConfiguration<Collection<UnsatisfiedOclConstraint>> {
+public class StandaloneOCL extends ProfilableRunConfiguration {
 	
 	protected Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints;
 	protected OCL ocl = OCL.newInstance();
@@ -45,24 +53,19 @@ public class StandaloneOCL extends ProfilableRunConfiguration<Collection<Unsatis
 	protected EValidator validator;
 	public final URI model, metamodel;
 	
-	public StandaloneOCL(
-		Path oclScript,
-		URI modelUri,
-		URI metamodelUri,
-		Optional<Boolean> showUnsatisfied,
-		Optional<Boolean> profileExecution,
-		Optional<Integer> configID,
-		Optional<Path> scratchFile) {
-			super(oclScript, showUnsatisfied, profileExecution, configID, scratchFile);
-			this.model = modelUri;
-			this.metamodel = metamodelUri;
-			this.id = configID.orElseGet(() ->
-				Objects.hash(super.id,
-					Objects.toString(ocl),
-					Objects.toString(modelUri),
-					Objects.toString(metamodelUri)
-				)
-			);
+	public StandaloneOCL(StandaloneOCLBuilder builder) {
+		super(builder);
+		this.model = builder.modelUri;
+		this.metamodel = builder.metamodelUri;
+		this.id = Optional.ofNullable(builder.id).orElseGet(() ->
+			Objects.hash(super.id,
+				Objects.toString(ocl),
+				Objects.toString(model),
+				Objects.toString(metamodel)
+			)
+		);
+		this.metamodelPackage = builder.rootPackage;
+		this.validator = builder.customValidator;
 	}
 	
 

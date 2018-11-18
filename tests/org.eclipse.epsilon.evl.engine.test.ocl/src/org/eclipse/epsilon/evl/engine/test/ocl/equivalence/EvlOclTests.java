@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.engine.test.ocl.equivalence;
 import static org.junit.Assert.*;
 import static org.eclipse.epsilon.evl.engine.test.acceptance.EvlAcceptanceTestUtil.*;
 import static org.eclipse.epsilon.common.util.FileUtil.getFileName;
-import static org.eclipse.epsilon.eol.engine.test.acceptance.util.EolAcceptanceTestUtil.*;
 import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
 import java.util.*;
 import java.util.function.Function;
@@ -42,7 +41,6 @@ import org.junit.runners.Parameterized.Parameters;
  * StandaloneOCL.UnsatisfiedOclConstraint.
  * 
  * @see org.eclipse.epsilon.evl.engine.test.acceptance.equivalence.StandaloneOCL
- * 
  * @author Sina Madani
  */
 @RunWith(Parameterized.class)
@@ -86,7 +84,11 @@ public class EvlOclTests {
 	private static List<StandaloneOCL> getStandaloneOCLConfigsFrom(Collection<String[]> uriss) {
 		return uriss
 			.stream()
-			.map(uris -> StandaloneOCLBuilder.newTestInstance(uris, idCalculator.apply(uris)))
+			.map(uris -> new StandaloneOCLBuilder()
+				.withId(idCalculator.apply(uris))
+				.withURIs(uris)
+				.build()
+			)
 			.collect(Collectors.toList());
 	}
 	
@@ -131,7 +133,8 @@ public class EvlOclTests {
 		Collection<UnsatisfiedOclConstraint>
 			expectedConstraints = expectedConfig.getUnsatisfiedConstraints(),
 			
-			actualConstraints = actualConfig.module
+			actualConstraints = actualConfig
+				.getModule()
 				.getContext()
 				.getUnsatisfiedConstraints()
 				.stream()
