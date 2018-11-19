@@ -84,8 +84,8 @@ public class StandaloneOCLBuilder extends ProfilableRunConfiguration.Builder<Sta
 	public StandaloneOCLBuilder withURIs(String[] uris) {
 		if (uris != null) {
 			if (uris.length > 0) withScript(uris[0]);
-			if (uris.length > 1) withModel(uris[2]);
-			if (uris.length > 2) withMetamodel(uris[3]);
+			if (uris.length > 1) withModel(uris[1]);
+			if (uris.length > 2) withMetamodel(uris[2]);
 		}
 		return this;
 	}
