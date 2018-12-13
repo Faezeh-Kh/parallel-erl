@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.configuration.Configuration;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
@@ -34,12 +33,12 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 	}
 
 	@Override
-	protected void processDistributed(ExecutionEnvironment execEnv, Configuration jobConfig) throws Exception {
+	protected void processDistributed(ExecutionEnvironment execEnv) throws Exception {
 		assignConstraintsFromResults(
 			execEnv.fromCollection(getBatches())
-			.flatMap(new EvlFlinkSubsetFlatMapFunction())
-			.collect()
-			.parallelStream()
+				.flatMap(new EvlFlinkSubsetFlatMapFunction())
+				.collect()
+				.parallelStream()
 		);
 	}
 	private Collection<DistributedEvlBatch> getBatches() throws EolRuntimeException {

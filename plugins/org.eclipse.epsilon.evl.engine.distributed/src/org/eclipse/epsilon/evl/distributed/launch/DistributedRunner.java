@@ -43,6 +43,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
 		properties.put(PROPERTY_CACHED, true);
+		properties.put(PROPERTY_READONLOAD, true);
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
 		properties.put(PROPERTY_MODEL_URI, modelPath);

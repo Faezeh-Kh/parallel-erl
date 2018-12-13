@@ -48,12 +48,13 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 		executionEnv.setParallelism(parallelism);
 	}
 	
-	protected abstract void processDistributed(final ExecutionEnvironment execEnv, final Configuration jobConfig) throws Exception;
+	protected abstract void processDistributed(final ExecutionEnvironment execEnv) throws Exception;
 	
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {
 		try {
-			processDistributed(executionEnv, getJobConfiguration());
+			executionEnv.getConfig().setGlobalJobParameters(getJobConfiguration());
+			processDistributed(executionEnv);
 		}
 		catch (Exception ex) {
 			EolRuntimeException.propagate(ex);

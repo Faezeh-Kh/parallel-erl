@@ -12,7 +12,9 @@ package org.eclipse.epsilon.evl.distributed.flink;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import org.apache.flink.api.common.ExecutionConfig.GlobalJobParameters;
 import org.apache.flink.api.common.functions.AbstractRichFunction;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
 import org.eclipse.epsilon.common.util.StringProperties;
@@ -21,6 +23,8 @@ import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
 /**
+ * Performs one-time setup on slave nodes. This mainly involves parsing the script,
+ * loading models and putting variables into the FrameStack.
  * 
  * @author Sina Madani
  * @since 1.6
@@ -33,7 +37,20 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 	protected transient DistributedRunner configContainer;
 	
 	@Override
-	public void open(Configuration parameters) throws Exception {
+	public void open(Configuration additionalParameters) throws Exception {
+		GlobalJobParameters globalParameters = getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
+		Configuration parameters = null;
+		if (globalParameters instanceof Configuration) {
+			parameters = (Configuration) globalParameters;
+		}
+		else if (globalParameters instanceof ParameterTool) {
+			parameters = ((ParameterTool)globalParameters).getConfiguration();
+		}
+		
+		if (parameters == null || parameters.toMap().isEmpty()) {
+			parameters = additionalParameters;
+		}
+		
 		Path evlScriptPath = Paths.get(parameters.getString("evlScript", null));
 		
 		int numModels = parameters.getInteger("numberOfModels", 0);

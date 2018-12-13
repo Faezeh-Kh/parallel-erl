@@ -10,7 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.flink.atomic;
 
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.configuration.Configuration;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
 import org.eclipse.epsilon.evl.distributed.flink.format.EvlFlinkInputFormat;
 
@@ -30,11 +29,10 @@ public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink {
 	}
 
 	@Override
-	protected void processDistributed(ExecutionEnvironment execEnv, Configuration jobConfig) throws Exception {
+	protected void processDistributed(ExecutionEnvironment execEnv) throws Exception {
 		assignConstraintsFromResults(
 			execEnv.createInput(new EvlFlinkInputFormat(createJobs(true)))
 				.flatMap(new EvlFlinkAtomFlatMapFunction())
-				.withParameters(jobConfig)
 				.collect()
 				.parallelStream()
 		);

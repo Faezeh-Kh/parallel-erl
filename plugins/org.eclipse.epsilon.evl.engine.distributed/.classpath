@@ -7,10 +7,6 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="/org.apache.flink/flink-dist_2.12-1.7.0.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="https://ci.apache.org/projects/flink/flink-docs-release-1.7/api/java/"/>
-		</attributes>
-	</classpathentry>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/flink-dist_2.12-1.7.0.jar" sourcepath="/home/smadani/Downloads/flink-1.7.0/"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
