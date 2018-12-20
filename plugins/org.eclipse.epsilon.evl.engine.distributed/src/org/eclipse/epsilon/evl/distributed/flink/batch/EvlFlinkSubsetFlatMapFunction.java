@@ -26,9 +26,9 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlFlinkSubsetFlatMapFunction extends EvlFlinkRichFunction implements FlatMapFunction<DistributedEvlBatch, SerializableEvlResultAtom>{
+class EvlFlinkSubsetFlatMapFunction extends EvlFlinkRichFunction implements FlatMapFunction<DistributedEvlBatch, SerializableEvlResultAtom> {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 8491311327811474665L;
 
 	@Override
 	public void flatMap(DistributedEvlBatch batch, Collector<SerializableEvlResultAtom> out) throws Exception {

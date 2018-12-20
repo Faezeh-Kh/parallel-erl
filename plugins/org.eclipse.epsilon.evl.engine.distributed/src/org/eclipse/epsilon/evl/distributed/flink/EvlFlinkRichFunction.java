@@ -30,8 +30,8 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
  * @since 1.6
  */
 public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
-
-	private static final long serialVersionUID = 1L;
+	
+	private static final long serialVersionUID = -9011432964023365634L;
 	
 	protected transient EvlModuleDistributedSlave localModule;
 	protected transient DistributedRunner configContainer;

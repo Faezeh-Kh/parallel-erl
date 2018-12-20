@@ -25,13 +25,15 @@ import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 
 /**
+ * A sink used for testing and debugging purposes.
  * 
  * @author Sina Madani
  * @since 1.6
  */
 public class EvlFlinkOutputFormat extends RichOutputFormat<SerializableEvlResultAtom> {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = -8376881617321903525L;
+	
 	private int i = 0;
 	private long startTime, endTime;
 

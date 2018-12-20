@@ -19,6 +19,8 @@ import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 
 /**
+ * Serializable base form of the smallest unit of EVL data to be exchanged over-the-wire, both for
+ * input and output. Data consists of identifying a model element and the associated ConstraintContext.
  * 
  * @author Sina Madani
  * @since 1.6

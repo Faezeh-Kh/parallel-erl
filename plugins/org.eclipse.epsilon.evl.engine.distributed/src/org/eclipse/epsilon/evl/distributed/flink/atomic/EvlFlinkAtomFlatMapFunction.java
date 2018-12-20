@@ -15,14 +15,17 @@ import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.distributed.flink.EvlFlinkRichFunction;
 
 /**
+ * Takes as input a model element and constraint context, evaluates
+ * all applicable constraints for that element and returns the
+ * unsatisfied constraint-element pairs (if any).
  * 
  * @author Sina Madani
  * @since 1.6
  */
 class EvlFlinkAtomFlatMapFunction extends EvlFlinkRichFunction implements FlatMapFunction<SerializableEvlInputAtom, SerializableEvlResultAtom> {
-
-	private static final long serialVersionUID = 1L;
 	
+	private static final long serialVersionUID = -3151677744091757324L;
+
 	@Override
 	public void flatMap(SerializableEvlInputAtom value, Collector<SerializableEvlResultAtom> out) throws Exception {
 		for (SerializableEvlResultAtom result : localModule.evaluateElement(value)) {

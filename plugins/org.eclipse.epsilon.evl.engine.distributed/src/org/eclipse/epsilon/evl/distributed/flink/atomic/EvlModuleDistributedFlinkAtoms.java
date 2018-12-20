@@ -14,6 +14,7 @@ import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
 import org.eclipse.epsilon.evl.distributed.flink.format.EvlFlinkInputFormat;
 
 /**
+ * Data-parallel evaluation strategy which works over elements.
  * 
  * @author Sina Madani
  * @since 1.6

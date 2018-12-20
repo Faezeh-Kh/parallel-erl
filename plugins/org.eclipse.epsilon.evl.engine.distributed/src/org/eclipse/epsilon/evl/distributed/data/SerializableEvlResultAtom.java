@@ -10,14 +10,16 @@
 package org.eclipse.epsilon.evl.distributed.data;
 
 import java.util.Objects;
+import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
+ * Serializable representation of an {@linkplain UnsatisfiedConstraint}.
  * 
  * @author Sina Madani
  * @since 1.6
  */
 public class SerializableEvlResultAtom extends SerializableEvlAtom {
-
+	
 	private static final long serialVersionUID = -1980020699534098214L;
 	
 	public String constraintName, message;

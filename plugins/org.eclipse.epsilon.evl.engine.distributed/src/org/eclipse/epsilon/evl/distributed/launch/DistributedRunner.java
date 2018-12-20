@@ -39,10 +39,10 @@ public class DistributedRunner extends EvlRunConfiguration {
 			modelPath = fileProtocol + args[1],
 			metamodelPath = fileProtocol + args[2];
 		
-		IModel model = new EmfModel();
+		IModel model = new EmfModel();	// In theory no reason why it must be EMF, though keeps it simple for the time being
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
-		properties.put(PROPERTY_CACHED, true);
+		properties.put(PROPERTY_CACHED, true);	// Should be false in local mode if using EmfModel due to singleton registry / caches
 		properties.put(PROPERTY_READONLOAD, true);
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);

@@ -10,6 +10,8 @@
 package org.eclipse.epsilon.evl.distributed.data;
 
 /**
+ * Data unit to be used as inputs in distributed processing. No additional
+ * information over the base {@linkplain SerializableEvlAtom} is required.
  * 
  * @author Sina Madani
  * @since 1.6

@@ -16,6 +16,7 @@ import java.util.stream.IntStream;
 import org.apache.flink.util.SplittableIterator;
 
 /**
+ * Partitions fixed size collections for parallel processing.
  * 
  * @author Sina Madani
  * @since 1.6

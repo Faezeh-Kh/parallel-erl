@@ -14,13 +14,14 @@ import org.apache.flink.api.java.io.ParallelIteratorInputFormat;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 
 /**
+ * Convenience class to be used as the source for Flink execution.
  * 
  * @author Sina Madani
  * @since 1.6
  */
 public class EvlFlinkInputFormat extends ParallelIteratorInputFormat<SerializableEvlInputAtom> {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = -626217034613920959L;
 
 	public EvlFlinkInputFormat(List<SerializableEvlInputAtom> jobs) {
 		super(new ParallelFlinkIterator<>(jobs));
