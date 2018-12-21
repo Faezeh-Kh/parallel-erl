@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -56,19 +57,30 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		IEvlContext context = getContext();
 		Object modelElement = inputAtom.findElement(context);
 		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
+		Collection<SerializableEvlResultAtom> unsatisfied;
 		
-		return constraintContext.execute(modelElement, context)
-			.stream()
-			.map(unsatisfiedConstraint -> {
-				SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
-				outputAtom.contextName = inputAtom.contextName;
-				outputAtom.modelName = inputAtom.modelName;
-				outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
-				outputAtom.modelElementID = inputAtom.modelElementID;
-				outputAtom.message = unsatisfiedConstraint.getMessage();
-				return outputAtom;
-			})
-			.collect(Collectors.toUnmodifiableList());
+		if (!constraintContext.shouldBeChecked(modelElement, context)) {
+			return Collections.emptyList();
+		}
+		
+		Collection<Constraint> constraintsToCheck = constraintContext.getConstraints();
+		unsatisfied = new ArrayList<>(constraintsToCheck.size());
+		
+		for (Constraint constraint : constraintsToCheck) {
+			constraint.execute(modelElement, context)
+				.map(unsatisfiedConstraint -> {
+					SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
+					outputAtom.contextName = inputAtom.contextName;
+					outputAtom.modelName = inputAtom.modelName;
+					outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
+					outputAtom.modelElementID = inputAtom.modelElementID;
+					outputAtom.message = unsatisfiedConstraint.getMessage();
+					return outputAtom;
+				})
+				.ifPresent(unsatisfied::add);
+		}
+		
+		return unsatisfied;
 	}
 	
 	protected ConstraintContext getConstraintContextByTypeName(String typeName) throws EolTypeNotFoundException {
