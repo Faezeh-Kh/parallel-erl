@@ -19,6 +19,7 @@ import org.eclipse.epsilon.emc.emf.EmfModel;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.*;
 import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
+import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
 
 /**
@@ -42,7 +43,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 		IModel model = new EmfModel();	// In theory no reason why it must be EMF, though keeps it simple for the time being
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
-		properties.put(PROPERTY_CACHED, true);	// Should be false in local mode if using EmfModel due to singleton registry / caches
+		properties.put(PROPERTY_CACHED, false);	// Should be false in local mode if using EmfModel due to singleton registry / caches
 		properties.put(PROPERTY_READONLOAD, true);
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
@@ -50,10 +51,12 @@ public class DistributedRunner extends EvlRunConfiguration {
 
 		int parallelism = args.length > 3 ? Integer.parseInt(args[3]) : -1;
 		
-		new DistributedRunner(scriptPath, model, properties,
-			new EvlModuleDistributedFlinkAtoms(parallelism)
-		)
-		.run();
+		EvlModuleDistributedMaster module = args.length > 4 && args[4].toLowerCase().contains("batch") ?
+			new EvlModuleDistributedFlinkSubset(parallelism) :
+			new EvlModuleDistributedFlinkAtoms(parallelism);
+		
+		System.out.println("Using "+module.getClass().getSimpleName()+'\n');
+		new DistributedRunner(scriptPath, model, properties, module).run();
 	}
 	
 	

@@ -9,16 +9,17 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.batch;
 
-import java.util.Collection;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
+ * This distribution strategy splits the model elements into a preset
+ * number of batches based on the parallelism, so that each worker knows
+ * exactly which elements to evaluate in advance. The only data sent
+ * over the wire as input is the start and end index of the jobs for
+ * each node. It is expected that the distribution runtime algorithm
+ * sends each batch to a different node.
  * 
  * @author Sina Madani
  * @since 1.6
@@ -35,25 +36,10 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 	@Override
 	protected void processDistributed(ExecutionEnvironment execEnv) throws Exception {
 		assignConstraintsFromResults(
-			execEnv.fromCollection(getBatches())
+			execEnv.fromCollection(DistributedEvlBatch.getBatches(getContext()))
 				.flatMap(new EvlFlinkSubsetFlatMapFunction())
 				.collect()
 				.parallelStream()
 		);
 	}
-	private Collection<DistributedEvlBatch> getBatches() throws EolRuntimeException {
-		final int batchSize = getContext().getDistributedParallelism(),
-			totalJobs = ConstraintContextAtom.getContextJobs(getContext()).size(),
-			increments = totalJobs / batchSize;
-		
-		return IntStream.range(0, batchSize)
-			.mapToObj(i -> {
-				DistributedEvlBatch batch = new DistributedEvlBatch();
-				batch.from = i*increments;
-				batch.to = (i+1)*increments;
-				return batch;
-			})
-			.collect(Collectors.toList());
-	}
-
 }

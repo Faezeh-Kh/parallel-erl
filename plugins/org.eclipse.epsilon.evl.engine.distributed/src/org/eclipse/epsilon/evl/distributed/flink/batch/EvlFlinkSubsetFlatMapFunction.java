@@ -22,6 +22,7 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
+ * Executes this worker's batch of jobs and collects the results.
  * 
  * @author Sina Madani
  * @since 1.6
