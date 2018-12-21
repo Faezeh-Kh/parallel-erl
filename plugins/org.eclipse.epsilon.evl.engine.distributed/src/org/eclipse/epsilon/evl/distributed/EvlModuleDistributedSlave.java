@@ -56,24 +56,19 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		IEvlContext context = getContext();
 		Object modelElement = inputAtom.findElement(context);
 		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
-		Collection<Constraint> constraints = constraintContext.getConstraints();
-		ArrayList<SerializableEvlResultAtom> results = new ArrayList<>();
 		
-		for (Constraint constraint : constraints) {
-			constraint.execute(modelElement, context)
-				.map(unsatisfiedConstraint -> {
-					SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
-					outputAtom.contextName = inputAtom.contextName;
-					outputAtom.modelName = inputAtom.modelName;
-					outputAtom.constraintName = constraint.getName();
-					outputAtom.modelElementID = inputAtom.modelElementID;
-					outputAtom.message = unsatisfiedConstraint.getMessage();
-					return outputAtom;
-				})
-				.ifPresent(results::add);
-		}
-		
-		return results;
+		return constraintContext.execute(modelElement, context)
+			.stream()
+			.map(unsatisfiedConstraint -> {
+				SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
+				outputAtom.contextName = inputAtom.contextName;
+				outputAtom.modelName = inputAtom.modelName;
+				outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
+				outputAtom.modelElementID = inputAtom.modelElementID;
+				outputAtom.message = unsatisfiedConstraint.getMessage();
+				return outputAtom;
+			})
+			.collect(Collectors.toUnmodifiableList());
 	}
 	
 	protected ConstraintContext getConstraintContextByTypeName(String typeName) throws EolTypeNotFoundException {
