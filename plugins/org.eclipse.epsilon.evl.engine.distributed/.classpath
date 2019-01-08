@@ -7,11 +7,11 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/flink-dist_2.12-1.7.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/org.antlr.runtime_3.2.0.v201101311130.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/org.apache.commons.cli_1.4.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.common_2.14.0.v20180308-1144.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.ecore.xmi_2.14.0.v20180129-1548.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.ecore_2.14.0.v20180213-0937.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/flink-dist_2.12-1.7.0.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.antlr.runtime_3.2.0.v201101311130.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.apache.commons.cli_1.4.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.common_2.14.0.v20180308-1144.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.ecore.xmi_2.14.0.v20180129-1548.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.ecore_2.14.0.v20180213-0937.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -57,14 +57,13 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		IEvlContext context = getContext();
 		Object modelElement = inputAtom.findElement(context);
 		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
-		Collection<SerializableEvlResultAtom> unsatisfied;
 		
 		if (!constraintContext.shouldBeChecked(modelElement, context)) {
 			return Collections.emptyList();
 		}
 		
 		Collection<Constraint> constraintsToCheck = constraintContext.getConstraints();
-		unsatisfied = new ArrayList<>(constraintsToCheck.size());
+		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
 		
 		for (Constraint constraint : constraintsToCheck) {
 			constraint.execute(modelElement, context)
