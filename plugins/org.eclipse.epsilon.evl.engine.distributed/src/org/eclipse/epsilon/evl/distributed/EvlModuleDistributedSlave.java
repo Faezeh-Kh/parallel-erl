@@ -56,6 +56,11 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	public Collection<SerializableEvlResultAtom> evaluateElement(final SerializableEvlInputAtom inputAtom) throws EolRuntimeException {
 		IEvlContext context = getContext();
 		Object modelElement = inputAtom.findElement(context);
+		
+		if (modelElement == null) {
+			throw new EolRuntimeException("Could not find model element for '"+inputAtom+"'.");
+		}
+		
 		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
 		
 		if (!constraintContext.shouldBeChecked(modelElement, context)) {
