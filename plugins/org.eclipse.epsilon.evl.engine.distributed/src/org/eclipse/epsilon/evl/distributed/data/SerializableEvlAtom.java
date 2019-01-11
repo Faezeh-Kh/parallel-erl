@@ -55,7 +55,7 @@ public abstract class SerializableEvlAtom implements java.io.Serializable, Clone
 	public String toString() {
 		return getClass().getSimpleName()+": modelElementID="
 				+ modelElementID + ", modelName=" + modelName
-				+ ", contextType = " + contextName;
+				+ ", contextType=" + contextName;
 	}
 	
 	public Object findElement(IEolContext context) throws EolModelNotFoundException {
