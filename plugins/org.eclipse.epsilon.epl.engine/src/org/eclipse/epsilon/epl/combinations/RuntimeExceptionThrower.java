@@ -24,7 +24,6 @@ public class RuntimeExceptionThrower<E extends Exception> implements ExceptionHa
 	@Override
 	public void handleException(E ex) {
 		throw new RuntimeException(ex.getMessage());
-		//context.getExecutorFactory().reportException(EolRuntimeException.wrap(ex));
 	}
 
 }
