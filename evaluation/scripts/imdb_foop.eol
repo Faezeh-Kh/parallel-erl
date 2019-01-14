@@ -15,12 +15,11 @@ operation Movie movieQuery() : Boolean {
 		);
 }
 
-operation Person coupleCoactors() : Set(movies!Person) {
-	return self.coactors().select(co |
+operation Person areCoupleCoactors(co : Person) : Boolean {
+	return
 		self.name.compareTo(co.name) < 0 and
 		co.movies.size() >= threshold.asInteger() and
-		self.areCouple(co)
-	);
+		self.areCouple(co);
 }
 
 @cached

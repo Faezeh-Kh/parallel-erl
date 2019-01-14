@@ -184,7 +184,6 @@ def write_benchmark_scenarios(name, scenariosArgs):
 javaMM = 'java.ecore'
 imdbMM = 'movies.ecore'
 dblpMM = 'dblp.ecore'
-dblpModels = ['dblp-all'+xmi]
 eclipsePrefix = 'eclipseModel-'
 imdbPrefix = 'imdb-'
 imdbRanges = ['all', '0.1', '0.2'] + [str(round(i/10, 1)) for i in range(5, 35, 5)]
@@ -205,8 +204,8 @@ javaValidationScripts = [
 # EVL
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
-    'EvlModuleParallelStaged',
     'EvlModuleParallelElements'
+    #'EvlModuleParallelStaged',
     #'EvlModuleParallelConstraints',
     #'EvlModuleParallelRandom'
 ]
@@ -217,7 +216,7 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
-    #(dblpMM, ['dblp_isbn.evl'], dblpModels)
+    (dblpMM, ['dblp_isbn.evl'], ['dblp-all'+xmi])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
@@ -234,8 +233,8 @@ programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScrip
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations
-imdbFOOPScripts = ['imdb_select', 'imdb_selectOne']
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne']
+imdbFOOPScripts = ['imdb_select', 'imdb_selectOne', 'imdb_filter']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
 foopParams = '-parameters threshold=3'
 eolModule = 'EolModule'
 eolModuleParallel = eolModule+'Parallel'
@@ -274,7 +273,7 @@ if isGenerate:
                         if isOCL:
                             command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                         else:
-                            command += '-models "emf.EmfModel#cached=true,concurrent=true,storeOnDisposal=true'+ \
+                            command += '-models "emf.EmfModel#cached=true,concurrent=true,parallel=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
                             ',modelUri=file:///' + modelDir+model
                         command += '" -profile'
@@ -308,14 +307,17 @@ if isGenerate:
         for modelSize in modelSizes:
             for foopScript in imdbFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, 'imdb-'+modelSize))
-            for module in eolModulesDefault[1:]:
-                for foopScript in imdbParallelFOOPScripts:
+            for foopScript in imdbParallelFOOPScripts[:3]:
+                for module in eolModulesDefault[1:]:
                     firstOrderScenarios.append((module, foopScript, 'imdb-'+modelSize))
+            for foopScript in imdbParallelFOOPScripts[3:]:
+                firstOrderScenarios.append((eolModulesDefault[-1], foopScript, 'imdb-'+modelSize))
         write_benchmark_scenarios(name, firstOrderScenarios)
 
     write_eol_benchmark_scenarios(['all', '2.5', '1.0', '0.5', '0.1'])
 
-    write_benchmark_scenarios('validation', 
+    write_benchmark_scenarios('validation',
+        [(module, 'dblp_isbn', 'dblp-all') for module in evlModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault]+

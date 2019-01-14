@@ -1,0 +1,3 @@
+import "imdb_foop.eol";
+
+Person.allInstances().parallelStream().filter(a | a.coactors().stream().anyMatch(co | a.areCoupleCoactors(co))).count().println();

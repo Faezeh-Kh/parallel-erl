@@ -1,14 +1,66 @@
 import "utils.eol";
 
+pre {
+	var IST : String = 'Information & Software Technology';
+}
+
+operation Article publishingIn(inPublication : Boolean, publication : String) : Boolean {
+	return self.journal.isDefined() and (
+			(inIST and self.journal.name.indexOf(publication) < 0) or
+			self.journal.name.indexOf(publication) >= 0
+		) and
+		self.year() > 2005;
+}
+
+operation Author articles() : Collection(Article) {
+	return self.records->select(r | r.isTypeOf(Article));
+}
+
+operation Author nowPublishingIn(publishing : Boolean) : Sequence(Article) {
+	return self.articles()->select(a | a.publishingIn(publishing, IST))->asSequence();
+}
+
+operation Article publishedInIST() : Boolean {
+	if (self.journal.isUndefined()) return false;
+	else return self.journal.name.indexOf(IST) >= 0;
+}
+
+@parallel
+context Author {
+	guard : self.records.exists(r : InProceedings | r.year >= 2008 and r.bootitle.indexOf('ICMT') >= 0)
+	
+	@lazy
+	constraint publishedInIST {
+		check: self.articles()->exists(a | a.publishedInIST())
+	}
+	
+	constraint activelyPublishingInIST {
+		guard: self.satisfies("publishedInIST")
+		check: self.articles()->nMatch(a | a.publishingIn(true, IST), nowPublishingIn(true)->size())
+	}
+}
+
+$parallel Record.all.size() > 100000
 context Record {
 	constraint isValidMonth {
 		guard: self.month.isDefined()
 		check: self.month.isValidMonth()
 	}
 	constraint validPageLength {
-		guard: self.fromPage.isDefined() and self.toPage.isDefined()
+		guard {
+			switch (self.type().asString()) {
+				case Article: continue;
+				case InCollection: continue;
+				case InProceedings: continue;
+				case Book: return self.fromPage.isDefined() and self.toPage.isDefined();
+				default: return false;
+			}
+		}
 		check: self.fromPage <= self.toPage
 	}
+}
+
+context Www {
 	critique malformedURL {
 		guard: self.url.isDefined() and self.url.length() > 0
 		check: self.url.startsWith("http://dx.doi.org/10.")
@@ -20,6 +72,7 @@ context Record {
 }
 
 context Book {
+	$parallel Book.all.size() > 10000
 	constraint isValidISBN {
 		guard: self.isbn.isDefined() and self.isbn.length() > 0
 		check {
