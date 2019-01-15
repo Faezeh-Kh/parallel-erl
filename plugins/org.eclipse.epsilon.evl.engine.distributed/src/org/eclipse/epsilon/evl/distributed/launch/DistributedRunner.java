@@ -14,7 +14,6 @@ import java.nio.file.Paths;
 import java.util.Map;
 import static org.eclipse.epsilon.emc.emf.EmfModel.*;
 import org.eclipse.epsilon.common.util.FileUtil;
-import org.eclipse.epsilon.common.util.OperatingSystem;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.emc.emf.EmfModel;
 import org.eclipse.epsilon.eol.models.IModel;
@@ -36,7 +35,7 @@ import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
 public class DistributedRunner extends EvlRunConfiguration {
 	
 	public static void main(String[] args) {
-		String fileProtocol = "file://" + (OperatingSystem.isWindows() ? "/" : ""),
+		String fileProtocol = "file:///",
 			scriptPath = args[0],
 			modelPath = fileProtocol + args[1],
 			metamodelPath = fileProtocol + args[2];
@@ -44,7 +43,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 		IModel model = new EmfModel();	// In theory no reason why it must be EMF, though keeps it simple for the time being
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
-		properties.put(PROPERTY_CACHED, true);	// Should be false in local mode if using EmfModel due to singleton registry / caches
+		properties.put(PROPERTY_CACHED, true);	// Should be false in local mode if using EMF due to singleton registry / caches
 		properties.put(PROPERTY_READONLOAD, true);
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
