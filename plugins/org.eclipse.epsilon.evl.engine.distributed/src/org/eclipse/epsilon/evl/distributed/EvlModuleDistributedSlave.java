@@ -18,6 +18,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.exceptions.EolTypeNotFoundException;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
+import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
@@ -124,6 +125,11 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		outputAtom.constraintName = uc.getConstraint().getName();
 		outputAtom.message = uc.getMessage();
 		return outputAtom;
+	}
+	
+	@Override
+	public EvlContextDistributedSlave getContext() {
+		return (EvlContextDistributedSlave) super.getContext();
 	}
 	
 	@Override

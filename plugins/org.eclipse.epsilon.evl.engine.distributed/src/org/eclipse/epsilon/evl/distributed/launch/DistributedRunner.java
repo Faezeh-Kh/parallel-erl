@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import static org.eclipse.epsilon.emc.emf.EmfModel.*;
+import org.eclipse.epsilon.common.util.FileUtil;
 import org.eclipse.epsilon.common.util.OperatingSystem;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.emc.emf.EmfModel;
@@ -48,6 +49,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
 		properties.put(PROPERTY_MODEL_URI, modelPath);
+		properties.put(PROPERTY_NAME, FileUtil.getFileName(modelPath));
 
 		int parallelism = args.length > 3 ? Integer.parseInt(args[3]) : -1;
 		
