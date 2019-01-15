@@ -58,7 +58,13 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		Object modelElement = inputAtom.findElement(context);
 		
 		if (modelElement == null) {
-			throw new EolRuntimeException("Could not find model element for '"+inputAtom+"'.");
+			throw new EolRuntimeException(
+				"Could not find model element with ID "+inputAtom.modelElementID+
+				(inputAtom.modelName != null && inputAtom.modelName.trim().length() > 0 ? 
+					" in model "+inputAtom.modelName : ""
+				)
+				+" in context of "+inputAtom.contextName
+			);
 		}
 		
 		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
