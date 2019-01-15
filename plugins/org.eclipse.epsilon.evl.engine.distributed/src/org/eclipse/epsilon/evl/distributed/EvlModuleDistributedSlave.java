@@ -38,12 +38,8 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class EvlModuleDistributedSlave extends EvlModuleParallel {
 
-	public EvlModuleDistributedSlave() {
-		super();
-	}
-
 	public EvlModuleDistributedSlave(int parallelism) {
-		super(parallelism);
+		context = new EvlContextDistributedSlave(parallelism);
 	}
 	
 	/**
@@ -129,7 +125,7 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	
 	@Override
 	public EvlContextDistributedSlave getContext() {
-		return (EvlContextDistributedSlave) super.getContext();
+		return (EvlContextDistributedSlave) context;
 	}
 	
 	@Override
