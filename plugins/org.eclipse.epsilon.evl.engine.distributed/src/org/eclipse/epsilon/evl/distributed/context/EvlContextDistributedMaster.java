@@ -34,6 +34,7 @@ public class EvlContextDistributedMaster extends EvlContext {
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
 	protected int distributedParallelism, localParallelism;
+	protected String outputDir;
 	
 	public EvlContextDistributedMaster(int localParallelism, int distributedParallelism) {
 		this.localParallelism = localParallelism > 0 ? localParallelism : ConcurrencyUtils.DEFAULT_PARALLELISM;
@@ -57,6 +58,14 @@ public class EvlContextDistributedMaster extends EvlContext {
 		this.distributedParallelism = parallelism;
 	}
 	
+	public String getOutputPath() {
+		return outputDir;
+	}
+
+	public void setOutputPath(String out) {
+		this.outputDir = out;
+	}
+
 	/**
 	 * Saves the frame stack for the benefit of slave nodes.
 	 */
@@ -82,6 +91,7 @@ public class EvlContextDistributedMaster extends EvlContext {
 		config.put("localParallelism", localParallelism);
 		config.put("distributedParallelism", distributedParallelism);
 		config.put("evlScript", getModule().getFile().toPath().toString());
+		config.put("output", outputDir);
 		
 		List<IModel> models = getModelRepository().getModels();
 		int numModels = models.size();

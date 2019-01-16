@@ -57,12 +57,12 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 	protected final void checkConstraints() throws EolRuntimeException {
 		try {
 			Configuration config = getJobConfiguration();
-			String outputFile = config.getString("outputFile", "");
+			String outputPath = getContext().getOutputPath();
 			executionEnv.getConfig().setGlobalJobParameters(config);
 			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv);
 			
-			if (!outputFile.isEmpty()) {
-				pipeline.writeAsText(outputFile);
+			if (outputPath != null && !outputPath.isEmpty()) {
+				pipeline.writeAsText(outputPath);
 				executionEnv.execute();
 			}
 			else {

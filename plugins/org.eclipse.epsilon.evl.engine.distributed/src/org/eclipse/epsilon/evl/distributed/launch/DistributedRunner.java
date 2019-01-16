@@ -15,9 +15,10 @@ import java.util.Map;
 import static org.eclipse.epsilon.emc.emf.EmfModel.*;
 import org.eclipse.epsilon.common.util.FileUtil;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.emc.emf.EmfModel;
+import org.eclipse.epsilon.emc.emf.DistributableEmfModel;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.*;
+import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
 import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
@@ -40,12 +41,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 			modelPath = fileProtocol + args[1],
 			metamodelPath = fileProtocol + args[2];
 		
-		IModel model = new EmfModel() {
-			protected org.eclipse.emf.ecore.resource.ResourceSet createResourceSet() {
-				return new org.eclipse.emf.ecore.resource.impl.ResourceSetImpl();
-			}
-		};
-		
+		IModel model = new DistributableEmfModel();
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
 		properties.put(PROPERTY_CACHED, true);
@@ -57,9 +53,10 @@ public class DistributedRunner extends EvlRunConfiguration {
 
 		int parallelism = args.length > 3 ? Integer.parseInt(args[3]) : -1;
 		
-		EvlModuleDistributedMaster module = args.length > 4 && args[4].toLowerCase().contains("batch") ?
-			new EvlModuleDistributedFlinkSubset(parallelism) :
-			new EvlModuleDistributedFlinkAtoms(parallelism);
+		EvlModuleDistributedMaster module = args.length > 4 && (
+				args[4].toLowerCase().contains("batch")  || args[4].toLowerCase().contains("subset")
+			) ?
+			new EvlModuleDistributedFlinkSubset(parallelism) : new EvlModuleDistributedFlinkAtoms(parallelism);
 		
 		String outputFile = args.length > 5 ? args[5] : null;
 		
@@ -67,27 +64,8 @@ public class DistributedRunner extends EvlRunConfiguration {
 		new DistributedRunner(scriptPath, model, properties, module, outputFile).run();
 	}
 	
-	
 	public DistributedRunner(EvlRunConfiguration other) {
 		super(other);
-	}
-	
-	private static Builder<DistributedRunner, ?> builderForParams(
-		String evlFile,
-		IModel model,
-		StringProperties modelProperties,
-		EvlModuleDistributedMaster evlModule,
-		String outputFile
-	) {
-		Builder<DistributedRunner, ?> builder = Builder(DistributedRunner.class)
-				.withScript(Paths.get(evlFile))
-				.withModel(model, modelProperties)
-				.withModule(evlModule)
-				.withProfiling();
-		if (outputFile != null && !outputFile.trim().isEmpty()) {
-			builder = builder.withOutputFile(outputFile);
-		}
-		return builder;
 	}
 	
 	DistributedRunner(
@@ -97,8 +75,15 @@ public class DistributedRunner extends EvlRunConfiguration {
 		EvlModuleDistributedMaster evlModule,
 		String outputFile
 	) {
-		super(builderForParams(evlFile, model, modelProperties, evlModule, outputFile));
-		evlModule.getContext().setModelProperties(this.modelsAndProperties.values());
+		super(Builder(DistributedRunner.class)
+			.withScript(Paths.get(evlFile))
+			.withModel(model, modelProperties)
+			.withModule(evlModule)
+			.withProfiling()
+		);
+		EvlContextDistributedMaster context = evlModule.getContext();
+		context.setModelProperties(this.modelsAndProperties.values());
+		context.setOutputPath(outputFile);
 	}
 	
 	/**
