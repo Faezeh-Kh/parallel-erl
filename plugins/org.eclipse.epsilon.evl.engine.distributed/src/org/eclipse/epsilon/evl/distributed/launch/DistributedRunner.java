@@ -40,10 +40,15 @@ public class DistributedRunner extends EvlRunConfiguration {
 			modelPath = fileProtocol + args[1],
 			metamodelPath = fileProtocol + args[2];
 		
-		IModel model = new EmfModel();	// In theory no reason why it must be EMF, though keeps it simple for the time being
+		IModel model = new EmfModel() {
+			protected org.eclipse.emf.ecore.resource.ResourceSet createResourceSet() {
+				return new org.eclipse.emf.ecore.resource.impl.ResourceSetImpl();
+			}
+		};
+		
 		StringProperties properties = new StringProperties();
 		properties.put(PROPERTY_CONCURRENT, true);
-		properties.put(PROPERTY_CACHED, true);	// Should be false in local mode if using EMF due to singleton registry / caches
+		properties.put(PROPERTY_CACHED, true);
 		properties.put(PROPERTY_READONLOAD, true);
 		properties.put(PROPERTY_STOREONDISPOSAL, false);
 		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
@@ -55,9 +60,11 @@ public class DistributedRunner extends EvlRunConfiguration {
 		EvlModuleDistributedMaster module = args.length > 4 && args[4].toLowerCase().contains("batch") ?
 			new EvlModuleDistributedFlinkSubset(parallelism) :
 			new EvlModuleDistributedFlinkAtoms(parallelism);
-
+		
+		String outputFile = args.length > 5 ? args[5] : null;
+		
 		System.out.println("Using "+module.getClass().getSimpleName()+'\n');
-		new DistributedRunner(scriptPath, model, properties, module).run();
+		new DistributedRunner(scriptPath, model, properties, module, outputFile).run();
 	}
 	
 	
@@ -65,18 +72,32 @@ public class DistributedRunner extends EvlRunConfiguration {
 		super(other);
 	}
 	
+	private static Builder<DistributedRunner, ?> builderForParams(
+		String evlFile,
+		IModel model,
+		StringProperties modelProperties,
+		EvlModuleDistributedMaster evlModule,
+		String outputFile
+	) {
+		Builder<DistributedRunner, ?> builder = Builder(DistributedRunner.class)
+				.withScript(Paths.get(evlFile))
+				.withModel(model, modelProperties)
+				.withModule(evlModule)
+				.withProfiling();
+		if (outputFile != null && !outputFile.trim().isEmpty()) {
+			builder = builder.withOutputFile(outputFile);
+		}
+		return builder;
+	}
+	
 	DistributedRunner(
 		String evlFile,
 		IModel model,
 		StringProperties modelProperties,
-		EvlModuleDistributedMaster evlModule
+		EvlModuleDistributedMaster evlModule,
+		String outputFile
 	) {
-		super(Builder(DistributedRunner.class)
-			.withScript(Paths.get(evlFile))
-			.withModel(model, modelProperties)
-			.withModule(evlModule)
-			.withProfiling()
-		);
+		super(builderForParams(evlFile, model, modelProperties, evlModule, outputFile));
 		evlModule.getContext().setModelProperties(this.modelsAndProperties.values());
 	}
 	

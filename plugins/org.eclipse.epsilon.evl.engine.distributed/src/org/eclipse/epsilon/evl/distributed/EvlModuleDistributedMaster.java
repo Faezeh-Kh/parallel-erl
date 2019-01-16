@@ -38,7 +38,7 @@ import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException
  * by this module as they appear), the {@link #deserializeResult(SerializableEvlResultAtom)} method
  * can be used to rebuild the unsatisfied constraints and apply them to the context. Otherwise if
  * the processing is blocking (i.e. the master must wait for all results to become available), then
- * {@link #assignConstraintsFromResults(Stream)} can be used.
+ * {@link #assignDeserializedResults(Stream)} can be used.
  * 
  * @see {@link EvlModuleDistributedSlave}
  * @author Sina Madani
@@ -69,7 +69,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModule {
 	 * 
 	 * @param results The serialized {@linkplain UnsatisfiedConstraint}s
 	 */
-	protected void assignConstraintsFromResults(Stream<SerializableEvlResultAtom> results) {
+	protected void assignDeserializedResults(Stream<SerializableEvlResultAtom> results) {
 		getContext().setUnsatisfiedConstraints(
 			results
 				.map(this::deserializeResult)

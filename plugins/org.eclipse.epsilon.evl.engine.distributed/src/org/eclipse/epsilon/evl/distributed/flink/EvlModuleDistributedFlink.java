@@ -12,13 +12,16 @@ package org.eclipse.epsilon.evl.distributed.flink;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 
 /**
+ * Convenience base class for Flink EVL modules.
  * 
  * @author Sina Madani
  * @since 1.6
@@ -48,13 +51,23 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 		executionEnv.setParallelism(parallelism);
 	}
 	
-	protected abstract void processDistributed(final ExecutionEnvironment execEnv) throws Exception;
+	protected abstract DataSet<SerializableEvlResultAtom> getProcessingPipeline(final ExecutionEnvironment execEnv) throws Exception;
 	
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {
 		try {
-			executionEnv.getConfig().setGlobalJobParameters(getJobConfiguration());
-			processDistributed(executionEnv);
+			Configuration config = getJobConfiguration();
+			String outputFile = config.getString("outputFile", "");
+			executionEnv.getConfig().setGlobalJobParameters(config);
+			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv);
+			
+			if (!outputFile.isEmpty()) {
+				pipeline.writeAsText(outputFile);
+				executionEnv.execute();
+			}
+			else {
+				assignDeserializedResults(pipeline.collect().parallelStream());
+			}
 		}
 		catch (Exception ex) {
 			EolRuntimeException.propagate(ex);

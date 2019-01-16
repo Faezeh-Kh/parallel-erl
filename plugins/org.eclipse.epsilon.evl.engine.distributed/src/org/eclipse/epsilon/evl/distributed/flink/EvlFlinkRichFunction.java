@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.flink.api.common.ExecutionConfig.GlobalJobParameters;
 import org.apache.flink.api.common.functions.AbstractRichFunction;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
@@ -36,9 +37,8 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 	protected transient EvlModuleDistributedSlave localModule;
 	protected transient DistributedRunner configContainer;
 	
-	@Override
-	public void open(Configuration additionalParameters) throws Exception {
-		GlobalJobParameters globalParameters = getRuntimeContext().getExecutionConfig().getGlobalJobParameters();
+	public static Configuration getParameters(RuntimeContext context, Configuration additionalParameters) {
+		GlobalJobParameters globalParameters = context.getExecutionConfig().getGlobalJobParameters();
 		Configuration parameters = null;
 		if (globalParameters instanceof Configuration) {
 			parameters = (Configuration) globalParameters;
@@ -50,6 +50,13 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 		if (parameters == null || parameters.toMap().isEmpty()) {
 			parameters = additionalParameters;
 		}
+		
+		return parameters;
+	}
+	
+	@Override
+	public void open(Configuration additionalParameters) throws Exception {
+		Configuration parameters = getParameters(getRuntimeContext(), additionalParameters);
 		
 		Path evlScriptPath = Paths.get(parameters.getString("evlScript", null));
 		

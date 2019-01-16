@@ -18,46 +18,55 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.format;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.configuration.Configuration;
-import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.distributed.flink.EvlFlinkRichFunction;
 
 /**
- * A sink used for testing and debugging purposes.
+ * Sink used for reporting results.
  * 
  * @author Sina Madani
  * @since 1.6
  */
 public class EvlFlinkOutputFormat extends RichOutputFormat<SerializableEvlResultAtom> {
 
-	private static final long serialVersionUID = -8376881617321903525L;
+	private static final long serialVersionUID = 7282312925441901644L;
 	
-	private int i = 0;
-	private long startTime, endTime;
-
-	@Override
-	public void configure(Configuration parameters) {
-		// TODO Auto-generated method stub
-		
-	}
+	transient BufferedWriter writer;
+	String outputPath;
 
 	@Override
 	public void open(int taskNumber, int numTasks) throws IOException {
-		startTime = System.nanoTime();
+		if (!outputPath.isEmpty()) {
+			writer = new BufferedWriter(new FileWriter(outputPath));
+		}
+	}
+	
+	@Override
+	public void configure(Configuration additionalParameters) {
+		Configuration parameters = EvlFlinkRichFunction.getParameters(getRuntimeContext(), additionalParameters);
+		outputPath = parameters.getString("outputFile", "");
 	}
 
 	@Override
 	public void writeRecord(SerializableEvlResultAtom record) throws IOException {
-		i++;
+		String text = record.toString()+"\n";
+		
+		if (writer != null) {
+			writer.write(text);
+		}
+		else {
+			System.out.print(text);
+		}
 	}
 
 	@Override
 	public void close() throws IOException {
-		endTime = System.nanoTime();
-		String duration = BenchmarkUtils.formatExecutionTime(endTime-startTime);
-		System.out.println("Processed "+i+" jobs in "+duration);
+		writer.close();
 	}
-	
+
 }

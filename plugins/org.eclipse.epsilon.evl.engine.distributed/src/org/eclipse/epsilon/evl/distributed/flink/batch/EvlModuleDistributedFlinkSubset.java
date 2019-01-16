@@ -9,8 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.batch;
 
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
 
 /**
@@ -34,12 +36,7 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 	}
 
 	@Override
-	protected void processDistributed(ExecutionEnvironment execEnv) throws Exception {
-		assignConstraintsFromResults(
-			execEnv.fromCollection(DistributedEvlBatch.getBatches(getContext()))
-				.flatMap(new EvlFlinkSubsetFlatMapFunction())
-				.collect()
-				.parallelStream()
-		);
+	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
+		return execEnv.fromCollection(DistributedEvlBatch.getBatches(getContext())).flatMap(new EvlFlinkSubsetFlatMapFunction());
 	}
 }
