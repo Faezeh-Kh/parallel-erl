@@ -307,10 +307,10 @@ if isGenerate:
         for modelSize in modelSizes:
             for foopScript in imdbFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, 'imdb-'+modelSize))
-            for foopScript in imdbParallelFOOPScripts[:3]:
+            for foopScript in imdbParallelFOOPScripts[:2]:
                 for module in eolModulesDefault[1:]:
                     firstOrderScenarios.append((module, foopScript, 'imdb-'+modelSize))
-            for foopScript in imdbParallelFOOPScripts[3:]:
+            for foopScript in imdbParallelFOOPScripts[2:]:
                 firstOrderScenarios.append((eolModulesDefault[-1], foopScript, 'imdb-'+modelSize))
         write_benchmark_scenarios(name, firstOrderScenarios)
 
