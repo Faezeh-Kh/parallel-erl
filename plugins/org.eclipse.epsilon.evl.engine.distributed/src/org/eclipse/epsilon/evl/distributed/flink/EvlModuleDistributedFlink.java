@@ -15,6 +15,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
@@ -62,7 +63,7 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv);
 			
 			if (outputPath != null && !outputPath.isEmpty()) {
-				pipeline.writeAsText(outputPath);
+				pipeline.writeAsText(outputPath, WriteMode.OVERWRITE);
 				executionEnv.execute();
 			}
 			else {
