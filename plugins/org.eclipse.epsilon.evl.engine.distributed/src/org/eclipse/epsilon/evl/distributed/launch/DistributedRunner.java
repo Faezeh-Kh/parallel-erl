@@ -60,7 +60,6 @@ public class DistributedRunner extends EvlRunConfiguration {
 		
 		String outputFile = args.length > 5 ? args[5] : null;
 		
-		System.out.println("Using "+module.getClass().getSimpleName()+'\n');
 		new DistributedRunner(scriptPath, model, properties, module, outputFile).run();
 	}
 	
