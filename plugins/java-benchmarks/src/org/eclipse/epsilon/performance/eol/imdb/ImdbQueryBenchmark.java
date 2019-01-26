@@ -1,3 +1,14 @@
+/*********************************************************************
+ * Copyright (c) 2019 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
+package org.eclipse.epsilon.performance.eol.imdb;
+
 import java.util.Collection;
 import java.util.Set;
 import java.util.stream.StreamSupport;
@@ -10,15 +21,10 @@ import org.eclipse.epsilon.eol.execute.operations.contributors.IterableOperation
 import org.eclipse.epsilon.eol.function.CheckedEolRunnable;
 import org.eclipse.epsilon.eol.types.EolSet;
 
-/*********************************************************************
- * Copyright (c) 2019 The University of York.
- *
- * This program and the accompanying materials are made
- * available under the terms of the Eclipse Public License 2.0
- * which is available at https://www.eclipse.org/legal/epl-2.0/
- *
- * SPDX-License-Identifier: EPL-2.0
-**********************************************************************/
+/**
+ * 
+ * @author Sina Madani
+ */
 public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 
 	static class Builder extends ProfilableRunConfiguration.Builder<ImdbQueryBenchmark, Builder> {
@@ -79,13 +85,21 @@ public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 	}
 	
 	public static void main(String... args) throws Exception {
-		if (args.length < 4) throw new IllegalArgumentException("Must include path to model, metamodel, whether to parallelise and output file!");
+		if (args.length < 4) throw new IllegalArgumentException(
+			"Must include path to model, metamodel, output file and whether to parallelise!"
+		);
 		var modelPath = args[0];
 		var metamodelPath = args[1];
 		var parallel = Boolean.valueOf(args[2]);
 		var resultsFile = args[3];
 		
-		new Builder().withOutputFile(resultsFile).withProfiling().withModel(modelPath, metamodelPath).parallel(parallel).build().run();
+		new Builder()
+			.withOutputFile(resultsFile)
+			.withProfiling()
+			.withModel(modelPath, metamodelPath)
+			.parallel(parallel)
+			.build()
+			.run();
 	}
 	
 	Set<?> coactors(Object self) {

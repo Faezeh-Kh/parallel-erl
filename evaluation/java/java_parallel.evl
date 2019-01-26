@@ -8,16 +8,16 @@ operation Modifier isLocal() : Boolean {
 }
 
 operation AbstractTypeDeclaration implements(type : String) {
-	return self.superInterfaces.exists(si | si.type.name == type);
+	return self.superInterfaces.parallelExists(si | si.type.name == type);
 }
 
 @cached
 operation AbstractTypeDeclaration getMethods() : Collection {
-	return self.bodyDeclarations.select(bd | bd.isKindOf(MethodDeclaration));
+	return self.bodyDeclarations.parallelSelect(bd | bd.isKindOf(MethodDeclaration));
 }
 
 operation ClassDeclaration hasEquals() : Boolean {
-	return self.getMethods().exists(method |
+	return self.getMethods().parallelExists(method |
 			method.name == "equals" and
 			method.parameters.size() == 1 and
 			method.parameters.first().type.type.name == "Object" and
@@ -29,7 +29,7 @@ operation ClassDeclaration hasEquals() : Boolean {
 }
 
 operation ClassDeclaration hasHashcode() : Boolean {
-	return self.getMethods().exists(method |
+	return self.getMethods().parallelExists(method |
 			method.name == "hashCode" and
 			method.parameters.isEmpty() and
 			method.thrownExceptions.isEmpty() and
@@ -40,7 +40,7 @@ operation ClassDeclaration hasHashcode() : Boolean {
 }
 
 operation ClassDeclaration hasCompareTo() : Boolean {
-	return self.getMethods().exists(method | 
+	return self.getMethods().parallelExists(method | 
 			method.name == "compareTo" and
 			method.parameters.size() == 1 and
 			method.parameters.first().type.type.name == "Object" and
@@ -51,7 +51,7 @@ operation ClassDeclaration hasCompareTo() : Boolean {
 	);
 }
 
-$parallel self.size() > THREADS
+@parallel
 context MethodInvocation {
 	guard: self.method.isDefined()
 	
@@ -62,6 +62,7 @@ context MethodInvocation {
 		) 
 	}
 	
+	@parallel
 	constraint doesNotCallExit {
 		check: not (
 			self.method.name = "exit" and
@@ -80,6 +81,7 @@ context MethodInvocation {
 }
 
 context AbstractMethodDeclaration {
+	@parallel
 	constraint localMethodIsUsed {
 		guard: self.modifier.isDefined() and self.modifier.isLocal()
 		check: self.usages.notEmpty()
@@ -88,12 +90,12 @@ context AbstractMethodDeclaration {
 	constraint parametersEffectivelyFinal {
 		guard: self.body.isDefined() and self.parameters.notEmpty()
 		check: self.body.statements
-				.select(s |
+				.parallelSelect(s |
 					s.isKindOf(ExpressionStatement) and
 					s.expression.isKindOf(Assignment)
 				)
-				.collect(s | s.expression)
-				.select(assignment |
+				.parallelCollect(s | s.expression)
+				.parallelSelect(assignment |
 					assignment.leftHandSide.isKindOf(SingleVariableAccess) and
 					assignment.operator == AssignmentKind#ASSIGN and
 					assignment.leftHandSide.isKindOf(SingleVariableAccess) and
@@ -114,9 +116,8 @@ context ClassDeclaration {
 		}
 	}
 	
-	$parallel self.getMethods().size() >= 25
 	constraint noCovariantEquals {
-		guard: self.getMethods().exists(method |
+		guard: self.getMethods().parallelExists(method |
 			method.name = "equals" and
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind#public and
@@ -126,7 +127,7 @@ context ClassDeclaration {
 	}
 	
 	constraint noCovariantCompareTo {
-		guard: self.getMethods().exists(method | 
+		guard: self.getMethods().parallelExists(method | 
 			method.name == "compareTo" and
 			method.modifier.isDefined() and
 			method.modifier.visibility == VisibilityKind#public and
@@ -137,7 +138,7 @@ context ClassDeclaration {
 	
 	constraint cloneInCloneable {
 		guard: self.implements("Cloneable")
-		check: self.getMethods().exists(md |
+		check: self.getMethods().parallelExists(md |
 			md.name == "clone" and
 			md.parameters.isEmpty() and
 			md.thrownExceptions.size() == 1 and
@@ -147,6 +148,7 @@ context ClassDeclaration {
 		)
 	}
 	
+	$parallel true
 	constraint noRedundantInterfaceImpl {
 		guard: self.superInterfaces.isDefined() and
 			self.superClass.isDefined() and
@@ -162,22 +164,31 @@ context ClassDeclaration {
 	
 	constraint noObscuredVariables {
 		check {
-			var fields = self.bodyDeclarations.select(bd | bd.isKindOf(FieldDeclaration));
+			var fields = self.bodyDeclarations.parallelSelect(bd | bd.isKindOf(FieldDeclaration));
 			return
 				self.bodyDeclarations
-					.select(bd | bd.isKindOf(AbstractMethodDeclaration))
+					.parallelSelect(bd | bd.isKindOf(AbstractMethodDeclaration))
 					.forAll(md | md.body.isDefined() implies md.body.statements
-						.select(s | s.isKindOf(VariableDeclaration))
-						.forAll(vd | fields.forAll(fd | fd.name <> vd.name))
+						.parallelSelect(s | s.isKindOf(VariableDeclaration))
+						.parallelForAll(vd | fields.forAll(fd | fd.name <> vd.name))
 					);
 		}
 	}
 }
 
+$parallel self == null
 context CompilationUnit {
+	$parallel THREADS < 1
 	constraint allImportsAreUsed {
 		check: self.imports.forAll(imp |
-			NamedElement.allInstances().exists(ne | ne.originalCompilationUnit == self)
+			NamedElement.allInstances().parallelExists(ne | ne.originalCompilationUnit == self)
 		)
+	}
+}
+
+$parallel NUM_ELEMENTS > 131072
+context NamedElement {
+	constraint notVar {
+		check: self.name <> "var"
 	}
 }

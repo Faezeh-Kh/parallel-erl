@@ -16,7 +16,7 @@ operation Movie movieQuery() : Boolean {
 operation Person areCoupleCoactors(co : Person) : Boolean {
 	return
 		self.name.compareTo(co.name) < 0 and
-		co.movies.size() >= threshold.asInteger() and
+		co.movies.size() >= 3 and
 		self.areCouple(co);
 }
 
@@ -31,5 +31,5 @@ operation Person coactors() : Set(movies!Person) {
 
 @cached
 operation Person areCouple(p : Person) : Boolean {
-	return self.movies.excludingAll(p.movies).size() <= (self.movies.size() - threshold.asInteger());
+	return self.movies.excludingAll(p.movies).size() <= (self.movies.size() - 3);
 }

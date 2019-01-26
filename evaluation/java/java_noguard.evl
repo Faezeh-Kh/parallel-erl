@@ -14,7 +14,6 @@ operation AbstractTypeDeclaration implements(type : String) {
 	return self.superInterfaces.exists(si | si.type.name == type);
 }
 
-@cached
 operation AbstractTypeDeclaration getMethods() : Collection {
 	return self.bodyDeclarations.select(bd | bd.isKindOf(MethodDeclaration));
 }
@@ -54,31 +53,33 @@ operation ClassDeclaration hasCompareTo() : Boolean {
 	);
 }
 
-@parallel
 context MethodInvocation {
-	guard: self.method.isDefined()
+	//guard: self.method.isDefined()
 	
 	constraint doesNotCallFinalize {
-		check: not (
-			self.method.name == "finalize" and
-			self.method.parameters.isEmpty()
-		) 
+		check: self.method.isDefined() implies
+			not (
+				self.method.name == "finalize" and
+				self.method.parameters.isEmpty()
+			) 
 	}
 	
 	constraint doesNotCallExit {
-		check: not (
-			self.method.name = "exit" and
-			self.method.parameters.size() == 1 and
-			self.method.parameters.first().type.type.isTypeOf(PrimitiveTypeInt)
-		)
+		check: self.method.isDefined() implies
+			not (
+				self.method.name = "exit" and
+				self.method.parameters.size() == 1 and
+				self.method.parameters.first().type.type.isTypeOf(PrimitiveTypeInt)
+			)
 	}
 	
 	constraint doesNotCallRunFinalizers {
-		check: not (
-			self.method.name = "runFinalizersOnExit" and
-			self.method.parameters.size() == 1 and
-			self.method.parameters.first().type.type.isTypeOf(PrimitiveTypeBoolean)
-		)
+		check: self.method.isDefined() implies
+			not (
+				self.method.name = "runFinalizersOnExit" and
+				self.method.parameters.size() == 1 and
+				self.method.parameters.first().type.type.isTypeOf(PrimitiveTypeBoolean)
+			)
 	}
 }
 
@@ -90,14 +91,15 @@ context MethodDeclaration {
 
 context AbstractMethodDeclaration {
 	constraint localMethodIsUsed {
-		guard: self.modifier.isDefined() and self.modifier.isLocal()
-		check: self.usages.notEmpty()
+		//guard: self.modifier.isDefined() and self.modifier.isLocal()
+		check: self.modifier.isDefined() and self.modifier.isLocal() implies
+			self.usages.notEmpty()
 	}
 	
-	@parallel
 	constraint parametersEffectivelyFinal {
-		guard: self.body.isDefined() and self.parameters.notEmpty()
-		check: self.body.statements
+		//guard: self.body.isDefined() and self.parameters.notEmpty()
+		check: self.body.isDefined() and self.parameters.notEmpty() implies
+			self.body.statements
 				.select(s |
 					s.isKindOf(ExpressionStatement) and
 					s.expression.isKindOf(Assignment)
@@ -115,8 +117,9 @@ context AbstractMethodDeclaration {
 
 context Assignment {
 	constraint noRedundantAssignments {
-		guard: self.operator == AssignmentKind#ASSIGN
-		check: self.leftHandSide <> self.rightHandSide
+		//guard: self.operator == AssignmentKind#ASSIGN
+		check: self.operator == AssignmentKind#ASSIGN implies
+			self.leftHandSide <> self.rightHandSide
 	}
 }
 
@@ -128,15 +131,17 @@ context VariableDeclaration {
 
 context VariableDeclarationStatement {
 	constraint publicVariableIsFinal {
-		guard: self.modifier.visibility == VisibilityKind#public
-		check: self.modifier.inheritance == InheritanceKind#final
+		//guard: self.modifier.visibility == VisibilityKind#public
+		check: self.modifier.visibility == VisibilityKind#public implies
+			self.modifier.inheritance == InheritanceKind#final
 	}
 }
 
 context VariableDeclarationExpression {
 	constraint publicVariableIsFinal {
-		guard: self.modifier.visibility == VisibilityKind#public
-		check: self.modifier.inheritance == InheritanceKind#final
+		//guard: self.modifier.visibility == VisibilityKind#public
+		check: self.modifier.visibility == VisibilityKind#public implies
+			self.modifier.inheritance == InheritanceKind#final
 	}
 }
 
@@ -151,8 +156,9 @@ context CatchClause {
 
 context Block {
 	constraint emptyBlockIsDocumented {
-		guard: self.statements.isEmpty()
-		check: self.comments.notEmpty()
+		//guard: self.statements.isEmpty()
+		check: self.statements.isEmpty() implies
+			self.comments.notEmpty()
 	}
 }
 
@@ -181,7 +187,6 @@ context IfStatement {
 }
 
 context ClassDeclaration {
-	@parallel
 	constraint hashCodeAndEquals {
 		check {
 			var hasEquals = self.hasEquals();
@@ -193,74 +198,91 @@ context ClassDeclaration {
 	}
 	
 	constraint noCovariantEquals {
-		guard: self.getMethods().exists(method |
+		/*guard: self.getMethods().exists(method |
 			method.name = "equals" and
 			method.modifier <> null and
 			method.modifier.visibility = VisibilityKind#public and
 			method.returnType.type.isTypeOf(PrimitiveTypeBoolean)
-		)
-		check: self.hasEquals()
+		)*/
+		check: self.getMethods().exists(method |
+			method.name = "equals" and
+			method.modifier <> null and
+			method.modifier.visibility = VisibilityKind#public and
+			method.returnType.type.isTypeOf(PrimitiveTypeBoolean)
+		) implies
+			self.hasEquals()
 	}
 	
 	constraint noCovariantCompareTo {
-		guard: self.getMethods().exists(method | 
+		/*guard: self.getMethods().exists(method | 
 			method.name == "compareTo" and
 			method.modifier.isDefined() and
 			method.modifier.visibility == VisibilityKind#public and
 			method.returnType.type.isTypeOf(PrimitiveTypeInt)
-		)
-		check: self.hasCompareTo()
+		)*/
+		check: self.getMethods().exists(method | 
+			method.name == "compareTo" and
+			method.modifier.isDefined() and
+			method.modifier.visibility == VisibilityKind#public and
+			method.returnType.type.isTypeOf(PrimitiveTypeInt)
+		) implies
+			self.hasCompareTo()
 	}
 	
-	@parallel
 	constraint equalsAndCompareTo {
-		guard: self.hasCompareTo()
-		check: self.hasEquals()
+		//guard: self.hasCompareTo()
+		check: self.hasCompareTo() implies
+			self.hasEquals()
 	}
 	
 	constraint cloneInCloneable {
-		guard: self.implements("Cloneable")
-		check: self.getMethods().exists(md |
-			md.name == "clone" and
-			md.parameters.isEmpty() and
-			md.thrownExceptions.size() == 1 and
-			md.thrownExceptions.first().type.name == "CloneNotSupportedException" and
-			md.modifier.isDefined() and
-			md.modifier.visibility == VisibilityKind#public
-		)
+		//guard: self.implements("Cloneable")
+		check: self.implements("Cloneable") implies
+			self.getMethods().exists(md |
+				md.name == "clone" and
+				md.parameters.isEmpty() and
+				md.thrownExceptions.size() == 1 and
+				md.thrownExceptions.first().type.name == "CloneNotSupportedException" and
+				md.modifier.isDefined() and
+				md.modifier.visibility == VisibilityKind#public
+			)
 	}
 	
 	constraint serialUIDInSerializableClass {
-		guard: self.implements("Serializable")
-		check: self.bodyDeclarations.exists(bd |
-			bd.isKindOf(FieldDeclaration) and
-			bd.name == "serialVersionUID" and
-			bd.modifier.static and
-			bd.modifier.inheritance == InheritanceKind#final and
-			bd.type.type.isTypeOf(PrimitiveTypeLong)
-		)
+		//guard: self.implements("Serializable")
+		check: self.implements("Serializable") implies
+			self.bodyDeclarations.exists(bd |
+				bd.isKindOf(FieldDeclaration) and
+				bd.name == "serialVersionUID" and
+				bd.modifier.static and
+				bd.modifier.inheritance == InheritanceKind#final and
+				bd.type.type.isTypeOf(PrimitiveTypeLong)
+			)
 	}
 	
-	@parallel
 	constraint noRedundantInterfaceImpl {
-		guard: self.superInterfaces.isDefined() and
+		/*guard: self.superInterfaces.isDefined() and
 			self.superClass.isDefined() and
 			self.superClass.type.isKindOf(ClassDeclaration) and
 			self.superClass.type.superInterfaces.isDefined()
-		
-		check: self.superInterfaces.exists(tIface |
-			self.superClass.type.isKindOf(AbstractTypeDeclaration) implies (
-				self.superClass.type.superInterfaces.includes(tIface)
-			)
+		*/
+		check: self.superInterfaces.isDefined() and
+			self.superClass.isDefined() and
+			self.superClass.type.isKindOf(ClassDeclaration) and
+			self.superClass.type.superInterfaces.isDefined() implies
+				self.superInterfaces.exists(tIface |
+				self.superClass.type.isKindOf(AbstractTypeDeclaration) implies (
+					self.superClass.type.superInterfaces.includes(tIface)
+				)
 		)
 	}
 	
 	constraint comparatorImplementsSerializable {
-		guard: self.implements("Comparator")
-		check: self.implements("Serializable")
+		//guard: self.implements("Comparator")
+		check: self.implements("Comparator") implies
+			self.implements("Serializable")
 	}
 	
-	@parallel
 	constraint noObscuredVariables {
 		check {
 			var fields = self.bodyDeclarations.select(bd | bd.isKindOf(FieldDeclaration));
@@ -275,29 +297,40 @@ context ClassDeclaration {
 	}
 }
 
+context CompilationUnit {
+	constraint allImportsAreUsed {
+		check: self.imports.forAll(imp |
+			NamedElement.allInstances().exists(ne | ne.originalCompilationUnit == self)
+		)
+	}
+}
+
 context InfixExpression {
 	constraint noRedundantComparison {
 		check: self.leftOperand <> self.rightOperand
 	}
 	
 	constraint equalsNotOnLiterals {
-		guard: self.operatorIsEquality()
-		check: self.leftOperand.type() == self.rightOperand.type() and not (
-				self.leftOperand.isTypeOf(StringLiteral) or
-				self.leftOperand.isTypeOf(NumberLiteral) or
-				self.leftOperand.isTypeOf(CharacterLiteral) or
-				self.leftOperand.isTypeOf(BooleanLiteral) or
-				self.leftOperand.isTypeOf(NullLiteral) or
-				self.leftOperand.isTypeOf(TypeLiteral)
+		//guard: self.operatorIsEquality()
+		check: self.operatorIsEquality() implies (
+			self.leftOperand.type() == self.rightOperand.type() and not (
+					self.leftOperand.isTypeOf(StringLiteral) or
+					self.leftOperand.isTypeOf(NumberLiteral) or
+					self.leftOperand.isTypeOf(CharacterLiteral) or
+					self.leftOperand.isTypeOf(BooleanLiteral) or
+					self.leftOperand.isTypeOf(NullLiteral) or
+					self.leftOperand.isTypeOf(TypeLiteral)
+				)
 			)
 	}
 	
 	constraint equalsNotOnStrings {
-		guard: self.operatorIsEquality()
-		check: not (
-			self.leftOperand.isTypeOf(StringLiteral) or
-			self.rightOperand.isTypeOf(StringLiteral)
-		)
+		//guard: self.operatorIsEquality()
+		check: self.operatorIsEquality() implies
+			not (
+				self.leftOperand.isTypeOf(StringLiteral) or
+				self.rightOperand.isTypeOf(StringLiteral)
+			)
 	}
 }
 

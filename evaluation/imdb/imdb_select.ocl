@@ -1,0 +1,10 @@
+import imdb : '../metamodels/movies.ecore'
+
+package movies
+
+context Person
+	def: result : Integer = 2
+	
+--	Person->allInstances()->size().select(a | a.coactors().exists(co | a.areCoupleCoactors(co))).size().println();
+
+endpackage

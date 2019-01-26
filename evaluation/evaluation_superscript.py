@@ -235,14 +235,13 @@ validationModulesDefault = evlModulesDefault + oclModules
 # First-Order Operations
 imdbFOOPScripts = ['imdb_select', 'imdb_selectOne', 'imdb_filter']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
-foopParams = '-parameters threshold=3'
 eolModule = 'EolModule'
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
-eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule+' '+foopParams]]
+eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr+' '+foopParams])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr])
 
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
