@@ -1,0 +1,3 @@
+import "imdb_foop.eol";
+
+Person.allInstances().count(a | a.coactors().exists(co | a.areCoupleCoactors(co))).println();

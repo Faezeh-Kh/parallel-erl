@@ -32,8 +32,6 @@ def makePathIfNotExists(path):
 
 isGenerate = args.mode == 'GENERATE'
 nL = '\n'
-jar = '.jar'
-xmi = '.xmi'
 intermediateExt = '.txt'
 resultsExt = '.csv'
 rootDir = defaultPath(args.rootDir, os.getcwd())
@@ -188,8 +186,8 @@ eclipsePrefix = 'eclipseModel-'
 imdbPrefix = 'imdb-'
 imdbRanges = ['all', '0.1', '0.2'] + [str(round(i/10, 1)) for i in range(5, 35, 5)]
 eclipseRanges = imdbRanges + ['3.5', '4.0']
-imdbModels = [imdbPrefix + imdbR + xmi for imdbR in imdbRanges]
-javaModels = [eclipsePrefix + eclipseR + xmi for eclipseR in eclipseRanges]
+imdbModels = [imdbPrefix + imdbR + '.xmi' for imdbR in imdbRanges]
+javaModels = [eclipsePrefix + eclipseR + '.xmi' for eclipseR in eclipseRanges]
 
 javaValidationScripts = [
     'java_findbugs',
@@ -205,9 +203,6 @@ javaValidationScripts = [
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
     'EvlModuleParallelElements'
-    #'EvlModuleParallelStaged',
-    #'EvlModuleParallelConstraints',
-    #'EvlModuleParallelRandom'
 ]
 evlModules = ['EvlModule'] + evlParallelModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
@@ -216,7 +211,7 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
-    (dblpMM, ['dblp_isbn.evl'], ['dblp-all'+xmi])
+    (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi'])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
@@ -233,8 +228,9 @@ programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScrip
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations
-imdbFOOPScripts = ['imdb_select', 'imdb_selectOne', 'imdb_filter']
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
+imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_selectOne', 'imdb_filter']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
+compiledEOLScripts = ['imdb_filter', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
@@ -245,11 +241,14 @@ for numThread in threads:
 
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
+for p in compiledEOLScripts:
+    programs.append(['EOL_'+p, [(imdbMM, [p], imdbModels)], [['Java']]])
 
 if isGenerate:
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
         isOCL = program.startswith('OCL')
+        selfContained = len(program) > 3 and program[3] == '_'
         programSubset = []
         progFilePre = program+'_run_'
         for metamodel, scripts, models in scenarios:
@@ -267,19 +266,27 @@ if isGenerate:
                         if jmc:
                             command += stdDir + fileName + '.jfr'
                         command += ' -jar "'+ binDir
-                        command += 'OCL' if isOCL else 'epsilon-engine'
-                        command += jar +'" "'+ scriptDir+script +'" '
-                        if isOCL:
-                            command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
+                        command += program if isOCL or selfContained else 'epsilon-engine'
+                        command += '.jar"'
+
+                        if not selfContained:
+                            command += ' "'+ scriptDir+script +'" '
+                            if isOCL:
+                                command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
+                            else:
+                                command += '-models "emf.EmfModel#cached=true,concurrent=true,parallel=true'+ \
+                                ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
+                                ',modelUri=file:///' + modelDir+model
+                            command += '" -profile'
                         else:
-                            command += '-models "emf.EmfModel#cached=true,concurrent=true,parallel=true'+ \
-                            ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
-                            ',modelUri=file:///' + modelDir+model
-                        command += '" -profile'
+                            command += ' "'+modelDir+model+'" "'+metamodelDir+metamodel+'"'
+                        
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
-                            command += ' -outfile "' + stdDir + fileName + intermediateExt + '"'
+                            if not selfContained:
+                                command += ' -outfile'
+                            command +=  ' "' + stdDir + fileName + intermediateExt + '"'
 
                         write_generated_file(fileName, [command])
                         modelSubset.append(subCmdPrefix +'"'+ fileName + fileExt + '"'+ subCmdSuffix)

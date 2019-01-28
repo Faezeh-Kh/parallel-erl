@@ -85,19 +85,26 @@ public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 	}
 	
 	public static void main(String... args) throws Exception {
-		if (args.length < 4) throw new IllegalArgumentException(
-			"Must include path to model, metamodel, output file and whether to parallelise!"
+		if (args.length < 3) throw new IllegalArgumentException(
+			"Must include path to model, metamodel and output file!"
 		);
 		var modelPath = args[0];
 		var metamodelPath = args[1];
-		var parallel = Boolean.valueOf(args[2]);
-		var resultsFile = args[3];
+		var resultsFile = args[2];
+		
+		var jarName = new java.io.File(ImdbQueryBenchmark.class
+			.getProtectionDomain()
+			.getCodeSource()
+			.getLocation()
+			.getPath()
+		)
+		.getName();
 		
 		new Builder()
 			.withOutputFile(resultsFile)
 			.withProfiling()
 			.withModel(modelPath, metamodelPath)
-			.parallel(parallel)
+			.parallel(jarName.toLowerCase().contains("parallel"))
 			.build()
 			.run();
 	}
