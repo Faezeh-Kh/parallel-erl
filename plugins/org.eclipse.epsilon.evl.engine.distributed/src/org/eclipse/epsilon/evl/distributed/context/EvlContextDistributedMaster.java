@@ -9,11 +9,11 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.context;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -85,8 +85,8 @@ public class EvlContextDistributedMaster extends EvlContext {
 	 * 
 	 * @return The configuration properties.
 	 */
-	public Map<String, ?> getJobParameters() {
-		Map<String, Object> config = new HashMap<>();
+	public HashMap<String, ? extends Serializable> getJobParameters() {
+		HashMap<String, Serializable> config = new HashMap<>();
 		
 		config.put("localParallelism", localParallelism);
 		config.put("distributedParallelism", distributedParallelism);

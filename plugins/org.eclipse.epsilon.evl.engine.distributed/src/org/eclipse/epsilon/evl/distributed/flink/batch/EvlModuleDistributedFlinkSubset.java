@@ -37,6 +37,8 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 
 	@Override
 	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
-		return execEnv.fromCollection(DistributedEvlBatch.getBatches(getContext())).flatMap(new EvlFlinkSubsetFlatMapFunction());
+		return execEnv
+			.fromCollection(DistributedEvlBatch.getBatches(getContext()))
+			.flatMap(new EvlFlinkSubsetFlatMapFunction());
 	}
 }

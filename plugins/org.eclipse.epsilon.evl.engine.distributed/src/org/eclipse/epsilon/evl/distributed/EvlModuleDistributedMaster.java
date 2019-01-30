@@ -46,10 +46,6 @@ import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException
  */
 public abstract class EvlModuleDistributedMaster extends EvlModule {
 
-	public EvlModuleDistributedMaster() {
-		this(0);
-	}
-
 	public EvlModuleDistributedMaster(int parallelism) {
 		context = new EvlContextDistributedMaster(0, parallelism);
 	}

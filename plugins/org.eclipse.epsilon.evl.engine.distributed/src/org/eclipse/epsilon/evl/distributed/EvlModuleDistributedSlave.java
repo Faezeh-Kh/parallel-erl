@@ -38,6 +38,10 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class EvlModuleDistributedSlave extends EvlModuleParallel {
 
+	public EvlModuleDistributedSlave() {
+		this(0);
+	}
+	
 	public EvlModuleDistributedSlave(int parallelism) {
 		context = new EvlContextDistributedSlave(parallelism);
 	}
