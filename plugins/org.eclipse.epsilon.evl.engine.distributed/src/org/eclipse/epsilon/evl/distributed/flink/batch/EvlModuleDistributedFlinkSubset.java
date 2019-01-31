@@ -9,11 +9,13 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.batch;
 
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
+import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
 /**
  * This distribution strategy splits the model elements into a preset
@@ -38,7 +40,10 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 	@Override
 	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
 		return execEnv
-			.fromCollection(DistributedEvlBatch.getBatches(getContext()))
+			.createInput(
+				new FlinkInputFormat<>(DistributedEvlBatch.getBatches(getContext())),
+				TypeInformation.of(DistributedEvlBatch.class)
+			)
 			.flatMap(new EvlFlinkSubsetFlatMapFunction());
 	}
 }
