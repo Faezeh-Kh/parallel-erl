@@ -9,11 +9,13 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.atomic;
 
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
-import org.eclipse.epsilon.evl.distributed.flink.format.EvlFlinkInputFormat;
+import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
 /**
  * Data-parallel evaluation strategy which works over elements.
@@ -33,6 +35,11 @@ public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink {
 
 	@Override
 	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
-		return execEnv.createInput(new EvlFlinkInputFormat(createJobs(true))).flatMap(new EvlFlinkAtomFlatMapFunction());
+		return execEnv
+			.createInput(
+				new FlinkInputFormat<>(createJobs(true)),
+				TypeInformation.of(SerializableEvlInputAtom.class)
+			)
+			.flatMap(new EvlFlinkAtomFlatMapFunction());
 	}
 }

@@ -29,7 +29,7 @@ public class ParallelFlinkIterator<T extends java.io.Serializable> extends Split
 	private final int sourceSize;
 	protected transient final Iterator<T> iterator;
 	
-	public ParallelFlinkIterator(List<T> source) {
+	public ParallelFlinkIterator(List<? extends T> source) {
 		this.iterator = (this.source = Collections.unmodifiableList(source)).iterator();
 		this.sourceSize = source.size();
 	}

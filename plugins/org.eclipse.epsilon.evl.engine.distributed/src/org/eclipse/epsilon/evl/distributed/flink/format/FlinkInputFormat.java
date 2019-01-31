@@ -9,9 +9,9 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.format;
 
+import java.io.Serializable;
 import java.util.List;
 import org.apache.flink.api.java.io.ParallelIteratorInputFormat;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 
 /**
  * Convenience class to be used as the source for Flink execution.
@@ -19,11 +19,11 @@ import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlFlinkInputFormat extends ParallelIteratorInputFormat<SerializableEvlInputAtom> {
+public class FlinkInputFormat<T extends Serializable> extends ParallelIteratorInputFormat<T> {
 
-	private static final long serialVersionUID = -626217034613920959L;
+	private static final long serialVersionUID = 5490512472038698409L;
 
-	public EvlFlinkInputFormat(List<SerializableEvlInputAtom> jobs) {
+	public FlinkInputFormat(List<? extends T> jobs) {
 		super(new ParallelFlinkIterator<>(jobs));
 	}
 

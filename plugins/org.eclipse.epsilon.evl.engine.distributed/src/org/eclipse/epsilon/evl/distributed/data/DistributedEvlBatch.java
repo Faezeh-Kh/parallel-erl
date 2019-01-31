@@ -9,7 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.data;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -62,7 +62,7 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @return The serializable start and end indexes for the batches.
 	 * @throws EolRuntimeException
 	 */
-	public static  Collection<DistributedEvlBatch> getBatches(EvlContextDistributedMaster context) throws EolRuntimeException {
+	public static List<DistributedEvlBatch> getBatches(EvlContextDistributedMaster context) throws EolRuntimeException {
 		final int batchSize = context.getDistributedParallelism(),
 			totalJobs = ConstraintContextAtom.getContextJobs(context).size(),
 			increments = totalJobs / batchSize;
