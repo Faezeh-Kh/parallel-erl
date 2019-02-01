@@ -10,12 +10,9 @@
 package org.eclipse.epsilon.evl.distributed.launch;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
-import static org.eclipse.epsilon.emc.emf.EmfModel.*;
-import org.eclipse.epsilon.common.util.FileUtil;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.emc.emf.DistributableEmfModel;
+import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.*;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
@@ -35,54 +32,38 @@ import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
  */
 public class DistributedRunner extends EvlRunConfiguration {
 	
-	public static void main(String[] args) {
-		String fileProtocol = "file:///",
-			scriptPath = args[0],
-			modelPath = fileProtocol + args[1],
-			metamodelPath = fileProtocol + args[2];
+	public static void main(String[] args) throws ClassNotFoundException {
+		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
+		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
 		
-		IModel model = new DistributableEmfModel();
-		StringProperties properties = new StringProperties();
-		properties.put(PROPERTY_CONCURRENT, true);
-		properties.put(PROPERTY_CACHED, true);
-		properties.put(PROPERTY_READONLOAD, true);
-		properties.put(PROPERTY_STOREONDISPOSAL, false);
-		properties.put(PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
-		properties.put(PROPERTY_MODEL_URI, modelPath);
-		properties.put(PROPERTY_NAME, FileUtil.getFileName(modelPath));
-
-		int parallelism = args.length > 3 ? Integer.parseInt(args[3]) : -1;
-		
-		EvlModuleDistributedMaster module = args.length > 4 && (
-				args[4].toLowerCase().contains("batch")  || args[4].toLowerCase().contains("subset")
-			) ?
-			new EvlModuleDistributedFlinkSubset(parallelism) : new EvlModuleDistributedFlinkAtoms(parallelism);
-		
-		String outputFile = args.length > 5 ? args[5] : null;
-		
-		new DistributedRunner(scriptPath, model, properties, module, outputFile).run();
+		EolConfigParser.main(new String[] {
+			"CONFIG:"+DistributedRunner.class.getName(),
+			args[0],
+			"-models",
+				"\"emf.DistributableEmfModel#"
+				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
+				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
+			args.length > 5 ? "-outfile" : "",
+			args.length > 5 ? args[5] : "",
+			"-module",
+				(args.length > 4 && (
+					args[4].toLowerCase().contains("batch")  || args[4].toLowerCase().contains("subset")
+				) ? EvlModuleDistributedFlinkSubset.class : EvlModuleDistributedFlinkSubset.class).getName().substring(20),
+			"int="+(args.length > 3 ? args[3] : "-1")
+		});
 	}
 	
 	public DistributedRunner(EvlRunConfiguration other) {
 		super(other);
 	}
 	
-	DistributedRunner(
-		String evlFile,
-		IModel model,
-		StringProperties modelProperties,
-		EvlModuleDistributedMaster evlModule,
-		String outputFile
-	) {
-		super(Builder(DistributedRunner.class)
-			.withScript(Paths.get(evlFile))
-			.withModel(model, modelProperties)
-			.withModule(evlModule)
-			.withProfiling()
-		);
-		EvlContextDistributedMaster context = evlModule.getContext();
+	DistributedRunner(Builder<DistributedRunner, ?> builder) {
+		super(builder.withProfiling());
+		EvlContextDistributedMaster context = getModule().getContext();
 		context.setModelProperties(this.modelsAndProperties.values());
-		context.setOutputPath(outputFile);
+		if (outputFile != null) {
+			context.setOutputPath(outputFile.toString());
+		}
 	}
 	
 	/**
@@ -104,6 +85,11 @@ public class DistributedRunner extends EvlRunConfiguration {
 				.withModule(evlModule)
 				.withParameters(parameters)
 			);
+	}
+	
+	@Override
+	public EvlModuleDistributedMaster getModule() {
+		return (EvlModuleDistributedMaster) super.getModule();
 	}
 	
 	@Override
