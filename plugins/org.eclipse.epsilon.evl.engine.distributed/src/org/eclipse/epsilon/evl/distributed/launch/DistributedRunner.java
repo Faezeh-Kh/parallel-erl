@@ -53,13 +53,17 @@ public class DistributedRunner extends EvlRunConfiguration {
 		});
 	}
 	
+	public static Builder<DistributedRunner, ?> Builder() {
+		return Builder(DistributedRunner.class);
+	}
+	
 	public DistributedRunner(EvlRunConfiguration other) {
 		super(other);
 	}
 	
 	DistributedRunner(Builder<DistributedRunner, ?> builder) {
 		super(builder.withProfiling());
-		EvlContextDistributedMaster context = getModule().getContext();
+		EvlContextDistributedMaster context = (EvlContextDistributedMaster) getModule().getContext();
 		context.setModelProperties(this.modelsAndProperties.values());
 		if (outputFile != null) {
 			context.setOutputPath(outputFile.toString());
@@ -85,11 +89,6 @@ public class DistributedRunner extends EvlRunConfiguration {
 				.withModule(evlModule)
 				.withParameters(parameters)
 			);
-	}
-	
-	@Override
-	public EvlModuleDistributedMaster getModule() {
-		return (EvlModuleDistributedMaster) super.getModule();
 	}
 	
 	@Override
