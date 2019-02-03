@@ -12,7 +12,4 @@ Require-Bundle: org.eclipse.epsilon.evl.engine;visibility:=reexport,
 Export-Package: org.eclipse.epsilon.evl.distributed,
  org.eclipse.epsilon.evl.distributed.context,
  org.eclipse.epsilon.evl.distributed.data,
- org.eclipse.epsilon.evl.distributed.flink,
- org.eclipse.epsilon.evl.distributed.flink.atomic,
- org.eclipse.epsilon.evl.distributed.flink.batch,
  org.eclipse.epsilon.evl.distributed.launch
