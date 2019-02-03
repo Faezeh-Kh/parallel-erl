@@ -14,20 +14,43 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
+import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlAtom;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
+	
+	public static void main(String[] args) throws ClassNotFoundException {
+		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
+		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
+		String expectedWorkers = args[3];
+		String addr = args[4];
+		String port = args[5];
+		
+		EolConfigParser.main(new String[] {
+			"CONFIG:"+DistributedRunner.class.getName(),
+			args[0],
+			"-models",
+				"\"emf.DistributableEmfModel#"
+				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
+				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
+			"-module", EvlModuleDistributedComposer.class.getName().substring(20),
+				"int="+expectedWorkers,
+				"String="+addr,
+				"int="+port
+		});
+	}
 	
 	public static final String
 		REGISTRATION_NAME = "registration",
@@ -40,7 +63,24 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	BrokerService broker;
 	Connection brokerConnection;
 	Session regSession;
-	Map<String, Destination> workers;
+	Collection<Worker> workers;
+	
+	class Worker {
+		public Worker(String id) {
+			this.id = id;
+		}
+		public final String id;
+		public Session session;
+		public Destination jobs, results;
+		public MessageProducer jobSender;
+		
+		public void sendJob(SerializableEvlAtom input) throws JMSException {
+			ObjectMessage jobMsg = session.createObjectMessage();
+			jobMsg.setObject(input);
+			jobMsg.setJMSCorrelationID(id);
+			jobSender.send(jobMsg);
+		}
+	}
 	
 	public EvlModuleDistributedComposer(int expectedWorkers, String addr, int port) throws URISyntaxException {
 		super(expectedWorkers);
@@ -70,7 +110,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	}
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
-		workers = new HashMap<>(expectedWorkers+1, 1f);
+		workers = new ArrayList<>(expectedWorkers);
 		regSession = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
 		Destination registered = regSession.createQueue(REGISTRATION_NAME);
 		MessageConsumer regConsumer = regSession.createConsumer(registered);
@@ -82,7 +122,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 				synchronized (lock) {
 					msg.acknowledge();
 					String workerID = msg.getJMSCorrelationID();
-					workers.put(workerID, null);
+					workers.add(new Worker(workerID));
 					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
 						lock.notify();
 					}
@@ -112,11 +152,13 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 				msg.acknowledge();
 				String workerID = msg.getJMSCorrelationID();
 				synchronized (lock) {
-					if (workers.containsKey(workerID)) {
-						Session workerSession = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
-						Destination workerBox = workerSession.createQueue(workerID);
-						workerSession.createConsumer(workerBox).setMessageListener(getResultsMessageListener(workerBox));
-						workers.put(workerID, workerBox);
+					Worker worker = workers.stream().filter(w -> w.id.equals(workerID)).findAny().orElse(null);
+					if (worker != null) {
+						worker.session = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+						worker.jobs = worker.session.createQueue(workerID + JOB_SUFFIX);
+						worker.results = worker.session.createQueue(RESULTS_QUEUE_NAME);
+						worker.session.createConsumer(worker.jobs).setMessageListener(getResultsMessageListener(worker.results));
+						worker.jobSender = worker.session.createProducer(worker.jobs);
 					}
 					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
 						assert connectedWorkers.get() == workers.size();
@@ -188,7 +230,17 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {
-		// TODO Auto-generated method stub
+		// TODO load balancing
+		Collection<? extends SerializableEvlAtom> jobs = createJobs(false);
+		Worker worker = workers.iterator().next();
+		for (SerializableEvlAtom job : jobs) {
+			try {
+				worker.sendJob(job);
+			}
+			catch (JMSException ex) {
+				throw new EolRuntimeException(ex);
+			}
+		}
 	}
 	
 	@Override

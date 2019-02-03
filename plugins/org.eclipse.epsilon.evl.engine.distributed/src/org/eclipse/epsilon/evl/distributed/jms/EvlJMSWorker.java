@@ -27,8 +27,7 @@ public class EvlJMSWorker {
 	public static void main(String[] args) throws Exception {
 		EvlJMSWorker worker = new EvlJMSWorker(
 			URI.create(args[0]),
-			args.length > 2 ? args[2] : Inet6Address.getLocalHost().toString(),
-			Integer.parseInt(args[1])
+			args.length > 1 ? args[1] : Inet6Address.getLocalHost().toString()
 		);
 		
 		DistributedRunner runner = worker.setup();
@@ -37,17 +36,13 @@ public class EvlJMSWorker {
 		worker.teardown();
 	}
 	
-	final int parallelism;
 	final URI jmsHost;
 	final String workerID;
 	Connection brokerConnection;
-	
-	// TODO: configure listener for job processing
-	
-	public EvlJMSWorker(URI jmsAddr, String id, int parallelism) {
+
+	public EvlJMSWorker(URI jmsAddr, String id) {
 		this.jmsHost = jmsAddr;
 		this.workerID = id;
-		this.parallelism = parallelism;
 	}
 	
 	@SuppressWarnings("unchecked")
