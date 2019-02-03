@@ -65,4 +65,9 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 			scriptVariables
 		);
 	}
+	
+	@Override
+	public EvlModuleDistributedSlave getModule() {
+		return (EvlModuleDistributedSlave) super.getModule();
+	}
 }

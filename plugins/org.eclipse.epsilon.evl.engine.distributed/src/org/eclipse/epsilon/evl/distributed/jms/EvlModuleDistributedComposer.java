@@ -33,7 +33,8 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		REGISTRATION_NAME = "registration",
 		CONFIG_BROADCAST_NAME = "configuration",
 		READY_QUEUE_NAME = "confirm-configured",
-		RESULTS_QUEUE_NAME = "results";
+		RESULTS_QUEUE_NAME = "results",
+		JOB_SUFFIX = "-jobs";
 	
 	final URI host;
 	BrokerService broker;
