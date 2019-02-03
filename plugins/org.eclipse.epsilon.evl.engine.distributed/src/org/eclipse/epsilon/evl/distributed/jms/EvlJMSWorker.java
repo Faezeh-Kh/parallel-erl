@@ -52,7 +52,7 @@ public class EvlJMSWorker {
 		brokerConnection.start();
 		
 		// Tell the master that we're ready to work
-		Session regSession = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+		Session regSession = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
 		Destination registered = regSession.createQueue(EvlModuleDistributedComposer.REGISTRATION_NAME);
 		MessageProducer regSender = regSession.createProducer(registered);
 		Message ack = regSession.createMessage();

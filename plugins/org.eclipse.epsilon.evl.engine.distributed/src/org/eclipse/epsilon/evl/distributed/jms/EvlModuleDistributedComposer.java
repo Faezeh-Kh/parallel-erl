@@ -62,7 +62,6 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	final URI host;
 	BrokerService broker;
 	Connection brokerConnection;
-	Session regSession;
 	Collection<Worker> workers;
 	
 	class Worker {
@@ -111,7 +110,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
 		workers = new ArrayList<>(expectedWorkers);
-		regSession = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+		Session regSession = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
 		Destination registered = regSession.createQueue(REGISTRATION_NAME);
 		MessageConsumer regConsumer = regSession.createConsumer(registered);
 		Object lock = new Object();
@@ -137,7 +136,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		while (connectedWorkers.get() < expectedWorkers) {
 			synchronized (lock) {
 				try {
-					lock.wait();
+					lock.wait(30_000);
 				}
 				catch (InterruptedException ie) {}
 			}
@@ -154,7 +153,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 				synchronized (lock) {
 					Worker worker = workers.stream().filter(w -> w.id.equals(workerID)).findAny().orElse(null);
 					if (worker != null) {
-						worker.session = brokerConnection.createSession(true, Session.CLIENT_ACKNOWLEDGE);
+						worker.session = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
 						worker.jobs = worker.session.createQueue(workerID + JOB_SUFFIX);
 						worker.results = worker.session.createQueue(RESULTS_QUEUE_NAME);
 						worker.session.createConsumer(worker.jobs).setMessageListener(getResultsMessageListener(worker.results));
@@ -245,9 +244,9 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
-		super.postExecution();
+		//super.postExecution();
 		try {
-			teardown();
+			//teardown();
 		}
 		catch (Exception ex) {
 			throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
