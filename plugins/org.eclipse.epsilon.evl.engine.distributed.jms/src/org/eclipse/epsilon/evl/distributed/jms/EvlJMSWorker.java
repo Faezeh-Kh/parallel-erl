@@ -11,11 +11,10 @@ package org.eclipse.epsilon.evl.distributed.jms;
 
 import java.io.Serializable;
 import java.net.Inet6Address;
-import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
 import javax.jms.*;
-import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedSupplier;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
@@ -29,7 +28,7 @@ public class EvlJMSWorker {
 	public static void main(String[] args) throws Exception {
 		System.setProperty("org.apache.activemq.SERIALIZABLE_PACKAGES", "*");
 		EvlJMSWorker worker = new EvlJMSWorker(
-			URI.create(args[0]),
+			args[0],
 			args.length > 1 ? args[1] : Inet6Address.getLocalHost().toString()
 		);
 		
@@ -38,11 +37,11 @@ public class EvlJMSWorker {
 		worker.teardown();
 	}
 	
-	final URI jmsHost;
+	final String jmsHost;
 	final String workerID;
-	Connection brokerConnection;
+	ConnectionFactory connectionFactory;
 
-	public EvlJMSWorker(URI jmsAddr, String id) {
+	public EvlJMSWorker(String jmsAddr, String id) {
 		this.jmsHost = jmsAddr;
 		this.workerID = id;
 	}
@@ -50,11 +49,12 @@ public class EvlJMSWorker {
 	@SuppressWarnings("unchecked")
 	DistributedRunner setup() throws Exception {
 		// Connect to the broker
-		brokerConnection = new ActiveMQConnectionFactory(jmsHost).createConnection();
+		connectionFactory = new ActiveMQJMSConnectionFactory(jmsHost);
+		Connection brokerConnection = connectionFactory.createConnection();
 		brokerConnection.start();
 		
 		// Tell the master that we're ready to work
-		Session regSession = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+		Session regSession = brokerConnection.createSession();
 		Destination registered = regSession.createQueue(EvlModuleDistributedComposer.REGISTRATION_NAME);
 		MessageProducer regSender = regSession.createProducer(registered);
 		Message ack = regSession.createMessage();
@@ -71,7 +71,7 @@ public class EvlJMSWorker {
 		configContainer.preExecute();
 		
 		// Set up the session and queue for job processing. This involves receiving jobs and sending results, hence two destinations.
-		Session jobSession = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+		Session jobSession = brokerConnection.createSession();
 		Destination jobQueue = jobSession.createQueue(workerID + EvlModuleDistributedComposer.JOB_SUFFIX);
 		Destination resultsQueue = jobSession.createQueue(EvlModuleDistributedComposer.RESULTS_QUEUE_NAME);
 		MessageProducer resultsSender = jobSession.createProducer(resultsQueue);
@@ -113,7 +113,9 @@ public class EvlJMSWorker {
 	}
 
 	void teardown() throws Exception {
-		brokerConnection.close();
-		brokerConnection = null;
+		if (connectionFactory instanceof AutoCloseable) {
+			((AutoCloseable) connectionFactory).close();
+		}
+		connectionFactory = null;
 	}
 }
