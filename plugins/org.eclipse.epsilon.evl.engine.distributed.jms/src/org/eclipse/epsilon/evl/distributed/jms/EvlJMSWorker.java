@@ -25,13 +25,13 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 public class EvlJMSWorker {
 
 	public static void main(String[] args) throws Exception {
+		System.setProperty("org.apache.activemq.SERIALIZABLE_PACKAGES", "*");
 		EvlJMSWorker worker = new EvlJMSWorker(
 			URI.create(args[0]),
 			args.length > 1 ? args[1] : Inet6Address.getLocalHost().toString()
 		);
 		
 		DistributedRunner runner = worker.setup();
-		runner.execute();
 		runner.postExecute();
 		worker.teardown();
 	}

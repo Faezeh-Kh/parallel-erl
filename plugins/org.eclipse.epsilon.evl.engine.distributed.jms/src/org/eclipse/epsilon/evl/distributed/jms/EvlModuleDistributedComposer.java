@@ -117,6 +117,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	}
 	
 	void setup() throws Exception {
+		System.setProperty("org.apache.activemq.SERIALIZABLE_PACKAGES", /*"org.eclipse.epsilon.evl.distributed.data"*/"*");
 		broker = new BrokerService();
 		broker.setUseJmx(true);
 		broker.addConnector(host);
