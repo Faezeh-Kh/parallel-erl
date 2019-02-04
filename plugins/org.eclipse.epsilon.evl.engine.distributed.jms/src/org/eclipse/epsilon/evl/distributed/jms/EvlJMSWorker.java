@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed.jms;
 import java.io.Serializable;
 import java.net.Inet6Address;
 import java.net.URI;
+import java.util.Collection;
 import java.util.Map;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -20,6 +21,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
 public class EvlJMSWorker {
@@ -94,9 +96,13 @@ public class EvlJMSWorker {
 				Serializable objMsg = ((ObjectMessage)msg).getObject();
 				if (objMsg instanceof SerializableEvlInputAtom) {
 					ObjectMessage resultsMessage = messageFactory.getThrows();
-					resultsMessage.setObject((Serializable) module.evaluateElement((SerializableEvlInputAtom) objMsg));
+					Collection<? extends SerializableEvlResultAtom> resultObj = module.evaluateElement((SerializableEvlInputAtom) objMsg);
+					resultsMessage.setObject((Serializable) resultObj);
 					resultsMessage.setJMSCorrelationID(workerID);
 					resultsSender.send(resultsMessage);
+				}
+				else {
+					System.err.println("["+workerID+"] Received unexpected object of type "+objMsg.getClass().getName());
 				}
 			}
 			catch (JMSException | EolRuntimeException ex) {

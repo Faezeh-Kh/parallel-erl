@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
@@ -63,7 +64,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	final URI host;
 	BrokerService broker;
 	Connection brokerConnection;
-	Collection<Worker> workers;
+	List<Worker> workers;
 	
 	class Worker {
 		public Worker(String id) {
@@ -172,7 +173,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 						worker.session = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 						worker.jobs = worker.session.createQueue(workerID + JOB_SUFFIX);
 						worker.results = worker.session.createQueue(RESULTS_QUEUE_NAME);
-						worker.session.createConsumer(worker.jobs).setMessageListener(getResultsMessageListener(worker.results));
+						worker.session.createConsumer(worker.results).setMessageListener(getResultsMessageListener(worker.results));
 						worker.jobSender = worker.session.createProducer(worker.jobs);
 					}
 					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
@@ -205,15 +206,30 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		regSession.close();
 	}
 	
+	@SuppressWarnings("unchecked")
 	protected MessageListener getResultsMessageListener(final Object client) {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		return msg -> {
 			try {
-				SerializableEvlResultAtom result;
-				synchronized (client) {
-					result = ((SerializableEvlResultAtom)((ObjectMessage)msg).getObject());
+				Serializable contents;
+				if (msg instanceof ObjectMessage) {
+					synchronized (client) {
+						contents = ((ObjectMessage)msg).getObject();
+					}
+					
+					if (contents instanceof Iterable) {
+						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
+					}
+					else if (contents instanceof SerializableEvlResultAtom) {
+						unsatisfiedConstraints.add(deserializeResult((SerializableEvlResultAtom) contents));
+					}
+					else {
+						System.err.println("[MASTER] Received unexpected object of type "+contents.getClass().getSimpleName());
+					}
 				}
-				unsatisfiedConstraints.add(deserializeResult(result));
+				else {
+					System.err.println("[MASTER] Received non-object message.");
+				}
 			}
 			catch (JMSException ex) {
 				// TODO Auto-generated catch block
