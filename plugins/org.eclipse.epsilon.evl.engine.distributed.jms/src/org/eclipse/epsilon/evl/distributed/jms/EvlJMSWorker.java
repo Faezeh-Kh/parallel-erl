@@ -52,21 +52,18 @@ public class EvlJMSWorker {
 		brokerConnection.start();
 		
 		// Tell the master that we're ready to work
-		Session regSession = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+		Session regSession = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 		Destination registered = regSession.createQueue(EvlModuleDistributedComposer.REGISTRATION_NAME);
 		MessageProducer regSender = regSession.createProducer(registered);
 		Message ack = regSession.createMessage();
 		ack.setJMSCorrelationID(workerID);
 		regSender.send(ack);
 		
-		// This is to acknowledge when we have completed loading the script(s) and model(s)
-		Destination configReceive = regSession.createTopic(EvlModuleDistributedComposer.CONFIG_BROADCAST_NAME);
-		Destination configComplete = regSession.createQueue(EvlModuleDistributedComposer.READY_QUEUE_NAME);
-		MessageProducer configSender = regSession.createProducer(configComplete);
-		
 		// Here we receive the actual configuration from the master
-		ObjectMessage configMsg = (ObjectMessage) regSession.createConsumer(configReceive).receive();
-		configMsg.acknowledge();
+		Destination configReceive = regSession.createTopic(EvlModuleDistributedComposer.CONFIG_BROADCAST_NAME);
+		MessageConsumer configConsumer = regSession.createConsumer(configReceive);
+		// Block until received
+		ObjectMessage configMsg = (ObjectMessage) configConsumer.receive();
 		Map<String, ? extends Serializable> config = (Map<String, ? extends Serializable>) configMsg.getObject();
 		DistributedRunner configContainer = EvlContextDistributedSlave.parseJobParameters(config);
 		configContainer.preExecute();
@@ -80,9 +77,12 @@ public class EvlJMSWorker {
 		MessageConsumer jobConsumer = jobSession.createConsumer(jobQueue);
 		jobConsumer.setMessageListener(getJobProcessor(resultsSender, resultsMsgFactory, (EvlModuleDistributedSlave) configContainer.getModule()));
 		
-		// Tell the master we're setup and ready to work
+		// This is to acknowledge when we have completed loading the script(s) and model(s)
+		Destination configComplete = regSession.createQueue(EvlModuleDistributedComposer.READY_QUEUE_NAME);
+		MessageProducer configSender = regSession.createProducer(configComplete);
 		Message configuredAckMsg = regSession.createMessage();
 		configuredAckMsg.setJMSCorrelationID(workerID);
+		// Tell the master we're setup and ready to work
 		configSender.send(configuredAckMsg);
 		
 		return configContainer;

@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -79,6 +80,23 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 			jobMsg.setJMSCorrelationID(id);
 			jobSender.send(jobMsg);
 		}
+		
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) return true;
+			if (!(obj instanceof Worker)) return false;
+			return Objects.equals(this.id, ((Worker)obj).id);
+		}
+		
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(id);
+		}
+		
+		@Override
+		public String toString() {
+			return getClass().getName()+"-"+id;
+		}
 	}
 	
 	public EvlModuleDistributedComposer(int expectedWorkers, String addr, int port) throws URISyntaxException {
@@ -110,7 +128,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
 		workers = new ArrayList<>(expectedWorkers);
-		Session regSession = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+		Session regSession = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 		Destination registered = regSession.createQueue(REGISTRATION_NAME);
 		MessageConsumer regConsumer = regSession.createConsumer(registered);
 		Object lock = new Object();
@@ -119,7 +137,6 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		regConsumer.setMessageListener(msg -> {
 			try {
 				synchronized (lock) {
-					msg.acknowledge();
 					String workerID = msg.getJMSCorrelationID();
 					workers.add(new Worker(workerID));
 					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
@@ -142,18 +159,16 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 			}
 		}
 		
-		Destination configSent = regSession.createTopic(CONFIG_BROADCAST_NAME);
 		Destination configComplete = regSession.createQueue(READY_QUEUE_NAME);
 		MessageConsumer confirmer = regSession.createConsumer(configComplete);
 		
 		confirmer.setMessageListener(msg -> {
 			try {
-				msg.acknowledge();
 				String workerID = msg.getJMSCorrelationID();
 				synchronized (lock) {
 					Worker worker = workers.stream().filter(w -> w.id.equals(workerID)).findAny().orElse(null);
 					if (worker != null) {
-						worker.session = brokerConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+						worker.session = brokerConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 						worker.jobs = worker.session.createQueue(workerID + JOB_SUFFIX);
 						worker.results = worker.session.createQueue(RESULTS_QUEUE_NAME);
 						worker.session.createConsumer(worker.jobs).setMessageListener(getResultsMessageListener(worker.results));
@@ -171,6 +186,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 			}
 		});
 		
+		Destination configSent = regSession.createTopic(CONFIG_BROADCAST_NAME);
 		ObjectMessage configMessage = regSession.createObjectMessage(config);
 		MessageProducer sender = regSession.createProducer(configSent);
 		sender.send(configMessage);
@@ -194,7 +210,6 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 			try {
 				SerializableEvlResultAtom result;
 				synchronized (client) {
-					msg.acknowledge();
 					result = ((SerializableEvlResultAtom)((ObjectMessage)msg).getObject());
 				}
 				unsatisfiedConstraints.add(deserializeResult(result));

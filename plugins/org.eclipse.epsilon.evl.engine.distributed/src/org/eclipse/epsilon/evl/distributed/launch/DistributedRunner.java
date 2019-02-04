@@ -36,7 +36,7 @@ public class DistributedRunner extends EvlRunConfiguration {
 		super(other);
 	}
 	
-	DistributedRunner(Builder<DistributedRunner, ?> builder) {
+	public DistributedRunner(Builder<DistributedRunner, ?> builder) {
 		super(builder.withProfiling());
 		EvlContextDistributedMaster context = (EvlContextDistributedMaster) getModule().getContext();
 		context.setModelProperties(this.modelsAndProperties.values());
