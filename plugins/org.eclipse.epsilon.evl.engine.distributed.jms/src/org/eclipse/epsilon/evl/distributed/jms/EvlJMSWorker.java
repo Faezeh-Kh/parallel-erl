@@ -33,6 +33,8 @@ public class EvlJMSWorker {
 		);
 		
 		DistributedRunner runner = worker.setup();
+		Thread.sleep(Integer.MAX_VALUE);
+		// TODO wait it out
 		runner.postExecute();
 		worker.teardown();
 	}
@@ -53,16 +55,16 @@ public class EvlJMSWorker {
 		Connection brokerConnection = connectionFactory.createConnection();
 		brokerConnection.start();
 		
-		// Tell the master that we're ready to work
+		// Announce our presence to the master
 		Session regSession = brokerConnection.createSession();
-		Destination registered = regSession.createQueue(EvlModuleDistributedComposer.REGISTRATION_NAME);
+		Destination registered = regSession.createQueue(EvlModuleDistributedMasterJMS.REGISTRATION_NAME);
 		MessageProducer regSender = regSession.createProducer(registered);
 		Message ack = regSession.createMessage();
 		ack.setJMSCorrelationID(workerID);
 		regSender.send(ack);
 		
 		// Here we receive the actual configuration from the master
-		Destination configReceive = regSession.createTopic(EvlModuleDistributedComposer.CONFIG_BROADCAST_NAME);
+		Destination configReceive = regSession.createTopic(EvlModuleDistributedMasterJMS.CONFIG_BROADCAST_NAME);
 		MessageConsumer configConsumer = regSession.createConsumer(configReceive);
 		// Block until received
 		ObjectMessage configMsg = (ObjectMessage) configConsumer.receive();
@@ -72,15 +74,15 @@ public class EvlJMSWorker {
 		
 		// Set up the session and queue for job processing. This involves receiving jobs and sending results, hence two destinations.
 		Session jobSession = brokerConnection.createSession();
-		Destination jobQueue = jobSession.createQueue(workerID + EvlModuleDistributedComposer.JOB_SUFFIX);
-		Destination resultsQueue = jobSession.createQueue(EvlModuleDistributedComposer.RESULTS_QUEUE_NAME);
+		Destination jobQueue = jobSession.createQueue(workerID + EvlModuleDistributedMasterJMS.JOB_SUFFIX);
+		Destination resultsQueue = jobSession.createQueue(EvlModuleDistributedMasterJMS.RESULTS_QUEUE_NAME);
 		MessageProducer resultsSender = jobSession.createProducer(resultsQueue);
 		CheckedSupplier<? extends ObjectMessage, JMSException> resultsMsgFactory = jobSession::createObjectMessage;
 		MessageConsumer jobConsumer = jobSession.createConsumer(jobQueue);
 		jobConsumer.setMessageListener(getJobProcessor(resultsSender, resultsMsgFactory, (EvlModuleDistributedSlave) configContainer.getModule()));
 		
 		// This is to acknowledge when we have completed loading the script(s) and model(s)
-		Destination configComplete = regSession.createQueue(EvlModuleDistributedComposer.READY_QUEUE_NAME);
+		Destination configComplete = regSession.createQueue(EvlModuleDistributedMasterJMS.READY_QUEUE_NAME);
 		MessageProducer configSender = regSession.createProducer(configComplete);
 		Message configuredAckMsg = regSession.createMessage();
 		configuredAckMsg.setJMSCorrelationID(workerID);

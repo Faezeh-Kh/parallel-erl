@@ -30,7 +30,7 @@ import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
-public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
+public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	public static void main(String[] args) throws ClassNotFoundException, UnknownHostException, URISyntaxException {
 		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
@@ -52,7 +52,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 				"\"emf.DistributableEmfModel#"
 				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
 				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
-			"-module", EvlModuleDistributedComposer.class.getName().substring(20),
+			"-module", EvlModuleDistributedMasterJMS.class.getName().substring(20),
 				"int="+expectedWorkers,
 				"String="+addr
 		});
@@ -69,6 +69,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	ConnectionFactory connectionFactory;
 	Connection brokerConnection;
 	List<Worker> workers;
+	final AtomicInteger receivedResults = new AtomicInteger();
 	
 	class Worker {
 		public Worker(String id) {
@@ -104,7 +105,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		}
 	}
 	
-	public EvlModuleDistributedComposer(int expectedWorkers, String host) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers);
 		this.host = host;
 	}
@@ -149,6 +150,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 			}
 		}
 		
+		regSession = brokerConnection.createSession();
 		Destination configComplete = regSession.createQueue(READY_QUEUE_NAME);
 		MessageConsumer confirmer = regSession.createConsumer(configComplete);
 		
@@ -204,6 +206,7 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 					synchronized (client) {
 						contents = ((ObjectMessage)msg).getObject();
 					}
+					receivedResults.incrementAndGet();
 					
 					if (contents instanceof Iterable) {
 						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
@@ -226,6 +229,10 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 		};
 	}
 
+	void awaitResults(int expected) {
+		
+	}
+	
 	void teardown() throws Exception {
 		brokerConnection.close();
 		brokerConnection = null;
@@ -251,8 +258,9 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 	
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {
-		// TODO load balancing
 		Collection<? extends SerializableEvlAtom> jobs = createJobs(false);
+		
+		// TODO load balancing
 		Worker worker = workers.iterator().next();
 		for (SerializableEvlAtom job : jobs) {
 			try {
@@ -262,13 +270,15 @@ public class EvlModuleDistributedComposer extends EvlModuleDistributedMaster {
 				throw new EolRuntimeException(ex);
 			}
 		}
+		
+		awaitResults(jobs.size());
 	}
 	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
-		//super.postExecution();
+		super.postExecution();
 		try {
-			//teardown();
+			teardown();
 		}
 		catch (Exception ex) {
 			throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
