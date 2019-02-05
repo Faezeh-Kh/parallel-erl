@@ -70,11 +70,13 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	final List<Worker> workers;
 	final AtomicInteger receivedResults = new AtomicInteger();
 	int expectedResults;
+	JMSContext jobContext;
 	
 	class Worker implements AutoCloseable {
 		public final String id;
 		JMSContext session;
-		Destination jobsDest, resultsDest;
+		Queue resultsQueue;
+		Topic jobsTopic;
 		JMSProducer jobSender;
 		JMSConsumer resultProcessor;
 		
@@ -82,26 +84,27 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			this.id = id;
 		}
 		
-		public void confirm() {
-			session = connectionFactory.createContext();
-			jobsDest = session.createQueue(id + JOB_SUFFIX);
-			resultsDest = session.createQueue(RESULTS_QUEUE_NAME);
-			(resultProcessor = session.createConsumer(resultsDest)).setMessageListener(getResultsMessageListener());
+		public void confirm(JMSContext session) {
+			jobsTopic = (this.session = session).createTopic(id + JOB_SUFFIX);
+			resultsQueue = session.createQueue(RESULTS_QUEUE_NAME);
+			(resultProcessor = session.createConsumer(resultsQueue)).getClass();//.setMessageListener(getResultsMessageListener());
 			jobSender = session.createProducer();
 		}
 		
 		public void sendJob(SerializableEvlAtom input) throws JMSException {
-			ObjectMessage jobMsg = session.createObjectMessage(input);
-			jobMsg.setJMSCorrelationID(id);
-			jobSender.send(jobsDest, jobMsg);
+			try (JMSContext jobContext = session.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				ObjectMessage jobMsg = jobContext.createObjectMessage(input);
+				jobMsg.setJMSCorrelationID(id);
+				jobSender.send(jobsTopic, jobMsg);
+			}
 		}
 		
 		@Override
 		public void close() throws Exception {
 			session.close();
 			session = null;
-			jobsDest = null;
-			resultsDest = null;
+			jobsTopic = null;
+			resultsQueue = null;
 			jobSender = null;
 			resultProcessor = null;
 		}
@@ -129,9 +132,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
+		AtomicInteger connectedWorkers = new AtomicInteger();
+		
 		try (JMSContext regContext = connectionFactory.createContext()) {
-			AtomicInteger connectedWorkers = new AtomicInteger();
-			
 			// Initial registration of workers
 			regContext.createConsumer(regContext.createQueue(REGISTRATION_NAME)).setMessageListener(msg -> {
 				try {
@@ -157,38 +160,45 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 					catch (InterruptedException ie) {}
 				}
 			}
-			
-			// Add confirmed workers
-			regContext.createConsumer(regContext.createQueue(READY_QUEUE_NAME)).setMessageListener(msg -> {
-				try {
-					String workerID = msg.getJMSCorrelationID();
-					synchronized (connectedWorkers) {
-						workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(Worker::confirm);
-						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-							assert connectedWorkers.get() == workers.size();
-							connectedWorkers.notify();
-						}
-					}
-				}
-				catch (JMSException ex) {
-					// TODO Auto-generated catch block
-					ex.printStackTrace();
-				}
-			});
-			
+		}
+		
+		try (JMSContext configContext = connectionFactory.createContext()) {
 			// Send the configuration
-			regContext.createProducer().send(regContext.createTopic(CONFIG_BROADCAST_NAME), config);
-			
-			connectedWorkers.set(0);
-			while (connectedWorkers.get() < expectedWorkers) {
+			configContext.createProducer().send(configContext.createTopic(CONFIG_BROADCAST_NAME), config);
+		}
+		
+		// Add confirmed workers
+		(jobContext = connectionFactory.createContext()).createConsumer(jobContext.createQueue(READY_QUEUE_NAME)).setMessageListener(msg -> {
+			try {
+				String workerID = msg.getJMSCorrelationID();
 				synchronized (connectedWorkers) {
-					try {
-						connectedWorkers.wait();
+					workers.stream()
+						.filter(w -> w.id.equals(workerID))
+						.findAny()
+						.ifPresent(w -> w.confirm(jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)));
+					
+					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
+						assert connectedWorkers.get() == workers.size();
+						connectedWorkers.notify();
 					}
-					catch (InterruptedException ie) {}
 				}
 			}
+			catch (JMSException ex) {
+				// TODO Auto-generated catch block
+				ex.printStackTrace();
+			}
+		});
+		
+		connectedWorkers.set(0);
+		do {
+			synchronized (connectedWorkers) {
+				try {
+					connectedWorkers.wait();
+				}
+				catch (InterruptedException ie) {}
+			}
 		}
+		while (connectedWorkers.get() < expectedWorkers);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -196,14 +206,14 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		return msg -> {
 			try {
-				Serializable contents;
 				if (msg instanceof ObjectMessage) {
-					synchronized (receivedResults) {
-						contents = ((ObjectMessage)msg).getObject();
-						if (receivedResults.incrementAndGet() >= expectedResults) {
+					if (receivedResults.incrementAndGet() >= expectedResults) {
+						synchronized (receivedResults) {
 							receivedResults.notify();
 						}
 					}
+					
+					Serializable contents = ((ObjectMessage)msg).getObject();
 					
 					if (contents instanceof Iterable) {
 						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
@@ -227,6 +237,8 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	void teardown() throws Exception {
+		jobContext.close();
+		jobContext = null;
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
@@ -257,7 +269,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			
 			while (receivedResults.get() < expectedResults) {
 				synchronized (receivedResults) {
-					wait(120_000);
+					receivedResults.wait(120_000);
 				}
 			}
 		}
