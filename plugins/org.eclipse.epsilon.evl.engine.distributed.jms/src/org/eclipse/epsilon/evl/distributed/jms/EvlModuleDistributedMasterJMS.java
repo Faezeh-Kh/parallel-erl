@@ -66,25 +66,44 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		JOB_SUFFIX = "-jobs";
 	
 	final String host;
-	ConnectionFactory connectionFactory;
-	Connection brokerConnection;
-	List<Worker> workers;
+	final ConnectionFactory connectionFactory;
+	final List<Worker> workers;
 	final AtomicInteger receivedResults = new AtomicInteger();
+	int expectedResults;
 	
-	class Worker {
+	class Worker implements AutoCloseable {
+		public final String id;
+		JMSContext session;
+		Destination jobsDest, resultsDest;
+		JMSProducer jobSender;
+		JMSConsumer resultProcessor;
+		
 		public Worker(String id) {
 			this.id = id;
 		}
-		public final String id;
-		public Session session;
-		public Destination jobs, results;
-		public MessageProducer jobSender;
+		
+		public void confirm() {
+			session = connectionFactory.createContext();
+			jobsDest = session.createQueue(id + JOB_SUFFIX);
+			resultsDest = session.createQueue(RESULTS_QUEUE_NAME);
+			(resultProcessor = session.createConsumer(resultsDest)).setMessageListener(getResultsMessageListener());
+			jobSender = session.createProducer();
+		}
 		
 		public void sendJob(SerializableEvlAtom input) throws JMSException {
-			ObjectMessage jobMsg = session.createObjectMessage();
-			jobMsg.setObject(input);
+			ObjectMessage jobMsg = session.createObjectMessage(input);
 			jobMsg.setJMSCorrelationID(id);
-			jobSender.send(jobMsg);
+			jobSender.send(jobsDest, jobMsg);
+		}
+		
+		@Override
+		public void close() throws Exception {
+			session.close();
+			session = null;
+			jobsDest = null;
+			resultsDest = null;
+			jobSender = null;
+			resultProcessor = null;
 		}
 		
 		@Override
@@ -93,12 +112,10 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			if (!(obj instanceof Worker)) return false;
 			return Objects.equals(this.id, ((Worker)obj).id);
 		}
-		
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(id);
 		}
-		
 		@Override
 		public String toString() {
 			return getClass().getName()+"-"+id;
@@ -107,106 +124,86 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers);
-		this.host = host;
-	}
-	
-	void setup() throws Exception {
-		System.setProperty("org.apache.activemq.SERIALIZABLE_PACKAGES", /*"org.eclipse.epsilon.evl.distributed.data"*/"*");
-		connectionFactory = new ActiveMQJMSConnectionFactory(host);
-		brokerConnection = connectionFactory.createConnection();
-		brokerConnection.start();
+		connectionFactory = new ActiveMQJMSConnectionFactory(this.host = host);
+		workers = new ArrayList<>(expectedWorkers);
 	}
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
-		workers = new ArrayList<>(expectedWorkers);
-		Session regSession = brokerConnection.createSession();
-		Destination registered = regSession.createQueue(REGISTRATION_NAME);
-		MessageConsumer regConsumer = regSession.createConsumer(registered);
-		Object lock = new Object();
-		AtomicInteger connectedWorkers = new AtomicInteger();
-		
-		regConsumer.setMessageListener(msg -> {
-			try {
-				synchronized (lock) {
+		try (JMSContext regContext = connectionFactory.createContext()) {
+			AtomicInteger connectedWorkers = new AtomicInteger();
+			
+			// Initial registration of workers
+			regContext.createConsumer(regContext.createQueue(REGISTRATION_NAME)).setMessageListener(msg -> {
+				try {
+					synchronized (connectedWorkers) {
+						workers.add(new Worker(msg.getJMSCorrelationID()));
+						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
+							connectedWorkers.notify();
+						}
+					}
+				}
+				catch (JMSException ex) {
+					// TODO Auto-generated catch block
+					ex.printStackTrace();
+				}
+			});
+			
+			// Wait for workers to connect
+			while (connectedWorkers.get() < expectedWorkers) {
+				synchronized (connectedWorkers) {
+					try {
+						connectedWorkers.wait(30_000);
+					}
+					catch (InterruptedException ie) {}
+				}
+			}
+			
+			// Add confirmed workers
+			regContext.createConsumer(regContext.createQueue(READY_QUEUE_NAME)).setMessageListener(msg -> {
+				try {
 					String workerID = msg.getJMSCorrelationID();
-					workers.add(new Worker(workerID));
-					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-						lock.notify();
+					synchronized (connectedWorkers) {
+						workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(Worker::confirm);
+						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
+							assert connectedWorkers.get() == workers.size();
+							connectedWorkers.notify();
+						}
 					}
 				}
-			}
-			catch (JMSException ex) {
-				// TODO Auto-generated catch block
-				ex.printStackTrace();
-			}
-		});
-		
-		while (connectedWorkers.get() < expectedWorkers) {
-			synchronized (lock) {
-				try {
-					lock.wait(30_000);
+				catch (JMSException ex) {
+					// TODO Auto-generated catch block
+					ex.printStackTrace();
 				}
-				catch (InterruptedException ie) {}
+			});
+			
+			// Send the configuration
+			regContext.createProducer().send(regContext.createTopic(CONFIG_BROADCAST_NAME), config);
+			
+			connectedWorkers.set(0);
+			while (connectedWorkers.get() < expectedWorkers) {
+				synchronized (connectedWorkers) {
+					try {
+						connectedWorkers.wait();
+					}
+					catch (InterruptedException ie) {}
+				}
 			}
 		}
-		
-		regSession = brokerConnection.createSession();
-		Destination configComplete = regSession.createQueue(READY_QUEUE_NAME);
-		MessageConsumer confirmer = regSession.createConsumer(configComplete);
-		
-		confirmer.setMessageListener(msg -> {
-			try {
-				String workerID = msg.getJMSCorrelationID();
-				synchronized (lock) {
-					Worker worker = workers.stream().filter(w -> w.id.equals(workerID)).findAny().orElse(null);
-					if (worker != null) {
-						worker.session = brokerConnection.createSession();
-						worker.jobs = worker.session.createQueue(workerID + JOB_SUFFIX);
-						worker.results = worker.session.createQueue(RESULTS_QUEUE_NAME);
-						worker.session.createConsumer(worker.results).setMessageListener(getResultsMessageListener(worker.results));
-						worker.jobSender = worker.session.createProducer(worker.jobs);
-					}
-					if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-						assert connectedWorkers.get() == workers.size();
-						lock.notify();
-					}
-				}
-			}
-			catch (JMSException ex) {
-				// TODO Auto-generated catch block
-				ex.printStackTrace();
-			}
-		});
-		
-		Destination configSent = regSession.createTopic(CONFIG_BROADCAST_NAME);
-		ObjectMessage configMessage = regSession.createObjectMessage(config);
-		MessageProducer sender = regSession.createProducer(configSent);
-		sender.send(configMessage);
-		
-		connectedWorkers.set(0);
-		while (connectedWorkers.get() < expectedWorkers) {
-			synchronized (lock) {
-				try {
-					lock.wait();
-				}
-				catch (InterruptedException ie) {}
-			}
-		}
-		
-		regSession.close();
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected MessageListener getResultsMessageListener(final Object client) {
+	protected MessageListener getResultsMessageListener() {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		return msg -> {
 			try {
 				Serializable contents;
 				if (msg instanceof ObjectMessage) {
-					synchronized (client) {
+					synchronized (receivedResults) {
 						contents = ((ObjectMessage)msg).getObject();
+						if (receivedResults.incrementAndGet() >= expectedResults) {
+							receivedResults.notify();
+						}
 					}
-					receivedResults.incrementAndGet();
 					
 					if (contents instanceof Iterable) {
 						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
@@ -228,26 +225,17 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			}
 		};
 	}
-
-	void awaitResults(int expected) {
-		
-	}
 	
 	void teardown() throws Exception {
-		brokerConnection.close();
-		brokerConnection = null;
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
-		connectionFactory = null;
-		workers = null;
 	}
 	
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
 		try {
-			setup();
 			EvlContextDistributedMaster context = getContext();
 			awaitWorkers(context.getDistributedParallelism(), context.getJobParameters());
 		}
@@ -259,19 +247,23 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {
 		Collection<? extends SerializableEvlAtom> jobs = createJobs(false);
-		
+		expectedResults = jobs.size();
 		// TODO load balancing
 		Worker worker = workers.iterator().next();
-		for (SerializableEvlAtom job : jobs) {
-			try {
+		try {
+			for (SerializableEvlAtom job : jobs) {
 				worker.sendJob(job);
 			}
-			catch (JMSException ex) {
-				throw new EolRuntimeException(ex);
+			
+			while (receivedResults.get() < expectedResults) {
+				synchronized (receivedResults) {
+					wait(120_000);
+				}
 			}
 		}
-		
-		awaitResults(jobs.size());
+		catch (JMSException | InterruptedException ex) {
+			throw new EolRuntimeException(ex);
+		}
 	}
 	
 	@Override
