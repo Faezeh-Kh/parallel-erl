@@ -9,17 +9,11 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.batch;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.util.Collector;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.EvlFlinkRichFunction;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
-import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * Executes this worker's batch of jobs and collects the results.
@@ -33,23 +27,8 @@ class EvlFlinkSubsetFlatMapFunction extends EvlFlinkRichFunction implements Flat
 
 	@Override
 	public void flatMap(DistributedEvlBatch batch, Collector<SerializableEvlResultAtom> out) throws Exception {
-		IEvlContextParallel context = localModule.getContext();
-		Collection<ConstraintContextAtom> jobs = ConstraintContextAtom.getContextJobs(context).subList(batch.from, batch.to);
-		Collection<Callable<Collection<SerializableEvlResultAtom>>> executorJobs = new ArrayList<>(jobs.size());
-		
-		for (ConstraintContextAtom job : jobs) {
-			executorJobs.add(() -> {
-				return job.executeWithResults(context)
-					.stream()
-					.map(localModule::serializeResult)
-					.collect(Collectors.toList());
-			});
-		}
-		
-		for (Collection<SerializableEvlResultAtom> resultBatch : context.executeParallelTyped(localModule, executorJobs)) {
-			for (SerializableEvlResultAtom resultElement : resultBatch) {
-				out.collect(resultElement);
-			}
+		for (SerializableEvlResultAtom resultElement : localModule.evaluateBatch(batch)) {
+			out.collect(resultElement);
 		}
 	}
 }

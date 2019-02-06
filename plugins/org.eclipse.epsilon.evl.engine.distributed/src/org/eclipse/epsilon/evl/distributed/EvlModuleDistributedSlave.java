@@ -12,10 +12,13 @@ package org.eclipse.epsilon.evl.distributed;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.exceptions.EolTypeNotFoundException;
+import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
+import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -23,7 +26,9 @@ import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
+import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * A worker EVL module, intended to be spawned during distributed processing.
@@ -92,6 +97,45 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		}
 		
 		return unsatisfied;
+	}
+	
+	List<ConstraintContextAtom> contextJobsCache;
+	/**
+	 * Creates data-parallel jobs (i.e. model elements from constraint contexts) and evaluates them based on the
+	 * specified indices. Since both the master and slave modules create the same jobs from the same inputs (i.e.
+	 * the process is deterministic), this approach can only fail if the supplied batch numbers are out of range.
+	 * 
+	 * @param batch The chunk of the problem this module should solve.
+	 * @return A collection of serializable UnsatisfiedConstraints. If all constraints for
+	 * the given element are satisfied, an empty collection is returned.
+	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
+	 */
+	public Collection<SerializableEvlResultAtom> evaluateBatch(final DistributedEvlBatch batch) throws EolRuntimeException {
+		IEvlContextParallel context = getContext();
+		
+		if (contextJobsCache == null) {
+			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
+		}
+		
+		EolExecutorService executor = context.beginParallelTask(this);
+		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
+		
+		for (ConstraintContextAtom job : contextJobsCache.subList(batch.from, batch.to)) {
+			executor.execute(() -> {
+				try {
+					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {
+						results.addElement(serializeResult(uc));
+					}
+				}
+				catch (EolRuntimeException ex) {
+					context.handleException(ex, executor);
+				}
+			});
+		}
+		
+		executor.awaitCompletion();
+		context.endParallelTask(module);
+		return results.getBatch();
 	}
 	
 	protected ConstraintContext getConstraintContextByTypeName(String typeName) throws EolTypeNotFoundException {
