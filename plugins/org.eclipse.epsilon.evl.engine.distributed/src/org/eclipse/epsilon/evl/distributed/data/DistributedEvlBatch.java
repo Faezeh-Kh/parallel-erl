@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
@@ -62,9 +62,9 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @return The serializable start and end indexes for the batches.
 	 * @throws EolRuntimeException
 	 */
-	public static List<DistributedEvlBatch> getBatches(EvlContextDistributedMaster context) throws EolRuntimeException {
-		final int batchSize = context.getDistributedParallelism(),
-			totalJobs = ConstraintContextAtom.getContextJobs(context).size(),
+	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
+		final int batchSize = module.getContext().getDistributedParallelism(),
+			totalJobs = ConstraintContextAtom.getContextJobs(module).size(),
 			increments = totalJobs / batchSize;
 		
 		return IntStream.range(0, batchSize)

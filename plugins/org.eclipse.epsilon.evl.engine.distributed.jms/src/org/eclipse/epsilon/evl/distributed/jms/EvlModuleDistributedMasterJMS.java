@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,6 +26,7 @@ import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlAtom;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
@@ -50,7 +52,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			args[0],
 			"-models",
 				"\"emf.DistributableEmfModel#"
-				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
+				+ "concurrent=true,cached=false,readOnLoad=true,storeOnDisposal=false,"
 				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
 			"-module", EvlModuleDistributedMasterJMS.class.getName().substring(20),
 				"int="+expectedWorkers,
@@ -91,7 +93,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			jobSender = session.createProducer();
 		}
 		
-		public void sendJob(SerializableEvlAtom input) throws JMSException {
+		public void sendJob(Serializable input) throws JMSException {
 			try (JMSContext jobContext = session.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				ObjectMessage jobMsg = jobContext.createObjectMessage(input);
 				jobMsg.setJMSCorrelationID(id);
@@ -258,13 +260,15 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {
-		Collection<? extends SerializableEvlAtom> jobs = createJobs(false);
-		expectedResults = jobs.size();
-		// TODO load balancing
-		Worker worker = workers.iterator().next();
+		
+		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(this);
+		expectedResults = batches.get(batches.size()-1).to;
+		Iterator<Worker> workersIter = workers.iterator();
+		Iterator<? extends Serializable> batchesIter = batches.iterator();
+		
 		try {
-			for (SerializableEvlAtom job : jobs) {
-				worker.sendJob(job);
+			while (batchesIter.hasNext() && workersIter.hasNext()) {
+				workersIter.next().sendJob(batchesIter.next());
 			}
 			
 			while (receivedResults.get() < expectedResults) {

@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -98,6 +99,7 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		return unsatisfied;
 	}
 	
+	List<ConstraintContextAtom> contextJobsCache;
 	/**
 	 * Creates data-parallel jobs (i.e. model elements from constraint contexts) and evaluates them based on the
 	 * specified indices. Since both the master and slave modules create the same jobs from the same inputs (i.e.
@@ -110,11 +112,15 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	 */
 	public Collection<SerializableEvlResultAtom> evaluateBatch(final DistributedEvlBatch batch) throws EolRuntimeException {
 		IEvlContextParallel context = getContext();
-		Collection<ConstraintContextAtom> jobs = ConstraintContextAtom.getContextJobs(context).subList(batch.from, batch.to);
+		
+		if (contextJobsCache == null) {
+			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
+		}
+		
 		EolExecutorService executor = context.beginParallelTask(this);
 		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
 		
-		for (ConstraintContextAtom job : jobs) {
+		for (ConstraintContextAtom job : contextJobsCache.subList(batch.from, batch.to)) {
 			executor.execute(() -> {
 				try {
 					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {

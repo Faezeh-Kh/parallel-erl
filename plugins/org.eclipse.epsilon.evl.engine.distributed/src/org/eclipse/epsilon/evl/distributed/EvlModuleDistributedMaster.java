@@ -67,9 +67,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModule {
 	 */
 	protected void assignDeserializedResults(Stream<SerializableEvlResultAtom> results) {
 		getContext().setUnsatisfiedConstraints(
-			results
-				.map(this::deserializeResult)
-				.collect(Collectors.toSet())
+			results.map(this::deserializeResult).collect(Collectors.toSet())
 		);
 	}
 	
@@ -127,8 +125,8 @@ public abstract class EvlModuleDistributedMaster extends EvlModule {
 			uc.setConstraint(constraint);
 		}
 		catch (EolRuntimeException ex) {
-			ex.printStackTrace();
-			//TODO handle properly
+			System.err.println(ex);
+			throw new RuntimeException(ex);
 		}
 		
 		return uc;
