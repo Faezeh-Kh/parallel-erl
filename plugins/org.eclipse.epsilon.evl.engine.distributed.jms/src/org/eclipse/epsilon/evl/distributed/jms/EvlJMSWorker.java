@@ -9,8 +9,8 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.jms;
 
+import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.*;
 import java.io.Serializable;
-import java.net.Inet6Address;
 import java.net.UnknownHostException;
 import java.util.Map;
 import javax.jms.*;
@@ -26,19 +26,13 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 public class EvlJMSWorker implements Runnable {
 
 	public static void main(String[] args) throws UnknownHostException {
-		new EvlJMSWorker(
-			args[0],
-			args.length > 1 ? args[1] : Inet6Address.getLocalHost().toString()
-		)
-		.run();
+		new EvlJMSWorker(args[0]).run();
 	}
 	
 	@Override
 	public void run() {
 		try {
-			register();
-			configContainer.preExecute();
-			confirmReady();
+			setup();
 			processJobs();
 			teardown();
 			//container.postExecute();
@@ -48,58 +42,57 @@ public class EvlJMSWorker implements Runnable {
 		}
 	}
 	
-	final String workerID;
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
+	String workerID;
 
-	public EvlJMSWorker(String jmsAddr, String id) {
-		this.workerID = id;
+	public EvlJMSWorker(String jmsAddr) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(jmsAddr);
 	}
 	
-	void register() throws Exception {
+	void setup() throws Exception {
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Announce our presence to the master
-			Destination registered = regContext.createQueue(EvlModuleDistributedMasterJMS.REGISTRATION_NAME);
-			Message ack = regContext.createMessage();
-			ack.setJMSCorrelationID(workerID);
-			regContext.createProducer().send(registered, ack);
+			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
+			Destination tempQueue = regContext.createTemporaryQueue();
+			JMSProducer regProducer = regContext.createProducer();
+			Message initMsg = regContext.createMessage();
+			initMsg.setJMSReplyTo(tempQueue);
+			regProducer.send(regQueue, initMsg);
 			
-			// Here we receive the actual configuration from the master
-			Destination configReceive = regContext.createTopic(EvlModuleDistributedMasterJMS.CONFIG_BROADCAST_NAME);
-			// Block until received
-			Map<String, ? extends Serializable> config = regContext.createConsumer(configReceive).receiveBody(Map.class);
-			configContainer = EvlContextDistributedSlave.parseJobParameters(config);
-		}
-	}
-	
-	void confirmReady() throws JMSException {
-		try (JMSContext confirmContext = connectionFactory.createContext()) {
+			// Get the configuration and our ID from the reply
+			Message configMsg = regContext.createConsumer(tempQueue).receive();
+			this.workerID = configMsg.getJMSCorrelationID();
+			System.out.println(workerID + " config and ID received at "+System.currentTimeMillis());
+			
+			configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
+			configContainer.preExecute();
+			
 			// This is to acknowledge when we have completed loading the script(s) and model(s)
-			Destination configComplete = confirmContext.createQueue(EvlModuleDistributedMasterJMS.READY_QUEUE_NAME);
-			Message configuredAckMsg = confirmContext.createMessage();
+			Message configuredAckMsg = regContext.createMessage();
 			configuredAckMsg.setJMSCorrelationID(workerID);
+			configuredAckMsg.setJMSReplyTo(tempQueue);
 			// Tell the master we're setup and ready to work
-			confirmContext.createProducer().send(configComplete, configuredAckMsg);
+			regProducer.send(configMsg.getJMSReplyTo(), configuredAckMsg);
 		}
 	}
 	
 	void processJobs() throws JMSException {
 		try (JMSContext jobContext = connectionFactory.createContext()) {
 			// Job processing, requires destinations for inputs (jobs) and outputs (results)
-			Topic jobTopic = jobContext.createTopic(workerID + EvlModuleDistributedMasterJMS.JOB_SUFFIX);
-			Destination resultsQueue = jobContext.createQueue(EvlModuleDistributedMasterJMS.RESULTS_QUEUE_NAME);
+			Destination jobDest = jobContext.createTopic(workerID + JOB_SUFFIX);
+			Destination resultsDest = jobContext.createQueue(RESULTS_QUEUE_NAME);
 			JMSProducer resultsSender = jobContext.createProducer();
-			// This is to allow for load-balancing
-			JMSConsumer jobConsumer = jobContext.createSharedConsumer(jobTopic, jobTopic.getTopicName()+"-subscription");
 			
 			CheckedConsumer<Serializable, JMSException> resultProcessor = obj -> {
 				ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
 				resultsMessage.setJMSCorrelationID(workerID);
-				resultsSender.send(resultsQueue, resultsMessage);
+				resultsSender.send(resultsDest, resultsMessage);
 			};
 			
-			jobConsumer.setMessageListener(getJobProcessor(resultProcessor, (EvlModuleDistributedSlave) configContainer.getModule()));
+			jobContext.createConsumer(jobDest).setMessageListener(
+				getJobProcessor(resultProcessor, (EvlModuleDistributedSlave) configContainer.getModule())
+			);
 			
 			awaitCompletion();
 		}
@@ -107,6 +100,7 @@ public class EvlJMSWorker implements Runnable {
 	
 	void awaitCompletion() {
 		// TODO more intelligent blocking
+		System.out.println(workerID+" awaiting jobs since "+System.currentTimeMillis());
 		try {
 			Thread.sleep(Integer.MAX_VALUE);
 		}

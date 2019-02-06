@@ -51,7 +51,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			args[0],
 			"-models",
 				"\"emf.DistributableEmfModel#"
-				+ "concurrent=true,cached=false,readOnLoad=true,storeOnDisposal=false,"
+				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
 				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
 			"-module", EvlModuleDistributedMasterJMS.class.getName().substring(20),
 				"int="+expectedWorkers,
@@ -60,11 +60,12 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	public static final String
-		REGISTRATION_NAME = "registration",
-		CONFIG_BROADCAST_NAME = "configuration",
-		READY_QUEUE_NAME = "confirm-configured",
+		REGISTRATION_QUEUE_NAME = "registration",
 		RESULTS_QUEUE_NAME = "results",
-		JOB_SUFFIX = "-jobs";
+		JOB_SUFFIX = "-jobs",
+		WORKER_ID_PREFIX = "EVL-jms-";
+	
+	private static final String LOG_PREFIX = "[MASTER] ";
 	
 	final String host;
 	final ConnectionFactory connectionFactory;
@@ -76,6 +77,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	class Worker implements AutoCloseable {
 		public final String id;
+		public Destination localBox = null;
 		JMSContext session;
 		Topic jobsTopic;
 		JMSProducer jobSender;
@@ -89,12 +91,10 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			jobSender = session.createProducer();
 		}
 		
-		public void sendJob(Serializable input) throws JMSException {
-			try (JMSContext jobContext = session.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				ObjectMessage jobMsg = jobContext.createObjectMessage(input);
-				jobMsg.setJMSCorrelationID(id);
-				jobSender.send(jobsTopic, jobMsg);
-			}
+		public void sendJob(Serializable input, JMSContext jobContext) throws JMSException {
+			ObjectMessage jobMsg = jobContext.createObjectMessage(input);
+			jobMsg.setJMSCorrelationID(id);
+			jobSender.send(jobsTopic, jobMsg);
 		}
 		
 		@Override
@@ -132,22 +132,41 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Initial registration of workers
-			regContext.createConsumer(regContext.createQueue(REGISTRATION_NAME)).setMessageListener(msg -> {
+			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
+			JMSConsumer regConsumer = regContext.createConsumer(regQueue);
+			JMSProducer regProducer = regContext.createProducer();
+			
+			regConsumer.setMessageListener(msg -> {
 				try {
 					synchronized (connectedWorkers) {
-						workers.add(new Worker(msg.getJMSCorrelationID()));
+						// Assign worker ID
+						Destination tempQueue = regContext.createTemporaryQueue();
+						Worker worker = new Worker(WORKER_ID_PREFIX+connectedWorkers.get());
+						worker.localBox = msg.getJMSReplyTo();
+						workers.add(worker);
+						// Tell the worker what their ID is along with the configuration parameters
+						Message configMsg = regContext.createObjectMessage(config);
+						configMsg.setJMSReplyTo(tempQueue);
+						configMsg.setJMSCorrelationID(worker.id);
+						regProducer.send(worker.localBox, configMsg);
+						
+						// Wait for the worker to load the configuration and get back to us
+						Message ack = regContext.createConsumer(tempQueue).receive();
+						worker.confirm(regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE));
+						
+						// Stop waiting once all workers are connected
 						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
+							assert expectedWorkers == workers.size();
 							connectedWorkers.notify();
 						}
 					}
 				}
-				catch (JMSException ex) {
-					// TODO Auto-generated catch block
-					ex.printStackTrace();
+				catch (JMSException jmx) {
+					throw new JMSRuntimeException(jmx.getMessage());
 				}
 			});
 			
-			// Wait for workers to connect
+			// Wait for workers to confirm that they've completed configuration
 			while (connectedWorkers.get() < expectedWorkers) {
 				synchronized (connectedWorkers) {
 					try {
@@ -157,42 +176,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				}
 			}
 			
-			// Send the configuration
-			regContext.createProducer().send(regContext.createTopic(CONFIG_BROADCAST_NAME), config);
-			
-			// Add confirmed workers once they've loaded the configuration
-			regContext.createConsumer(regContext.createQueue(READY_QUEUE_NAME)).setMessageListener(msg -> {
-				try {
-					String workerID = msg.getJMSCorrelationID();
-					synchronized (connectedWorkers) {
-						workers.stream()
-							.filter(w -> w.id.equals(workerID))
-							.findAny()
-							.ifPresent(w -> w.confirm(regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)));
-						
-						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-							assert connectedWorkers.get() == workers.size();
-							connectedWorkers.notify();
-						}
-					}
-				}
-				catch (JMSException ex) {
-					// TODO Auto-generated catch block
-					ex.printStackTrace();
-				}
-			});
-			
-			// Wait for workers to confirm that they've completed configuration
-			connectedWorkers.set(0);
-			do {
-				synchronized (connectedWorkers) {
-					try {
-						connectedWorkers.wait();
-					}
-					catch (InterruptedException ie) {}
-				}
-			}
-			while (connectedWorkers.get() < expectedWorkers);
+			System.out.println(LOG_PREFIX+"Workers ready at "+System.currentTimeMillis());
 		}
 	}
 	
@@ -217,16 +201,15 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 						unsatisfiedConstraints.add(deserializeResult((SerializableEvlResultAtom) contents));
 					}
 					else {
-						System.err.println("[MASTER] Received unexpected object of type "+contents.getClass().getSimpleName());
+						System.err.println(LOG_PREFIX+"Received unexpected object of type "+contents.getClass().getSimpleName());
 					}
 				}
 				else {
-					System.err.println("[MASTER] Received non-object message.");
+					System.err.println(LOG_PREFIX+"Received non-object message.");
 				}
 			}
-			catch (JMSException ex) {
-				// TODO Auto-generated catch block
-				ex.printStackTrace();
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
 			}
 		};
 	}
@@ -261,9 +244,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		Iterator<Worker> workersIter = workers.iterator();
 		Iterator<? extends Serializable> batchesIter = batches.iterator();
 		
-		try {
+		try (JMSContext jobContext = connectionFactory.createContext()) {
 			while (batchesIter.hasNext() && workersIter.hasNext()) {
-				workersIter.next().sendJob(batchesIter.next());
+				workersIter.next().sendJob(batchesIter.next(), jobContext);
 			}
 			
 			while (receivedResults.get() < expectedResults) {
