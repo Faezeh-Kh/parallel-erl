@@ -34,8 +34,8 @@ public class EvlJMSWorker implements Runnable {
 		try {
 			setup();
 			processJobs();
-			teardown();
 			//container.postExecute();
+			teardown();
 		}
 		catch (Exception ex) {
 			throw new RuntimeException(ex);
@@ -67,6 +67,7 @@ public class EvlJMSWorker implements Runnable {
 			
 			configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
 			configContainer.preExecute();
+			((EvlModuleDistributedSlave)configContainer.getModule()).prepareExecution();
 			
 			// This is to acknowledge when we have completed loading the script(s) and model(s)
 			Message configuredAckMsg = regContext.createMessage();
@@ -95,6 +96,11 @@ public class EvlJMSWorker implements Runnable {
 			);
 			
 			awaitCompletion();
+			
+			// Tell the master we've finished
+			Message finishedMsg = jobContext.createMessage();
+			finishedMsg.setJMSCorrelationID(workerID);
+			resultsSender.send(resultsDest, finishedMsg);
 		}
 	}
 	

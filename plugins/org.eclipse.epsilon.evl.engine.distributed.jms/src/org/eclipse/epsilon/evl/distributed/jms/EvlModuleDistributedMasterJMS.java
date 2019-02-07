@@ -70,14 +70,13 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	final String host;
 	final ConnectionFactory connectionFactory;
 	final List<Worker> workers;
-	final AtomicInteger receivedResults = new AtomicInteger();
-	int expectedResults;
 	JMSContext resultsContext;
 	Destination resultsDest;
 	
 	class Worker implements AutoCloseable {
 		public final String id;
 		public Destination localBox = null;
+		public boolean finished = false;
 		JMSContext session;
 		Topic jobsTopic;
 		JMSProducer jobSender;
@@ -186,14 +185,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		return msg -> {
 			try {
 				if (msg instanceof ObjectMessage) {
-					if (receivedResults.incrementAndGet() >= expectedResults) {
-						synchronized (receivedResults) {
-							receivedResults.notify();
-						}
-					}
-					
 					Serializable contents = ((ObjectMessage)msg).getObject();
-					
 					if (contents instanceof Iterable) {
 						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
 					}
@@ -205,7 +197,16 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 					}
 				}
 				else {
-					System.err.println(LOG_PREFIX+"Received non-object message.");
+					String workerID = msg.getJMSCorrelationID();
+					workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(w1 -> {
+						w1.finished = true;
+						if (workers.stream().allMatch(w2 -> w2.finished)) {
+							synchronized (workers) {
+								workers.notify();
+							}
+						}
+					});
+					//System.err.println(LOG_PREFIX+"Received non-object message.");
 				}
 			}
 			catch (JMSException jmx) {
@@ -240,7 +241,6 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {	
 		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(this);
-		expectedResults = batches.get(batches.size()-1).to;
 		Iterator<Worker> workersIter = workers.iterator();
 		Iterator<? extends Serializable> batchesIter = batches.iterator();
 		
@@ -249,9 +249,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				workersIter.next().sendJob(batchesIter.next(), jobContext);
 			}
 			
-			while (receivedResults.get() < expectedResults) {
-				synchronized (receivedResults) {
-					receivedResults.wait(120_000);
+			while (workers.stream().anyMatch(w -> !w.finished)) {
+				synchronized (workers) {
+					workers.wait(120_000);
 				}
 			}
 		}
