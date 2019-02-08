@@ -45,9 +45,11 @@ public class EvlJMSWorker implements Runnable {
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
 	String workerID;
+	volatile boolean finished;
+	final Object completionLock = new Object();
 
-	public EvlJMSWorker(String jmsAddr) {
-		connectionFactory = new ActiveMQJMSConnectionFactory(jmsAddr);
+	public EvlJMSWorker(String host) {
+		connectionFactory = new ActiveMQJMSConnectionFactory(host);
 	}
 	
 	void setup() throws Exception {
@@ -82,13 +84,13 @@ public class EvlJMSWorker implements Runnable {
 		try (JMSContext jobContext = connectionFactory.createContext()) {
 			// Job processing, requires destinations for inputs (jobs) and outputs (results)
 			Destination jobDest = jobContext.createTopic(workerID + JOB_SUFFIX);
-			Destination resultsDest = jobContext.createQueue(RESULTS_QUEUE_NAME);
+			Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
 			JMSProducer resultsSender = jobContext.createProducer();
 			
 			CheckedConsumer<Serializable, JMSException> resultProcessor = obj -> {
 				ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
 				resultsMessage.setJMSCorrelationID(workerID);
-				resultsSender.send(resultsDest, resultsMessage);
+				resultsSender.send(resultsQueue, resultsMessage);
 			};
 			
 			jobContext.createConsumer(jobDest).setMessageListener(
@@ -97,28 +99,45 @@ public class EvlJMSWorker implements Runnable {
 			
 			awaitCompletion();
 			
-			// Tell the master we've finished
-			Message finishedMsg = jobContext.createMessage();
-			finishedMsg.setJMSCorrelationID(workerID);
-			resultsSender.send(resultsDest, finishedMsg);
+			try (JMSContext finishedContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				// Tell the master we've finished
+				Message finishedMsg = finishedContext.createMessage();
+				finishedMsg.setJMSCorrelationID(workerID);
+				Destination finishedDest = finishedContext.createQueue(RESULTS_QUEUE_NAME);
+				finishedContext.createProducer().send(finishedDest, finishedMsg);
+			}
 		}
 	}
 	
 	void awaitCompletion() {
-		// TODO more intelligent blocking
 		System.out.println(workerID+" awaiting jobs since "+System.currentTimeMillis());
-		try {
-			Thread.sleep(Integer.MAX_VALUE);
+		while (!finished) {
+			try {
+				synchronized (completionLock) {
+					completionLock.wait();
+				}
+			}
+			catch (InterruptedException ex) {
+				// TODO Auto-generated catch block
+				ex.printStackTrace();
+			}
 		}
-		catch (InterruptedException ex) {
-			// TODO Auto-generated catch block
-			ex.printStackTrace();
-		}
+		System.out.println(workerID+" finished jobs at "+System.currentTimeMillis());
 	}
 	
 	protected MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
 		return msg -> {
 			try {
+				if (!(msg instanceof ObjectMessage)) {
+					// End of jobs
+					finished = true;
+					System.out.println(workerID+" received all jobs by "+System.currentTimeMillis());
+					synchronized (completionLock) {
+						completionLock.notify();
+					}
+					return;
+				}
+				
 				final Serializable objMsg = ((ObjectMessage)msg).getObject();
 				final Object resultObj;
 				
@@ -135,6 +154,12 @@ public class EvlJMSWorker implements Runnable {
 				
 				if (resultObj instanceof Serializable) {
 					resultProcessor.acceptThrows((Serializable) resultObj);
+					if (finished) {
+						// Wake up the main thread once the last job has been processed and sent
+						synchronized (completionLock) {
+							completionLock.notify();
+						}
+					}
 				}
 			}
 			catch (JMSException | EolRuntimeException ex) {

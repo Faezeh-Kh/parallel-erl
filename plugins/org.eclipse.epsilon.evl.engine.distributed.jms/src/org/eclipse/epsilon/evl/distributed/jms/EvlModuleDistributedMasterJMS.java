@@ -37,7 +37,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
 		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
 		String expectedWorkers = args[3];
-		String addr = args[4];
+		String addr = args.length > 4 ? args[4] : null;
 		
 		if (addr == null || addr.length() < 5) {
 			addr = "tcp://"+InetAddress.getLocalHost().getHostAddress()+":61616";
@@ -70,6 +70,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	final String host;
 	final ConnectionFactory connectionFactory;
 	final List<Worker> workers;
+	final AtomicInteger workersFinished = new AtomicInteger();
 	JMSContext resultsContext;
 	Destination resultsDest;
 	
@@ -94,6 +95,12 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			ObjectMessage jobMsg = jobContext.createObjectMessage(input);
 			jobMsg.setJMSCorrelationID(id);
 			jobSender.send(jobsTopic, jobMsg);
+		}
+		
+		public void signalEnd(JMSContext jobContext) throws JMSException {
+			Message endMsg = jobContext.createMessage();
+			endMsg.setJMSCorrelationID(id);
+			jobSender.send(jobsTopic, endMsg);
 		}
 		
 		@Override
@@ -123,6 +130,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers);
 		connectionFactory = new ActiveMQJMSConnectionFactory(this.host = host);
+		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
 		workers = new ArrayList<>(expectedWorkers);
 	}
 	
@@ -187,7 +195,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				if (msg instanceof ObjectMessage) {
 					Serializable contents = ((ObjectMessage)msg).getObject();
 					if (contents instanceof Iterable) {
-						((Iterable<? extends SerializableEvlResultAtom>)contents).forEach(this::deserializeResult);
+						for (SerializableEvlResultAtom sra : (Iterable<? extends SerializableEvlResultAtom>)contents) {
+							unsatisfiedConstraints.add(deserializeResult(sra));
+						}
 					}
 					else if (contents instanceof SerializableEvlResultAtom) {
 						unsatisfiedConstraints.add(deserializeResult((SerializableEvlResultAtom) contents));
@@ -198,15 +208,14 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				}
 				else {
 					String workerID = msg.getJMSCorrelationID();
-					workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(w1 -> {
-						w1.finished = true;
-						if (workers.stream().allMatch(w2 -> w2.finished)) {
-							synchronized (workers) {
-								workers.notify();
+					workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(w -> {
+						w.finished = true;
+						if (workersFinished.incrementAndGet() >= workers.size()) {
+							synchronized (workersFinished) {
+								workersFinished.notify();
 							}
 						}
 					});
-					//System.err.println(LOG_PREFIX+"Received non-object message.");
 				}
 			}
 			catch (JMSException jmx) {
@@ -246,14 +255,19 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		
 		try (JMSContext jobContext = connectionFactory.createContext()) {
 			while (batchesIter.hasNext() && workersIter.hasNext()) {
-				workersIter.next().sendJob(batchesIter.next(), jobContext);
+				Worker worker = workersIter.next();
+				worker.sendJob(batchesIter.next(), jobContext);
+				worker.signalEnd(jobContext);
+				System.out.println(LOG_PREFIX+" finished submitting to "+worker);
 			}
 			
-			while (workers.stream().anyMatch(w -> !w.finished)) {
-				synchronized (workers) {
-					workers.wait(120_000);
+			System.out.println(LOG_PREFIX+" awaiting completion...");
+			while (workersFinished.get() < workers.size()) {
+				synchronized (workersFinished) {
+					workersFinished.wait();
 				}
 			}
+			System.out.println(LOG_PREFIX+" completed.");
 		}
 		catch (JMSException | InterruptedException ex) {
 			throw new EolRuntimeException(ex);
