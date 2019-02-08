@@ -9,8 +9,12 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.data;
 
+import java.util.Collection;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 
 /**
  * Serializable representation of an {@linkplain UnsatisfiedConstraint}.
@@ -19,8 +23,8 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * @since 1.6
  */
 public class SerializableEvlResultAtom extends SerializableEvlAtom {
-	
-	private static final long serialVersionUID = -1980020699534098214L;
+
+	private static final long serialVersionUID = 6633651795817751005L;
 	
 	public String constraintName, message;
 	
@@ -54,5 +58,31 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 	@Override
 	public String toString() {
 		return super.toString()+", constraintName=" + constraintName + ", message=" + message;
+	}
+	
+	/**
+	 * Transform the {@linkplain UnsatisfiedConstraint} into a serializable form.
+	 * 
+	 * @param uc The unsatisfied constraint.
+	 * @param context
+	 * @return The serialized form of the unsatisfied constraint.
+	 */
+	public static SerializableEvlResultAtom serializeResult(UnsatisfiedConstraint uc, IEvlContext context) {
+		SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
+		Object modelElement = uc.getInstance();
+		IModel owningModel = context.getModelRepository().getOwningModel(modelElement);
+		outputAtom.contextName = uc.getConstraint().getConstraintContext().getTypeName();
+		outputAtom.modelName = owningModel.getName();
+		outputAtom.modelElementID = owningModel.getElementId(modelElement);
+		outputAtom.constraintName = uc.getConstraint().getName();
+		outputAtom.message = uc.getMessage();
+		return outputAtom;
+	}
+	
+	public static Collection<SerializableEvlResultAtom> serializeResults(IEvlContext context) {
+		return context.getUnsatisfiedConstraints()
+			.parallelStream()
+			.map(uc -> serializeResult(uc, context))
+			.collect(Collectors.toList());
 	}
 }

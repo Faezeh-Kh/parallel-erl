@@ -1,5 +1,5 @@
 /*********************************************************************
- * Copyright (c) 2018 The University of York.
+ * Copyright (c) 2018-2019 The University of York.
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -9,13 +9,18 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.data;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
+import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
+import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
+import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
  * Simple over-the-wire input for telling each node the start and end indexes
@@ -25,9 +30,9 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  * @since 1.6
  */
 public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
-	
-	private static final long serialVersionUID = -6635227506532865240L;
-	
+
+	private static final long serialVersionUID = 7612999545641549495L;
+
 	public int from, to;
 	
 	@Override
@@ -63,7 +68,8 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @throws EolRuntimeException
 	 */
 	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
-		final int batchSize = module.getContext().getDistributedParallelism(),
+		// Plus one because master itself is also included as a worker
+		final int batchSize = module.getContext().getDistributedParallelism()+1,
 			totalJobs = ConstraintContextAtom.getContextJobs(module).size(),
 			increments = totalJobs / batchSize;
 		
@@ -75,5 +81,27 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 				return batch;
 			})
 			.collect(Collectors.toList());
+	}
+	
+	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, EvlContextParallel context) throws EolRuntimeException {
+		EolExecutorService executor = context.beginParallelTask(null);
+		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
+		
+		for (ConstraintContextAtom job : jobList.subList(from, to)) {
+			executor.execute(() -> {
+				try {
+					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {
+						results.addElement(SerializableEvlResultAtom.serializeResult(uc, context));
+					}
+				}
+				catch (EolRuntimeException ex) {
+					context.handleException(ex, executor);
+				}
+			});
+		}
+		
+		executor.awaitCompletion();
+		context.endParallelTask(null);
+		return results.getBatch();
 	}
 }

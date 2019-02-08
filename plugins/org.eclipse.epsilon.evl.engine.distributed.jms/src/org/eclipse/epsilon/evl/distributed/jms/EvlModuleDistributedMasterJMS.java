@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
@@ -30,6 +29,7 @@ import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
@@ -69,37 +69,35 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	final String host;
 	final ConnectionFactory connectionFactory;
-	final List<Worker> workers;
+	final List<WorkerView> slaveWorkers;
 	final AtomicInteger workersFinished = new AtomicInteger();
 	JMSContext resultsContext;
 	Destination resultsDest;
 	
-	class Worker implements AutoCloseable {
-		public final String id;
+	class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
-		public boolean finished = false;
 		JMSContext session;
 		Topic jobsTopic;
 		JMSProducer jobSender;
 		
-		public Worker(String id) {
-			this.id = id;
+		public WorkerView(String id) {
+			this.workerID = id;
 		}
 		
 		public void confirm(JMSContext session) {
-			jobsTopic = (this.session = session).createTopic(id + JOB_SUFFIX);
+			jobsTopic = (this.session = session).createTopic(workerID + JOB_SUFFIX);
 			jobSender = session.createProducer();
 		}
 		
 		public void sendJob(Serializable input, JMSContext jobContext) throws JMSException {
 			ObjectMessage jobMsg = jobContext.createObjectMessage(input);
-			jobMsg.setJMSCorrelationID(id);
+			jobMsg.setJMSCorrelationID(workerID);
 			jobSender.send(jobsTopic, jobMsg);
 		}
 		
 		public void signalEnd(JMSContext jobContext) throws JMSException {
 			Message endMsg = jobContext.createMessage();
-			endMsg.setJMSCorrelationID(id);
+			endMsg.setJMSCorrelationID(workerID);
 			jobSender.send(jobsTopic, endMsg);
 		}
 		
@@ -110,28 +108,13 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			jobsTopic = null;
 			jobSender = null;
 		}
-		
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj) return true;
-			if (!(obj instanceof Worker)) return false;
-			return Objects.equals(this.id, ((Worker)obj).id);
-		}
-		@Override
-		public int hashCode() {
-			return Objects.hashCode(id);
-		}
-		@Override
-		public String toString() {
-			return getClass().getName()+"-"+id;
-		}
 	}
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers);
 		connectionFactory = new ActiveMQJMSConnectionFactory(this.host = host);
 		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
-		workers = new ArrayList<>(expectedWorkers);
+		slaveWorkers = new ArrayList<>(expectedWorkers);
 	}
 	
 	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
@@ -148,13 +131,13 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 					synchronized (connectedWorkers) {
 						// Assign worker ID
 						Destination tempQueue = regContext.createTemporaryQueue();
-						Worker worker = new Worker(WORKER_ID_PREFIX+connectedWorkers.get());
+						WorkerView worker = new WorkerView(WORKER_ID_PREFIX+connectedWorkers.get());
 						worker.localBox = msg.getJMSReplyTo();
-						workers.add(worker);
+						slaveWorkers.add(worker);
 						// Tell the worker what their ID is along with the configuration parameters
 						Message configMsg = regContext.createObjectMessage(config);
 						configMsg.setJMSReplyTo(tempQueue);
-						configMsg.setJMSCorrelationID(worker.id);
+						configMsg.setJMSCorrelationID(worker.workerID);
 						regProducer.send(worker.localBox, configMsg);
 						
 						// Wait for the worker to load the configuration and get back to us
@@ -163,7 +146,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 						
 						// Stop waiting once all workers are connected
 						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-							assert expectedWorkers == workers.size();
+							assert expectedWorkers == slaveWorkers.size();
 							connectedWorkers.notify();
 						}
 					}
@@ -177,7 +160,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			while (connectedWorkers.get() < expectedWorkers) {
 				synchronized (connectedWorkers) {
 					try {
-						connectedWorkers.wait(30_000);
+						connectedWorkers.wait();
 					}
 					catch (InterruptedException ie) {}
 				}
@@ -208,9 +191,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				}
 				else {
 					String workerID = msg.getJMSCorrelationID();
-					workers.stream().filter(w -> w.id.equals(workerID)).findAny().ifPresent(w -> {
+					slaveWorkers.stream().filter(w -> w.workerID.equals(workerID)).findAny().ifPresent(w -> {
 						w.finished = true;
-						if (workersFinished.incrementAndGet() >= workers.size()) {
+						if (workersFinished.incrementAndGet() >= slaveWorkers.size()) {
 							synchronized (workersFinished) {
 								workersFinished.notify();
 							}
@@ -227,6 +210,11 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	void teardown() throws Exception {
 		resultsContext.close();
 		resultsContext = null;
+		for (AutoCloseable worker : slaveWorkers) {
+			worker.close();
+			worker = null;
+		}
+		slaveWorkers.clear();
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
@@ -250,19 +238,25 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	@Override
 	protected void checkConstraints() throws EolRuntimeException {	
 		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(this);
-		Iterator<Worker> workersIter = workers.iterator();
-		Iterator<? extends Serializable> batchesIter = batches.iterator();
+		assert slaveWorkers.size() == batches.size()+1;
+		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
+		Iterator<DistributedEvlBatch> batchesIter = batches.iterator();
 		
 		try (JMSContext jobContext = connectionFactory.createContext()) {
-			while (batchesIter.hasNext() && workersIter.hasNext()) {
-				Worker worker = workersIter.next();
+			while (workersIter.hasNext()) {
+				WorkerView worker = workersIter.next();
 				worker.sendJob(batchesIter.next(), jobContext);
 				worker.signalEnd(jobContext);
-				System.out.println(LOG_PREFIX+" finished submitting to "+worker);
+				System.out.println(LOG_PREFIX+" finished submitting to "+worker+" at "+System.currentTimeMillis());
 			}
 			
+			assert batchesIter.hasNext();
+			System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
+			batchesIter.next().evaluate(ConstraintContextAtom.getContextJobs(this), getContext());
+			System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
+			
 			System.out.println(LOG_PREFIX+" awaiting completion...");
-			while (workersFinished.get() < workers.size()) {
+			while (workersFinished.get() < slaveWorkers.size()) {
 				synchronized (workersFinished) {
 					workersFinished.wait();
 				}

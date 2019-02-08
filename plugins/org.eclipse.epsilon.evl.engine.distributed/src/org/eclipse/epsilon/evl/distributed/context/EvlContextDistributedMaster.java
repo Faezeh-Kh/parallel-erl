@@ -17,29 +17,27 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.eclipse.epsilon.common.concurrent.ConcurrencyUtils;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.context.Variable;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.context.EvlContext;
+import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
  * 
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlContextDistributedMaster extends EvlContext {
+public class EvlContextDistributedMaster extends EvlContextParallel {
 
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
-	protected int distributedParallelism, localParallelism;
+	protected int distributedParallelism;
 	protected String outputDir;
 	
 	public EvlContextDistributedMaster(int localParallelism, int distributedParallelism) {
-		this.localParallelism = localParallelism > 0 ? localParallelism : ConcurrencyUtils.DEFAULT_PARALLELISM;
+		super(localParallelism);
 		this.distributedParallelism = distributedParallelism;
-		unsatisfiedConstraints = ConcurrencyUtils.concurrentSet();
 	}
 
 	public void setUnsatisfiedConstraints(Set<UnsatisfiedConstraint> unsatisfiedConstraints) {
@@ -88,7 +86,7 @@ public class EvlContextDistributedMaster extends EvlContext {
 	public HashMap<String, ? extends Serializable> getJobParameters() {
 		HashMap<String, Serializable> config = new HashMap<>();
 		
-		config.put("localParallelism", localParallelism);
+		config.put("localParallelism", numThreads);
 		config.put("distributedParallelism", distributedParallelism);
 		config.put("evlScript", getModule().getFile().toPath().toString());
 		config.put("output", outputDir);

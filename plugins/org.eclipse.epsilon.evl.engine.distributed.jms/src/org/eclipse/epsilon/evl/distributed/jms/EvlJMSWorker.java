@@ -11,7 +11,6 @@ package org.eclipse.epsilon.evl.distributed.jms;
 
 import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.*;
 import java.io.Serializable;
-import java.net.UnknownHostException;
 import java.util.Map;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
@@ -23,10 +22,12 @@ import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
-public class EvlJMSWorker implements Runnable {
+public class EvlJMSWorker extends AbstractWorker implements Runnable {
 
-	public static void main(String[] args) throws UnknownHostException {
-		new EvlJMSWorker(args[0]).run();
+	public static void main(String[] args) throws Exception {
+		try (EvlJMSWorker worker = new EvlJMSWorker(args[0])) {
+			worker.run();
+		}
 	}
 	
 	@Override
@@ -35,7 +36,7 @@ public class EvlJMSWorker implements Runnable {
 			setup();
 			processJobs();
 			//container.postExecute();
-			teardown();
+			close();
 		}
 		catch (Exception ex) {
 			throw new RuntimeException(ex);
@@ -142,7 +143,7 @@ public class EvlJMSWorker implements Runnable {
 				final Object resultObj;
 				
 				if (objMsg instanceof SerializableEvlInputAtom) {
-					resultObj  = module.evaluateElement((SerializableEvlInputAtom) objMsg);
+					resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
 				}
 				else if (objMsg instanceof DistributedEvlBatch) {
 					resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
@@ -169,7 +170,8 @@ public class EvlJMSWorker implements Runnable {
 		};
 	}
 
-	void teardown() throws Exception {
+	@Override
+	public void close() throws Exception {
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}

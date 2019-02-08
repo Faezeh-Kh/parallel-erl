@@ -19,7 +19,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
-import org.eclipse.epsilon.evl.EvlModule;
+import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.dom.Constraint;
@@ -44,7 +44,7 @@ import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedMaster extends EvlModule {
+public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 
 	public EvlModuleDistributedMaster(int parallelism) {
 		context = new EvlContextDistributedMaster(0, parallelism);
@@ -120,7 +120,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModule {
 			uc.setInstance(modelElement);
 			uc.setMessage(sr.message);
 			Constraint constraint = constraints
-				.getConstraint(sr.constraintName, getConstraintContext(sr.contextName), modelElement, getContext(), false)
+				.getConstraint(sr.constraintName, getConstraintContextByTypeName(sr.contextName), modelElement, getContext(), false)
 				.orElseThrow(() -> new EvlConstraintNotFoundException(sr.constraintName, this));
 			uc.setConstraint(constraint);
 		}

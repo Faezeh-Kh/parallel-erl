@@ -9,26 +9,15 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.exceptions.EolTypeNotFoundException;
-import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
-import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.*;
-import org.eclipse.epsilon.evl.dom.Constraint;
-import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
-import org.eclipse.epsilon.evl.execute.context.IEvlContext;
-import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * A worker EVL module, intended to be spawned during distributed processing.
@@ -42,61 +31,13 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
  * @since 1.6
  */
 public class EvlModuleDistributedSlave extends EvlModuleParallel {
-
+	
 	public EvlModuleDistributedSlave() {
 		this(0);
 	}
 	
 	public EvlModuleDistributedSlave(int parallelism) {
-		context = new EvlContextDistributedSlave(parallelism);
-	}
-	
-	/**
-	 * Evaluates all applicable constraints for the given model element.
-	 * 
-	 * @param atom The input to this worker.
-	 * @return A collection of serializable UnsatisfiedConstraints. If all constraints for
-	 * the given element are satisfied, an empty collection is returned.
-	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
-	 */
-	public Collection<SerializableEvlResultAtom> evaluateElement(final SerializableEvlInputAtom inputAtom) throws EolRuntimeException {
-		IEvlContext context = getContext();
-		Object modelElement = inputAtom.findElement(context);
-		
-		if (modelElement == null) {
-			throw new EolRuntimeException(
-				"Could not find model element with ID "+inputAtom.modelElementID+
-				(inputAtom.modelName != null && inputAtom.modelName.trim().length() > 0 ? 
-					" in model "+inputAtom.modelName : ""
-				)
-				+" in context of "+inputAtom.contextName
-			);
-		}
-		
-		ConstraintContext constraintContext = getConstraintContextByTypeName(inputAtom.contextName);
-		
-		if (!constraintContext.shouldBeChecked(modelElement, context)) {
-			return Collections.emptyList();
-		}
-		
-		Collection<Constraint> constraintsToCheck = constraintContext.getConstraints();
-		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
-		
-		for (Constraint constraint : constraintsToCheck) {
-			constraint.execute(modelElement, context)
-				.map(unsatisfiedConstraint -> {
-					SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
-					outputAtom.contextName = inputAtom.contextName;
-					outputAtom.modelName = inputAtom.modelName;
-					outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
-					outputAtom.modelElementID = inputAtom.modelElementID;
-					outputAtom.message = unsatisfiedConstraint.getMessage();
-					return outputAtom;
-				})
-				.ifPresent(unsatisfied::add);
-		}
-		
-		return unsatisfied;
+		this.context = new EvlContextDistributedSlave(parallelism);
 	}
 	
 	List<ConstraintContextAtom> contextJobsCache;
@@ -111,66 +52,13 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
 	public Collection<SerializableEvlResultAtom> evaluateBatch(final DistributedEvlBatch batch) throws EolRuntimeException {
-		IEvlContextParallel context = getContext();
-		
 		if (contextJobsCache == null) {
 			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
 		}
 		
-		EolExecutorService executor = context.beginParallelTask(this);
-		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
-		
-		for (ConstraintContextAtom job : contextJobsCache.subList(batch.from, batch.to)) {
-			executor.execute(() -> {
-				try {
-					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {
-						results.addElement(serializeResult(uc));
-					}
-				}
-				catch (EolRuntimeException ex) {
-					context.handleException(ex, executor);
-				}
-			});
-		}
-		
-		executor.awaitCompletion();
-		context.endParallelTask(module);
-		return results.getBatch();
+		return batch.evaluate(contextJobsCache, getContext());
 	}
-	
-	protected ConstraintContext getConstraintContextByTypeName(String typeName) throws EolTypeNotFoundException {
-		return getConstraintContexts()
-			.stream()
-			.filter(cc -> cc.getTypeName().equals(typeName))
-			.findAny()
-			.orElseThrow(() -> new EolTypeNotFoundException("No ConstraintContext of type '"+typeName+"' found", this));
-	}
-	
-	public Collection<SerializableEvlResultAtom> serializeResults() {
-		return getContext().getUnsatisfiedConstraints()
-			.parallelStream()
-			.map(this::serializeResult)
-			.collect(Collectors.toList());
-	}
-	
-	/**
-	 * Transform the {@linkplain UnsatisfiedConstraint} into a serializable form.
-	 * 
-	 * @param uc The unsatisfied constraint.
-	 * @return The serialized form of the unsatisfied constraint.
-	 */
-	public SerializableEvlResultAtom serializeResult(UnsatisfiedConstraint uc) {
-		SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
-		Object modelElement = uc.getInstance();
-		IModel owningModel = getContext().getModelRepository().getOwningModel(modelElement);
-		outputAtom.contextName = uc.getConstraint().getConstraintContext().getTypeName();
-		outputAtom.modelName = owningModel.getName();
-		outputAtom.modelElementID = owningModel.getElementId(modelElement);
-		outputAtom.constraintName = uc.getConstraint().getName();
-		outputAtom.message = uc.getMessage();
-		return outputAtom;
-	}
-	
+
 	@Override
 	public EvlContextDistributedSlave getContext() {
 		return (EvlContextDistributedSlave) context;
