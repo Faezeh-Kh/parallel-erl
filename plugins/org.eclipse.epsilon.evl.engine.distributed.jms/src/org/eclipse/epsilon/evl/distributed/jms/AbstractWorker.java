@@ -12,7 +12,7 @@ package org.eclipse.epsilon.evl.distributed.jms;
 import java.util.Objects;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.WorkerView;
 
-public abstract class AbstractWorker implements AutoCloseable {
+abstract class AbstractWorker implements AutoCloseable {
 
 	protected String workerID;
 	protected volatile boolean finished;

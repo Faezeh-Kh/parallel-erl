@@ -12,7 +12,10 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.eol.types.EolModelElementType;
 import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
@@ -28,7 +31,7 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = -8561698072322884841L;
+	private static final long serialVersionUID = 3111006509411036347L;
 
 	@Override
 	protected SerializableEvlInputAtom clone() {
@@ -60,7 +63,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 			);
 		}
 		
-		ConstraintContext constraintContext = module.getConstraintContextByTypeName(contextName);
+		ConstraintContext constraintContext = module.getConstraintContext(contextName);
 		
 		if (!constraintContext.shouldBeChecked(modelElement, context)) {
 			return Collections.emptyList();
@@ -84,5 +87,41 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 		}
 		
 		return unsatisfied;
+	}
+	
+	/**
+	 * Splits the workload into a collection of model elements. The order can be randomised
+	 * (shuffled) to ensure a balanced workload. Subclasses may override this method to
+	 * define an optimal split based on static analysis.
+	 * 
+	 * @param constraintContexts
+	 * @param context
+	 * @param shuffle Whether to randomise the list order.
+	 * @return The data to be distributed.
+	 * @throws EolRuntimeException
+	 */
+	public static List<SerializableEvlInputAtom> createJobs(Iterable<ConstraintContext> constraintContexts, IEvlContext context, boolean shuffle) throws EolRuntimeException {
+		ArrayList<SerializableEvlInputAtom> problems = new ArrayList<>();
+		
+		for (ConstraintContext constraintContext : constraintContexts) {
+			EolModelElementType modelElementType = constraintContext.getType(context);
+			IModel model = modelElementType.getModel();
+			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());
+			
+			problems.ensureCapacity(problems.size()+allOfKind.size());
+			
+			for (Object modelElement : allOfKind) {
+				SerializableEvlInputAtom problem = new SerializableEvlInputAtom();
+				problem.modelElementID = model.getElementId(modelElement);
+				problem.modelName = model.getName(); //modelElementType.getModelName();
+				problem.contextName = constraintContext.getTypeName();
+				problems.add(problem);
+			}
+		}
+		
+		if (shuffle)
+			Collections.shuffle(problems);
+		
+		return problems;
 	}
 }

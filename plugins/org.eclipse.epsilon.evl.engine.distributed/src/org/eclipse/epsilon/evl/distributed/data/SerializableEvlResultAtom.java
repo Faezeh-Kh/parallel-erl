@@ -12,9 +12,13 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.evl.IEvlModule;
+import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
+import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException;
 
 /**
  * Serializable representation of an {@linkplain UnsatisfiedConstraint}.
@@ -84,5 +88,26 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 			.parallelStream()
 			.map(uc -> serializeResult(uc, context))
 			.collect(Collectors.toList());
+	}
+	
+	// TODO: support fixes and 'extras'
+	/**
+	 * Transforms the serialized UnsatisfiedConstraint into a native UnsatisfiedConstraint.
+	 * @param sr The unsatisfied constraint information.
+	 * @return The derived {@link UnsatisfiedConstraint}.
+	 * @throws EolRuntimeException If the constraint or model element could not be found.
+	 */
+	public UnsatisfiedConstraint deserializeResult(IEvlModule module) throws EolRuntimeException {
+		IEvlContext context =  module.getContext();
+		UnsatisfiedConstraint uc = new UnsatisfiedConstraint();
+		Object modelElement = findElement(context);
+		uc.setInstance(modelElement);
+		uc.setMessage(message);
+		Constraint constraint = module.getConstraints()
+			.getConstraint(constraintName, module.getConstraintContext(contextName), modelElement, context, false)
+			.orElseThrow(() -> new EvlConstraintNotFoundException(constraintName, module));
+		uc.setConstraint(constraint);
+		
+		return uc;
 	}
 }

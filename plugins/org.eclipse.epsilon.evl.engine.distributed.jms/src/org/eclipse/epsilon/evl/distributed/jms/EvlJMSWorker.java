@@ -11,6 +11,8 @@ package org.eclipse.epsilon.evl.distributed.jms;
 
 import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.*;
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
@@ -25,7 +27,18 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 public class EvlJMSWorker extends AbstractWorker implements Runnable {
 
 	public static void main(String[] args) throws Exception {
-		try (EvlJMSWorker worker = new EvlJMSWorker(args[0])) {
+		String host = args[0];
+		
+		if (args.length > 0) try {
+			host = new URI(args[0]).toString();
+		}
+		catch (URISyntaxException urx) {
+			System.err.println(urx);
+			host = "tcp://127.0.0.1:61616";
+			System.err.println("Using default "+host);
+		}
+		
+		try (EvlJMSWorker worker = new EvlJMSWorker(host)) {
 			worker.run();
 		}
 	}
@@ -59,6 +72,7 @@ public class EvlJMSWorker extends AbstractWorker implements Runnable {
 			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
 			Destination tempQueue = regContext.createTemporaryQueue();
 			JMSProducer regProducer = regContext.createProducer();
+			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			Message initMsg = regContext.createMessage();
 			initMsg.setJMSReplyTo(tempQueue);
 			regProducer.send(regQueue, initMsg);

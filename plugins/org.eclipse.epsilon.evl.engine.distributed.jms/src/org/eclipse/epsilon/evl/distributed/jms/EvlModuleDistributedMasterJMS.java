@@ -84,8 +84,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			this.workerID = id;
 		}
 		
-		public void confirm(JMSContext session) {
-			jobsTopic = (this.session = session).createTopic(workerID + JOB_SUFFIX);
+		public void confirm() {
+			session = connectionFactory.createContext();
+			jobsTopic = session.createTopic(workerID + JOB_SUFFIX);
 			jobSender = session.createProducer();
 		}
 		
@@ -123,36 +124,55 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Initial registration of workers
 			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
+			Destination tempQueue = regContext.createTemporaryQueue();
 			JMSConsumer regConsumer = regContext.createConsumer(regQueue);
+			JMSConsumer responseConsumer = regContext.createConsumer(tempQueue);
 			JMSProducer regProducer = regContext.createProducer();
+			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+			System.out.println(LOG_PREFIX+" awaiting workers since "+System.currentTimeMillis());
+			
+			AtomicInteger registeredWorkers = new AtomicInteger();
 			
 			regConsumer.setMessageListener(msg -> {
 				try {
-					synchronized (connectedWorkers) {
-						// Assign worker ID
-						Destination tempQueue = regContext.createTemporaryQueue();
-						WorkerView worker = new WorkerView(WORKER_ID_PREFIX+connectedWorkers.get());
-						worker.localBox = msg.getJMSReplyTo();
-						slaveWorkers.add(worker);
-						// Tell the worker what their ID is along with the configuration parameters
-						Message configMsg = regContext.createObjectMessage(config);
-						configMsg.setJMSReplyTo(tempQueue);
-						configMsg.setJMSCorrelationID(worker.workerID);
-						regProducer.send(worker.localBox, configMsg);
-						
-						// Wait for the worker to load the configuration and get back to us
-						Message ack = regContext.createConsumer(tempQueue).receive();
-						worker.confirm(regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE));
-						
-						// Stop waiting once all workers are connected
-						if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-							assert expectedWorkers == slaveWorkers.size();
-							connectedWorkers.notify();
-						}
-					}
+					// Assign worker ID
+					WorkerView worker = new WorkerView(WORKER_ID_PREFIX + registeredWorkers.getAndIncrement());
+					worker.localBox = msg.getJMSReplyTo();
+					slaveWorkers.add(worker);
+					// Tell the worker what their ID is along with the configuration parameters
+					Message configMsg = regContext.createObjectMessage(config);
+					configMsg.setJMSReplyTo(tempQueue);
+					configMsg.setJMSCorrelationID(worker.workerID);
+					regProducer.send(worker.localBox, configMsg);
 				}
 				catch (JMSException jmx) {
 					throw new JMSRuntimeException(jmx.getMessage());
+				}
+			});
+			
+			responseConsumer.setMessageListener(response -> {
+				String wid;
+				try {
+					wid = response.getJMSCorrelationID();
+				}
+				catch (JMSException jmx) {
+					throw new JMSRuntimeException(jmx.getMessage());
+				}
+				
+				WorkerView worker = slaveWorkers.stream()
+					.filter(w -> w.workerID.equals(wid))
+					.findAny()
+					.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
+				
+				System.out.println(LOG_PREFIX + worker+" ready at "+System.currentTimeMillis());
+				worker.confirm();
+				
+				// Stop waiting once all workers are connected
+				if (connectedWorkers.incrementAndGet() == expectedWorkers) {
+					assert expectedWorkers == slaveWorkers.size();
+					synchronized (connectedWorkers) {
+						connectedWorkers.notify();
+					}
 				}
 			});
 			
@@ -165,8 +185,6 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 					catch (InterruptedException ie) {}
 				}
 			}
-			
-			System.out.println(LOG_PREFIX+"Workers ready at "+System.currentTimeMillis());
 		}
 	}
 	
@@ -179,11 +197,11 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 					Serializable contents = ((ObjectMessage)msg).getObject();
 					if (contents instanceof Iterable) {
 						for (SerializableEvlResultAtom sra : (Iterable<? extends SerializableEvlResultAtom>)contents) {
-							unsatisfiedConstraints.add(deserializeResult(sra));
+							unsatisfiedConstraints.add(sra.deserializeResult(this));
 						}
 					}
 					else if (contents instanceof SerializableEvlResultAtom) {
-						unsatisfiedConstraints.add(deserializeResult((SerializableEvlResultAtom) contents));
+						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
 					}
 					else {
 						System.err.println(LOG_PREFIX+"Received unexpected object of type "+contents.getClass().getSimpleName());
@@ -200,6 +218,9 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 						}
 					});
 				}
+			}
+			catch (EolRuntimeException eox) {
+				throw new RuntimeException(eox);
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
@@ -252,7 +273,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			
 			assert batchesIter.hasNext();
 			System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
-			batchesIter.next().evaluate(ConstraintContextAtom.getContextJobs(this), getContext());
+			addToResults(batchesIter.next().evaluate(ConstraintContextAtom.getContextJobs(this), getContext()));
 			System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
 			
 			System.out.println(LOG_PREFIX+" awaiting completion...");
