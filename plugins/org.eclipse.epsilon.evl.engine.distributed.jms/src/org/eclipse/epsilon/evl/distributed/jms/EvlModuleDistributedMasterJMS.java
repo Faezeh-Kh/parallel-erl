@@ -31,6 +31,11 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
+/**
+ * 
+ * @author Sina Madani
+ * @since 1.6
+ */
 public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	public static void main(String[] args) throws ClassNotFoundException, UnknownHostException, URISyntaxException {
@@ -60,7 +65,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	public static final String
-		REGISTRATION_QUEUE_NAME = "registration",
+		REGISTRATION_QUEUE = "registration",
 		RESULTS_QUEUE_NAME = "results",
 		JOB_SUFFIX = "-jobs",
 		WORKER_ID_PREFIX = "EVL-jms-";
@@ -70,9 +75,8 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	final String host;
 	final ConnectionFactory connectionFactory;
 	final List<WorkerView> slaveWorkers;
+	final int expectedSlaves;
 	final AtomicInteger workersFinished = new AtomicInteger();
-	JMSContext resultsContext;
-	Destination resultsDest;
 	
 	class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
@@ -115,77 +119,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		super(expectedWorkers);
 		connectionFactory = new ActiveMQJMSConnectionFactory(this.host = host);
 		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
-		slaveWorkers = new ArrayList<>(expectedWorkers);
-	}
-	
-	void awaitWorkers(final int expectedWorkers, final Serializable config) throws JMSException {
-		AtomicInteger connectedWorkers = new AtomicInteger();
-		
-		try (JMSContext regContext = connectionFactory.createContext()) {
-			// Initial registration of workers
-			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
-			Destination tempQueue = regContext.createTemporaryQueue();
-			JMSConsumer regConsumer = regContext.createConsumer(regQueue);
-			JMSConsumer responseConsumer = regContext.createConsumer(tempQueue);
-			JMSProducer regProducer = regContext.createProducer();
-			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			System.out.println(LOG_PREFIX+" awaiting workers since "+System.currentTimeMillis());
-			
-			AtomicInteger registeredWorkers = new AtomicInteger();
-			
-			regConsumer.setMessageListener(msg -> {
-				try {
-					// Assign worker ID
-					WorkerView worker = new WorkerView(WORKER_ID_PREFIX + registeredWorkers.getAndIncrement());
-					worker.localBox = msg.getJMSReplyTo();
-					slaveWorkers.add(worker);
-					// Tell the worker what their ID is along with the configuration parameters
-					Message configMsg = regContext.createObjectMessage(config);
-					configMsg.setJMSReplyTo(tempQueue);
-					configMsg.setJMSCorrelationID(worker.workerID);
-					regProducer.send(worker.localBox, configMsg);
-				}
-				catch (JMSException jmx) {
-					throw new JMSRuntimeException(jmx.getMessage());
-				}
-			});
-			
-			responseConsumer.setMessageListener(response -> {
-				String wid;
-				try {
-					wid = response.getJMSCorrelationID();
-				}
-				catch (JMSException jmx) {
-					throw new JMSRuntimeException(jmx.getMessage());
-				}
-				
-				WorkerView worker = slaveWorkers.stream()
-					.filter(w -> w.workerID.equals(wid))
-					.findAny()
-					.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
-				
-				System.out.println(LOG_PREFIX + worker+" ready at "+System.currentTimeMillis());
-				worker.confirm();
-				
-				// Stop waiting once all workers are connected
-				if (connectedWorkers.incrementAndGet() == expectedWorkers) {
-					assert expectedWorkers == slaveWorkers.size();
-					synchronized (connectedWorkers) {
-						connectedWorkers.notify();
-					}
-				}
-			});
-			
-			// Wait for workers to confirm that they've completed configuration
-			while (connectedWorkers.get() < expectedWorkers) {
-				synchronized (connectedWorkers) {
-					try {
-						connectedWorkers.wait();
-					}
-					catch (InterruptedException ie) {}
-				}
-			}
-		}
+		slaveWorkers = new ArrayList<>(this.expectedSlaves = expectedWorkers);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -228,9 +162,20 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		};
 	}
 	
+	void waitForWorkersToFinishJobs() {
+		System.out.println(LOG_PREFIX+" awaiting completion...");
+		while (workersFinished.get() < slaveWorkers.size()) {
+			synchronized (workersFinished) {
+				try {
+					workersFinished.wait();
+				}
+				catch (InterruptedException ie) {}
+			}
+		}
+		System.out.println(LOG_PREFIX+" completed.");
+	}
+	
 	void teardown() throws Exception {
-		resultsContext.close();
-		resultsContext = null;
 		for (AutoCloseable worker : slaveWorkers) {
 			worker.close();
 			worker = null;
@@ -242,55 +187,144 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	@Override
-	protected void prepareExecution() throws EolRuntimeException {
-		super.prepareExecution();
-		try {
-			EvlContextDistributedMaster context = getContext();
-			awaitWorkers(context.getDistributedParallelism(), context.getJobParameters());
-			resultsContext = connectionFactory.createContext();
-			resultsDest = resultsContext.createQueue(RESULTS_QUEUE_NAME);
-			resultsContext.createConsumer(resultsDest).setMessageListener(getResultsMessageListener());
-		}
-		catch (Exception ex) {
-			throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
+	protected void checkConstraints() throws EolRuntimeException {
+		final Serializable config = getContext().getJobParameters();
+		
+		try (JMSContext regContext = connectionFactory.createContext()) {
+			// Initial registration of workers
+			Destination tempQueue = regContext.createTemporaryQueue();
+			JMSProducer regProducer = regContext.createProducer();
+			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+			System.out.println(LOG_PREFIX+" awaiting workers since "+System.currentTimeMillis());
+			
+			AtomicInteger registeredWorkers = new AtomicInteger();
+			// Triggered when a worker announces itself to the registration queue
+			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE)).setMessageListener(msg -> {
+				try {
+					// Assign worker ID
+					WorkerView worker = createWorker(registeredWorkers.incrementAndGet(), msg.getJMSReplyTo());
+					slaveWorkers.add(worker);
+					// Tell the worker what their ID is along with the configuration parameters
+					Message configMsg = regContext.createObjectMessage(config);
+					configMsg.setJMSReplyTo(tempQueue);
+					configMsg.setJMSCorrelationID(worker.workerID);
+					regProducer.send(worker.localBox, configMsg);
+				}
+				catch (JMSException jmx) {
+					throw new JMSRuntimeException(jmx.getMessage());
+				}
+			});
+			
+			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME))
+					.setMessageListener(getResultsMessageListener());
+				
+				AtomicInteger readyWorkers = new AtomicInteger();
+				// Triggered when a worker has completed loading the configuration
+				regContext.createConsumer(tempQueue).setMessageListener(response -> {
+					String wid;
+					try {
+						wid = response.getJMSCorrelationID();
+					}
+					catch (JMSException jmx) {
+						throw new JMSRuntimeException(jmx.getMessage());
+					}
+					
+					WorkerView worker = slaveWorkers.stream()
+						.filter(w -> w.workerID.equals(wid))
+						.findAny()
+						.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
+					
+					int workersReady = readyWorkers.incrementAndGet();
+					confirmWorker(worker, workersReady);
+					
+					if (workersReady >= expectedSlaves) {
+						synchronized (readyWorkers) {
+							readyWorkers.notify();
+						}
+					}
+				});
+				
+				beforeEndRegistrationContext(readyWorkers, resultsContext);
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			
+			try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				processJobs(jobContext);
+				waitForWorkersToFinishJobs();
+			}
+			catch (Exception ex) {
+				throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
+			}
 		}
 	}
 	
-	@Override
-	protected void checkConstraints() throws EolRuntimeException {	
-		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(this);
-		assert slaveWorkers.size() == batches.size()+1;
+	/**
+	 * 
+	 * @param readyWorkers
+	 * @param session
+	 */
+	protected void beforeEndRegistrationContext(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
+		while (readyWorkers.get() < expectedSlaves) {
+			try {
+				synchronized (readyWorkers) {
+					readyWorkers.wait();
+				}
+			}
+			catch (InterruptedException ie) {}
+		}
+	}
+
+	protected void processJobs(JMSContext jobContext) throws Exception {
+		final EvlContextDistributedMaster evlContext = getContext();
+		final int parallelism = evlContext.getDistributedParallelism()+1;
+		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);
+		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs, parallelism);
+		assert slaveWorkers.size() == batches.size()-1;
+		
 		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
 		Iterator<DistributedEvlBatch> batchesIter = batches.iterator();
 		
-		try (JMSContext jobContext = connectionFactory.createContext()) {
-			while (workersIter.hasNext()) {
-				WorkerView worker = workersIter.next();
-				worker.sendJob(batchesIter.next(), jobContext);
-				worker.signalEnd(jobContext);
-				System.out.println(LOG_PREFIX+" finished submitting to "+worker+" at "+System.currentTimeMillis());
-			}
-			
-			assert batchesIter.hasNext();
-			System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
-			addToResults(batchesIter.next().evaluate(ConstraintContextAtom.getContextJobs(this), getContext()));
-			System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
-			
-			System.out.println(LOG_PREFIX+" awaiting completion...");
-			while (workersFinished.get() < slaveWorkers.size()) {
-				synchronized (workersFinished) {
-					workersFinished.wait();
-				}
-			}
-			System.out.println(LOG_PREFIX+" completed.");
+		while (workersIter.hasNext()) {
+			WorkerView worker = workersIter.next();
+			worker.sendJob(batchesIter.next(), jobContext);
+			worker.signalEnd(jobContext);
+			System.out.println(LOG_PREFIX+" finished submitting to "+worker+" at "+System.currentTimeMillis());
 		}
-		catch (JMSException | InterruptedException ex) {
-			throw new EolRuntimeException(ex);
-		}
+		
+		assert batchesIter.hasNext();
+		System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
+		addToResults(batchesIter.next().evaluate(ccJobs, evlContext));
+		System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
 	}
-	
+
+	/**
+	 * Called when a worker has registered.
+	 * @param currentWorkers The number of currently registered workers.
+	 * @param outbox The channel used to contact this work.
+	 * @return The created worker.
+	 */
+	protected WorkerView createWorker(int currentWorkers, Destination outbox) {
+		WorkerView worker = new WorkerView(WORKER_ID_PREFIX + currentWorkers);
+		worker.localBox = outbox;
+		return worker;
+	}
+
+	/**
+	 * Called when a worker has completed loading its configuration.
+	 * @param worker The worker that has been configured.
+	 * @param workerReady The number of workers that have currently been configured, including this one.
+	 * That is, the value will never be less than 1.
+	 */
+	protected void confirmWorker(WorkerView worker, int workerReady) {
+		System.out.println(LOG_PREFIX + worker+" ready at "+System.currentTimeMillis());
+		worker.confirm();
+	}
+
 	@Override
-	protected void postExecution() throws EolRuntimeException {
+	protected final void postExecution() throws EolRuntimeException {
 		super.postExecution();
 		try {
 			teardown();

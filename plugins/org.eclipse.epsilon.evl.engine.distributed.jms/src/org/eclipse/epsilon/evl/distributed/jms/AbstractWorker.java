@@ -12,6 +12,11 @@ package org.eclipse.epsilon.evl.distributed.jms;
 import java.util.Objects;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.WorkerView;
 
+/**
+ * 
+ * @author Sina Madani
+ * @since 1.6
+ */
 abstract class AbstractWorker implements AutoCloseable {
 
 	protected String workerID;

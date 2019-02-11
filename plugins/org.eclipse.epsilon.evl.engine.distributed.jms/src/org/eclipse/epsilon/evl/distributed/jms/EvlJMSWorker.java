@@ -24,6 +24,11 @@ import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
+/**
+ *
+ * @author Sina Madani
+ * @since 1.6
+ */
 public class EvlJMSWorker extends AbstractWorker implements Runnable {
 
 	public static void main(String[] args) throws Exception {
@@ -69,7 +74,7 @@ public class EvlJMSWorker extends AbstractWorker implements Runnable {
 	void setup() throws Exception {
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Announce our presence to the master
-			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE_NAME);
+			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE);
 			Destination tempQueue = regContext.createTemporaryQueue();
 			JMSProducer regProducer = regContext.createProducer();
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);

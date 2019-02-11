@@ -31,8 +31,8 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
  */
 public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 
-	private static final long serialVersionUID = 7612999545641549495L;
-
+	private static final long serialVersionUID = -1239346849518139885L;
+	
 	public int from, to;
 	
 	@Override
@@ -61,16 +61,9 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		return getClass().getSimpleName()+": from="+from+", to="+to;
 	}
 	
-	/**
-	 * Splits the jobs into batches based on the parallelism.
-	 * @param context
-	 * @return The serializable start and end indexes for the batches.
-	 * @throws EolRuntimeException
-	 */
-	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
-		// Plus one because master itself is also included as a worker
-		final int batchSize = module.getContext().getDistributedParallelism()+1,
-			totalJobs = ConstraintContextAtom.getContextJobs(module).size(),
+	public static List<DistributedEvlBatch> getBatches(List<?> batches, int batchSize) throws EolRuntimeException {
+		final int
+			totalJobs = batches.size(),
 			increments = totalJobs / batchSize;
 		
 		return IntStream.range(0, batchSize)
@@ -81,6 +74,19 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 				return batch;
 			})
 			.collect(Collectors.toList());
+	}
+	
+	/**
+	 * Splits the jobs into batches based on the parallelism in the context.
+	 * By default, the batches are based on {@link ConstraintContextAtom}s.
+	 * 
+	 * @param module The module to derive the ConstraintContexts and batch size from.
+	 * @return The serializable start and end indexes for the batches.
+	 * @throws EolRuntimeException
+	 */
+	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
+		// Plus one because master itself is also included as a worker
+		return getBatches(ConstraintContextAtom.getContextJobs(module), module.getContext().getDistributedParallelism()+1);
 	}
 	
 	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, EvlContextParallel context) throws EolRuntimeException {
