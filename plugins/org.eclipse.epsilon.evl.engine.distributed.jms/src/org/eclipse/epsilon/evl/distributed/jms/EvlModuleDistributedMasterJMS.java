@@ -32,7 +32,30 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
+ * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
  * 
+ * - Master is invoked in usual way, given the usual data (script, models etc.)
+ *  + URI of the broker + expected number of workers <br/>
+ *  
+ * - Master waits on a registration queue for workers to confirm presence <br/>
+ * 
+ * - Master sends each worker their unique ID and the confirguration parameters
+ * obtained from {@linkplain EvlContextDistributedMaster#getJobParameters()} <br/>
+ * 
+ * - Workers send back a message when they've loaded the configuration <br/>
+ * 
+ * - Jobs are sent to the workers (either as batches or individual model elements to evaluate) <br/>
+ * 
+ * - Workers send back results to results queue, which are then deserialized. <br/>
+ * 
+ * Note that each worker is processed independently and asynchronously. That is, once a worker has connected,
+ * it need not wait for other workers to connect or be in the same stage of registration. This module is
+ * designed such that it is possible for a fast worker to start sending results back before another has even
+ * registered. This class also tries to abstract away from the handshaking / messaging code by invoking methods
+ * at key points in the back-and-forth messaging process within listeners which can be used to control the
+ * execution strategy. See the {@link #checkConstraints()} method for where these "checkpoint" methods are.
+ * 
+ * @see EvlJMSWorker
  * @author Sina Madani
  * @since 1.6
  */
@@ -72,13 +95,13 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	private static final String LOG_PREFIX = "[MASTER] ";
 	
-	final String host;
-	final ConnectionFactory connectionFactory;
-	final List<WorkerView> slaveWorkers;
-	final int expectedSlaves;
+	protected final String host;
+	protected final ConnectionFactory connectionFactory;
+	protected final List<WorkerView> slaveWorkers;
+	protected final int expectedSlaves;
 	final AtomicInteger workersFinished = new AtomicInteger();
 	
-	class WorkerView extends AbstractWorker {
+	protected class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
 		JMSContext session;
 		Topic jobsTopic;
@@ -162,7 +185,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		};
 	}
 	
-	void waitForWorkersToFinishJobs() {
+	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
 		System.out.println(LOG_PREFIX+" awaiting completion...");
 		while (workersFinished.get() < slaveWorkers.size()) {
 			synchronized (workersFinished) {
@@ -175,7 +198,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		System.out.println(LOG_PREFIX+" completed.");
 	}
 	
-	void teardown() throws Exception {
+	protected void teardown() throws Exception {
 		for (AutoCloseable worker : slaveWorkers) {
 			worker.close();
 			worker = null;
@@ -187,7 +210,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	@Override
-	protected void checkConstraints() throws EolRuntimeException {
+	protected final void checkConstraints() throws EolRuntimeException {
 		final Serializable config = getContext().getJobParameters();
 		
 		try (JMSContext regContext = connectionFactory.createContext()) {
@@ -253,7 +276,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			
 			try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				processJobs(jobContext);
-				waitForWorkersToFinishJobs();
+				waitForWorkersToFinishJobs(jobContext);
 			}
 			catch (Exception ex) {
 				throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
@@ -262,9 +285,12 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	}
 	
 	/**
+	 * This method can be used to perform any final steps, such as waiting, before the main JMSContext
+	 * used for registration is destroyed.
 	 * 
-	 * @param readyWorkers
-	 * @param session
+	 * @param readyWorkers Convenience handle which may be used for synchronization, e.g.
+	 * to wait on the workers to be ready.
+	 * @param session The inner-most JMSContext, used by the results processor.
 	 */
 	protected void beforeEndRegistrationContext(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
 		while (readyWorkers.get() < expectedSlaves) {

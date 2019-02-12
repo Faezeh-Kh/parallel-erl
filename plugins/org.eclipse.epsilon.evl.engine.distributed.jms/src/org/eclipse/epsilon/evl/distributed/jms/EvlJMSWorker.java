@@ -26,6 +26,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
 /**
  *
+ * @see EvlModuleDistributedMasterJMS
  * @author Sina Madani
  * @since 1.6
  */
