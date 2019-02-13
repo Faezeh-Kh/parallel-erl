@@ -13,6 +13,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -88,8 +89,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		RESULTS_QUEUE_NAME = "results",
 		JOB_SUFFIX = "-jobs",
 		WORKER_ID_PREFIX = "EVL-jms-";
-	
-	protected static final String LOG_PREFIX = "[MASTER] ";
 	
 	protected final String host;
 	protected final List<WorkerView> slaveWorkers;
@@ -171,7 +170,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
 					}
 					else {
-						System.err.println(LOG_PREFIX+"Received unexpected object of type "+contents.getClass().getSimpleName());
+						log("Received unexpected object of type "+contents.getClass().getSimpleName());
 					}
 				}
 				else {
@@ -196,7 +195,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 	
 	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
-		System.out.println(LOG_PREFIX+" awaiting completion...");
+		log("awaiting completion...");
 		while (workersFinished.get() < slaveWorkers.size()) {
 			synchronized (workersFinished) {
 				try {
@@ -205,25 +204,14 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				catch (InterruptedException ie) {}
 			}
 		}
-		System.out.println(LOG_PREFIX+" completed.");
-	}
-	
-	protected void teardown() throws Exception {
-		for (AutoCloseable worker : slaveWorkers) {
-			worker.close();
-			worker = null;
-		}
-		slaveWorkers.clear();
-		if (connectionFactory instanceof AutoCloseable) {
-			((AutoCloseable) connectionFactory).close();
-		}
+		log("All workers finished.");
 	}
 	
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
-		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
+		log("Connected to "+host);
 	}
 	
 	@Override
@@ -235,7 +223,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			Destination tempQueue = regContext.createTemporaryQueue();
 			JMSProducer regProducer = regContext.createProducer();
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			System.out.println(LOG_PREFIX+" awaiting workers since "+System.currentTimeMillis());
+			log("Awaiting workers");
 			
 			AtomicInteger registeredWorkers = new AtomicInteger();
 			// Triggered when a worker announces itself to the registration queue
@@ -349,10 +337,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @throws JMSException 
 	 */
 	protected void confirmWorker(WorkerView worker, JMSContext session, int workersReady) throws JMSException {
-		System.out.println(LOG_PREFIX + worker+" ready at "+System.currentTimeMillis());
+		log(worker+" ready");
 		worker.confirm(session);
 	}
-
+	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
 		super.postExecution();
@@ -362,5 +350,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		catch (Exception ex) {
 			throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
 		}
+	}
+	
+	protected void teardown() throws Exception {
+		for (AutoCloseable worker : slaveWorkers) {
+			worker.close();
+			worker = null;
+		}
+		slaveWorkers.clear();
+		if (connectionFactory instanceof AutoCloseable) {
+			((AutoCloseable) connectionFactory).close();
+		}
+	}
+	
+	protected void log(String message) {
+		System.out.println("[MASTER] "+LocalDateTime.now()+" "+message);
 	}
 }

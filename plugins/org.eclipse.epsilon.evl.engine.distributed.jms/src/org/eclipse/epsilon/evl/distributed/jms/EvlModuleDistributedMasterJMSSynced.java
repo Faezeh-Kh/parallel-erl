@@ -46,6 +46,7 @@ public class EvlModuleDistributedMasterJMSSynced extends EvlModuleDistributedMas
 			}
 			catch (InterruptedException ie) {}
 		}
+		log("All workers connected");
 	}
 	
 	@Override
@@ -64,16 +65,16 @@ public class EvlModuleDistributedMasterJMSSynced extends EvlModuleDistributedMas
 			WorkerView worker = workersIter.next();
 			worker.sendJob(batchesIter.next());
 			worker.signalEnd();
-			System.out.println(LOG_PREFIX+" finished submitting to "+worker+" at "+System.currentTimeMillis());
+			log("Finished submitting to "+worker);
 		}
 		
-		System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
+		log("Began processing own jobs");
 		
 		assert batchesIter.hasNext();
 		for (ConstraintContextAtom cca : batchesIter.next().split(ccJobs)) {
 			cca.execute(evlContext);
 		}
 		
-		System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
+		log("Finished processing own jobs");
 	}
 }

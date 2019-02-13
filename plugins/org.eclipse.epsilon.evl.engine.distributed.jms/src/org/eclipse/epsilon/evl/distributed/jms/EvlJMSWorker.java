@@ -13,6 +13,7 @@ import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMaster
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
 import java.util.Map;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
@@ -25,7 +26,9 @@ import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
 /**
- *
+ * Reactive slave worker.
+ * 
+ * @see EvlModuleDistributedSlave
  * @see EvlModuleDistributedMasterJMS
  * @author Sina Madani
  * @since 1.6
@@ -71,7 +74,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			// Get the configuration and our ID from the reply
 			Message configMsg = regContext.createConsumer(tempQueue).receive();
 			this.workerID = configMsg.getJMSCorrelationID();
-			System.out.println(workerID + " config and ID received at "+System.currentTimeMillis());
+			log("Configuration and ID received");
 			
 			configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
 			configContainer.preExecute();
@@ -113,7 +116,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	}
 	
 	void awaitCompletion() {
-		System.out.println(workerID+" awaiting jobs since "+System.currentTimeMillis());
+		log("Awaiting jobs...");
 		while (!finished.get()) {
 			try {
 				synchronized (finished) {
@@ -122,7 +125,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			}
 			catch (InterruptedException ie) {}
 		}
-		System.out.println(workerID+" finished jobs at "+System.currentTimeMillis());
+		log("Finished jobs");
 	}
 	
 	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
@@ -131,7 +134,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				if (!(msg instanceof ObjectMessage)) {
 					// End of jobs
 					finished.set(true);
-					System.out.println(workerID+" received all jobs by "+System.currentTimeMillis());
+					log("Received all jobs");
 				}
 				else {
 					final Serializable objMsg = ((ObjectMessage)msg).getObject();
@@ -145,7 +148,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					}
 					else {
 						resultObj = null;
-						System.err.println("["+workerID+"] Received unexpected object of type "+objMsg.getClass().getName());
+						log("Received unexpected object of type "+objMsg.getClass().getName());
 					}
 					
 					if (resultObj instanceof Serializable) {
@@ -183,5 +186,9 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
+	}
+	
+	void log(String message) {
+		System.out.println("["+workerID+"] "+LocalDateTime.now()+" "+message);
 	}
 }
