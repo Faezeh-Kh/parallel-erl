@@ -30,8 +30,8 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
  * @since 1.6
  */
 public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
-
-	private static final long serialVersionUID = -1239346849518139885L;
+	
+	private static final long serialVersionUID = 6660450310143565940L;
 	
 	public int from, to;
 	
@@ -89,11 +89,15 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		return getBatches(ConstraintContextAtom.getContextJobs(module), module.getContext().getDistributedParallelism()+1);
 	}
 	
+	public <T> List<T> split(List<T> list) {
+		return list.subList(from, to);
+	}
+	
 	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, EvlContextParallel context) throws EolRuntimeException {
 		EolExecutorService executor = context.beginParallelTask(null);
 		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
 		
-		for (ConstraintContextAtom job : jobList.subList(from, to)) {
+		for (ConstraintContextAtom job : split(jobList)) {
 			executor.execute(() -> {
 				try {
 					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {

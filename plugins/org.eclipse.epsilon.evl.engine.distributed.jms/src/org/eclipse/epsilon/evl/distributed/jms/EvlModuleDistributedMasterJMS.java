@@ -13,10 +13,8 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
@@ -25,11 +23,9 @@ import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -59,9 +55,9 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
+public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
-	public static void main(String[] args) throws ClassNotFoundException, UnknownHostException, URISyntaxException {
+	public static void extensibleMain(Class<? extends EvlModuleDistributedMasterJMS> moduleClass, String... args) throws Exception {
 		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
 		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
 		String expectedWorkers = args[3];
@@ -81,7 +77,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 				"\"emf.DistributableEmfModel#"
 				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
 				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
-			"-module", EvlModuleDistributedMasterJMS.class.getName().substring(20),
+			"-module", moduleClass.getName().substring(20),
 				"int="+expectedWorkers,
 				"String="+addr
 		});
@@ -93,7 +89,7 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 		JOB_SUFFIX = "-jobs",
 		WORKER_ID_PREFIX = "EVL-jms-";
 	
-	private static final String LOG_PREFIX = "[MASTER] ";
+	protected static final String LOG_PREFIX = "[MASTER] ";
 	
 	protected final String host;
 	protected final ConnectionFactory connectionFactory;
@@ -111,22 +107,33 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 			this.workerID = id;
 		}
 		
-		public void confirm() {
-			session = connectionFactory.createContext();
+		public void confirm(JMSContext parentSession) {
+			session = parentSession != null ?
+				parentSession.createContext(JMSContext.AUTO_ACKNOWLEDGE) :
+				connectionFactory.createContext();
 			jobsTopic = session.createTopic(workerID + JOB_SUFFIX);
 			jobSender = session.createProducer();
 		}
 		
-		public void sendJob(Serializable input, JMSContext jobContext) throws JMSException {
-			ObjectMessage jobMsg = jobContext.createObjectMessage(input);
-			jobMsg.setJMSCorrelationID(workerID);
+		public void sendJob(Serializable input) throws JMSRuntimeException {
+			ObjectMessage jobMsg = session.createObjectMessage(input);
+			setMessageID(jobMsg);
 			jobSender.send(jobsTopic, jobMsg);
 		}
 		
-		public void signalEnd(JMSContext jobContext) throws JMSException {
-			Message endMsg = jobContext.createMessage();
-			endMsg.setJMSCorrelationID(workerID);
+		public void signalEnd() throws JMSException {
+			Message endMsg = session.createMessage();
+			setMessageID(endMsg);
 			jobSender.send(jobsTopic, endMsg);
+		}
+		
+		protected void setMessageID(Message msg) throws JMSRuntimeException {
+			try {
+				msg.setJMSCorrelationID(workerID);
+			}
+			catch (JMSException jmx) {
+				jmx.printStackTrace();
+			}
 		}
 		
 		@Override
@@ -259,7 +266,12 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 						.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
 					
 					int workersReady = readyWorkers.incrementAndGet();
-					confirmWorker(worker, workersReady);
+					try {
+						confirmWorker(worker, resultsContext, workersReady);
+					}
+					catch (JMSException jmx) {
+						throw new JMSRuntimeException(jmx.getMessage());
+					}
 					
 					if (workersReady >= expectedSlaves) {
 						synchronized (readyWorkers) {
@@ -286,45 +298,25 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	/**
 	 * This method can be used to perform any final steps, such as waiting, before the main JMSContext
-	 * used for registration is destroyed.
+	 * used for registration is destroyed. The base implementation does nothing.
+	 * It is up to the subclass to decide how to use this method.
 	 * 
 	 * @param readyWorkers Convenience handle which may be used for synchronization, e.g.
 	 * to wait on the workers to be ready.
 	 * @param session The inner-most JMSContext, used by the results processor.
 	 */
 	protected void beforeEndRegistrationContext(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
-		while (readyWorkers.get() < expectedSlaves) {
-			try {
-				synchronized (readyWorkers) {
-					readyWorkers.wait();
-				}
-			}
-			catch (InterruptedException ie) {}
-		}
+		// Optional abstract method
 	}
 
-	protected void processJobs(JMSContext jobContext) throws Exception {
-		final EvlContextDistributedMaster evlContext = getContext();
-		final int parallelism = evlContext.getDistributedParallelism()+1;
-		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);
-		List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs, parallelism);
-		assert slaveWorkers.size() == batches.size()-1;
-		
-		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
-		Iterator<DistributedEvlBatch> batchesIter = batches.iterator();
-		
-		while (workersIter.hasNext()) {
-			WorkerView worker = workersIter.next();
-			worker.sendJob(batchesIter.next(), jobContext);
-			worker.signalEnd(jobContext);
-			System.out.println(LOG_PREFIX+" finished submitting to "+worker+" at "+System.currentTimeMillis());
-		}
-		
-		assert batchesIter.hasNext();
-		System.out.println(LOG_PREFIX+" began processing own jobs at "+System.currentTimeMillis());
-		addToResults(batchesIter.next().evaluate(ccJobs, evlContext));
-		System.out.println(LOG_PREFIX+" finished processing own jobs at "+System.currentTimeMillis());
-	}
+	/**
+	 * This method is called in the body of {@link #checkConstraints()}, and is intended
+	 * to be where the main processing logic goes.
+	 * 
+	 * @param jobContext
+	 * @throws Exception
+	 */
+	abstract protected void processJobs(JMSContext jobContext) throws Exception;
 
 	/**
 	 * Called when a worker has registered.
@@ -341,12 +333,14 @@ public class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	/**
 	 * Called when a worker has completed loading its configuration.
 	 * @param worker The worker that has been configured.
+	 * @param session The context in which the listener was invoked.
 	 * @param workerReady The number of workers that have currently been configured, including this one.
 	 * That is, the value will never be less than 1.
+	 * @throws JMSException 
 	 */
-	protected void confirmWorker(WorkerView worker, int workerReady) {
+	protected void confirmWorker(WorkerView worker, JMSContext session, int workersReady) throws JMSException {
 		System.out.println(LOG_PREFIX + worker+" ready at "+System.currentTimeMillis());
-		worker.confirm();
+		worker.confirm(session);
 	}
 
 	@Override
