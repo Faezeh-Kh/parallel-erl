@@ -107,6 +107,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			this.workerID = id;
 		}
 		
+		public void confirm() {
+			confirm(null);
+		}
+		
 		public void confirm(JMSContext parentSession) {
 			session = parentSession != null ?
 				parentSession.createContext(JMSContext.AUTO_ACKNOWLEDGE) :
@@ -175,7 +179,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					String workerID = msg.getJMSCorrelationID();
 					slaveWorkers.stream().filter(w -> w.workerID.equals(workerID)).findAny().ifPresent(w -> {
 						w.finished = true;
-						if (workersFinished.incrementAndGet() >= slaveWorkers.size()) {
+						if (workersFinished.incrementAndGet() >= expectedSlaves) {
 							synchronized (workersFinished) {
 								workersFinished.notify();
 							}

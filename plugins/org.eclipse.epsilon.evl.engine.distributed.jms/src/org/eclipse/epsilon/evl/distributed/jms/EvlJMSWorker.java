@@ -30,7 +30,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlJMSWorker extends AbstractWorker implements Runnable {
+public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 
 	public static void main(String[] args) throws Exception {
 		String host = args[0];
@@ -54,8 +54,6 @@ public class EvlJMSWorker extends AbstractWorker implements Runnable {
 		try {
 			setup();
 			processJobs();
-			//container.postExecute();
-			close();
 		}
 		catch (Exception ex) {
 			throw new RuntimeException(ex);
