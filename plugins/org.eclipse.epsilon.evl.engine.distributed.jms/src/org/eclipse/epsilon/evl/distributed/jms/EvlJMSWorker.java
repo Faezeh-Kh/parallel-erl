@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedConsumer;
@@ -55,6 +56,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
 	String workerID;
+	final AtomicInteger jobsInProgress = new AtomicInteger();
 
 	public EvlJMSWorker(String host) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -108,7 +110,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			awaitCompletion();
 	
-			// For some silly reason apprently re-using the jobContext is invalid due to concurrency.
+			// For some silly reason apparently re-using the jobContext is invalid due to concurrency.
 			try (JMSContext finishedContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				// Tell the master we've finished
 				Message finishedMsg = finishedContext.createMessage();
@@ -121,7 +123,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (!finished.get()) {
+		while (!finished.get() && jobsInProgress.get() > 0) {
 			try {
 				synchronized (finished) {
 					finished.wait();
@@ -135,29 +137,31 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
 		return msg -> {
 			try {
-				assert msg instanceof ObjectMessage;
-				
-				// This needs to be assigned now because jobs are received faster than they are processed
-				final boolean isLastJob = msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
-				final Serializable objMsg = ((ObjectMessage)msg).getObject();
-				final Object resultObj;
-				
-				if (objMsg instanceof SerializableEvlInputAtom) {
-					resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+				if (msg instanceof ObjectMessage) {
+					jobsInProgress.incrementAndGet();
+					
+					final Serializable objMsg = ((ObjectMessage)msg).getObject();
+					final Object resultObj;
+					
+					if (objMsg instanceof SerializableEvlInputAtom) {
+						resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+					}
+					else if (objMsg instanceof DistributedEvlBatch) {
+						resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
+					}
+					else {
+						resultObj = null;
+						log("Received unexpected object of type "+objMsg.getClass().getName());
+					}
+					
+					if (resultObj instanceof Serializable) {
+						resultProcessor.acceptThrows((Serializable) resultObj);
+					}
+					
+					jobsInProgress.decrementAndGet();
 				}
-				else if (objMsg instanceof DistributedEvlBatch) {
-					resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
-				}
-				else {
-					resultObj = null;
-					log("Received unexpected object of type "+objMsg.getClass().getName());
-				}
 				
-				if (resultObj instanceof Serializable) {
-					resultProcessor.acceptThrows((Serializable) resultObj);
-				}
-				
-				if (isLastJob) {
+				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					finished.set(true);
 					// Wake up the main thread once the last job has been processed and sent
 					synchronized (finished) {

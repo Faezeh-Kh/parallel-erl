@@ -227,12 +227,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
 		log("Awaiting workers to signal completion...");
 		while (workersFinished.get() < expectedSlaves) {
-			synchronized (workersFinished) {
-				try {
+			try {
+				synchronized (workersFinished) {
 					workersFinished.wait();
 				}
-				catch (InterruptedException ie) {}
 			}
+			catch (InterruptedException ie) {}
 		}
 		log("All workers finished");
 	}
