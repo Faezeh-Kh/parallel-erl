@@ -63,8 +63,7 @@ public class EvlModuleDistributedMasterJMSSynced extends EvlModuleDistributedMas
 		
 		while (workersIter.hasNext()) {
 			WorkerView worker = workersIter.next();
-			worker.sendJob(batchesIter.next());
-			worker.signalEnd();
+			worker.sendJob(batchesIter.next(), true);
 			log("Finished submitting to "+worker);
 		}
 		

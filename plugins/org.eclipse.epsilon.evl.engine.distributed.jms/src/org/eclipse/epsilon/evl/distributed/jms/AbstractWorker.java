@@ -20,6 +20,10 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.Wor
  */
 abstract class AbstractWorker implements AutoCloseable {
 
+	public static final String
+		LAST_MESSAGE_PROPERTY = "lastMsg",
+		ID_PROPERTY = "wid";
+	
 	protected String workerID;
 	protected final AtomicBoolean finished = new AtomicBoolean(false);
 	

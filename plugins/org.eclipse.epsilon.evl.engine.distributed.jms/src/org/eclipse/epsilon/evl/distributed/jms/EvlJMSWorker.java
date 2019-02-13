@@ -73,7 +73,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			// Get the configuration and our ID from the reply
 			Message configMsg = regContext.createConsumer(tempQueue).receive();
-			this.workerID = configMsg.getJMSCorrelationID();
+			this.workerID = configMsg.getStringProperty(ID_PROPERTY);
 			log("Configuration and ID received");
 			
 			configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
@@ -82,7 +82,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			// This is to acknowledge when we have completed loading the script(s) and model(s)
 			Message configuredAckMsg = regContext.createMessage();
-			configuredAckMsg.setJMSCorrelationID(workerID);
+			configuredAckMsg.setStringProperty(ID_PROPERTY, workerID);
 			configuredAckMsg.setJMSReplyTo(tempQueue);
 			// Tell the master we're setup and ready to work
 			regProducer.send(configMsg.getJMSReplyTo(), configuredAckMsg);
@@ -98,7 +98,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			CheckedConsumer<Serializable, JMSException> resultProcessor = obj -> {
 				ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
-				resultsMessage.setJMSCorrelationID(workerID);
+				resultsMessage.setStringProperty(ID_PROPERTY, workerID);
 				resultsSender.send(resultsQueue, resultsMessage);
 			};
 			
@@ -108,15 +108,19 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			awaitCompletion();
 	
-			// Tell the master we've finished
-			Message finishedMsg = jobContext.createMessage();
-			finishedMsg.setJMSCorrelationID(workerID);
-			resultsSender.send(resultsQueue, finishedMsg);
+			// For some silly reason apprently re-using the jobContext is invalid due to concurrency.
+			try (JMSContext finishedContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				// Tell the master we've finished
+				Message finishedMsg = finishedContext.createMessage();
+				finishedMsg.setStringProperty(ID_PROPERTY, workerID);
+				finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+				finishedContext.createProducer().send(finishedContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
+			}
 		}
 	}
 	
 	void awaitCompletion() {
-		log("Awaiting jobs...");
+		log("Awaiting completion");
 		while (!finished.get()) {
 			try {
 				synchronized (finished) {
@@ -125,38 +129,36 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			}
 			catch (InterruptedException ie) {}
 		}
-		log("Finished jobs");
+		log("Finished all jobs");
 	}
 	
 	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
 		return msg -> {
 			try {
-				if (!(msg instanceof ObjectMessage)) {
-					// End of jobs
-					finished.set(true);
-					log("Received all jobs");
+				assert msg instanceof ObjectMessage;
+				
+				// This needs to be assigned now because jobs are received faster than they are processed
+				final boolean isLastJob = msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
+				final Serializable objMsg = ((ObjectMessage)msg).getObject();
+				final Object resultObj;
+				
+				if (objMsg instanceof SerializableEvlInputAtom) {
+					resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+				}
+				else if (objMsg instanceof DistributedEvlBatch) {
+					resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
 				}
 				else {
-					final Serializable objMsg = ((ObjectMessage)msg).getObject();
-					final Object resultObj;
-					
-					if (objMsg instanceof SerializableEvlInputAtom) {
-						resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
-					}
-					else if (objMsg instanceof DistributedEvlBatch) {
-						resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
-					}
-					else {
-						resultObj = null;
-						log("Received unexpected object of type "+objMsg.getClass().getName());
-					}
-					
-					if (resultObj instanceof Serializable) {
-						resultProcessor.acceptThrows((Serializable) resultObj);
-					}
+					resultObj = null;
+					log("Received unexpected object of type "+objMsg.getClass().getName());
 				}
 				
-				if (finished.get()) {
+				if (resultObj instanceof Serializable) {
+					resultProcessor.acceptThrows((Serializable) resultObj);
+				}
+				
+				if (isLastJob) {
+					finished.set(true);
 					// Wake up the main thread once the last job has been processed and sent
 					synchronized (finished) {
 						finished.notify();

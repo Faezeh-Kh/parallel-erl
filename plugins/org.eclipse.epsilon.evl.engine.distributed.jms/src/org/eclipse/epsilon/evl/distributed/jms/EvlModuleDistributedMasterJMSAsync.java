@@ -51,7 +51,7 @@ public class EvlModuleDistributedMasterJMSAsync extends EvlModuleDistributedMast
 	@Override
 	protected void confirmWorker(WorkerView worker, JMSContext session, int workersReady) throws JMSException {
 		super.confirmWorker(worker, session, workersReady);
-		worker.sendJob(batches.get(workersReady));
+		worker.sendJob(batches.get(workersReady), true);
 	}
 	
 	@Override

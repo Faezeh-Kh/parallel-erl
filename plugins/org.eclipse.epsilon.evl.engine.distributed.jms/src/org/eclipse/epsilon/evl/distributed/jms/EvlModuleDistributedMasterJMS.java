@@ -118,21 +118,23 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			jobSender = session.createProducer();
 		}
 		
-		public void sendJob(Serializable input) throws JMSRuntimeException {
+		/**
+		 * Sends an {@linkplain ObjectMessage} to this worker's destination.
+		 * 
+		 * @param input The message contents
+		 * @param last Whether this is the last message that will be sent.
+		 * @throws JMSRuntimeException
+		 */
+		public void sendJob(Serializable input, boolean last) throws JMSRuntimeException {
 			ObjectMessage jobMsg = session.createObjectMessage(input);
-			setMessageID(jobMsg);
+			setMessageParameters(jobMsg, last);
 			jobSender.send(jobsTopic, jobMsg);
 		}
 		
-		public void signalEnd() throws JMSException {
-			Message endMsg = session.createMessage();
-			setMessageID(endMsg);
-			jobSender.send(jobsTopic, endMsg);
-		}
-		
-		protected void setMessageID(Message msg) throws JMSRuntimeException {
+		protected void setMessageParameters(Message msg, boolean last) throws JMSRuntimeException {
 			try {
-				msg.setJMSCorrelationID(workerID);
+				msg.setStringProperty(ID_PROPERTY, workerID);
+				msg.setBooleanProperty(LAST_MESSAGE_PROPERTY, last);
 			}
 			catch (JMSException jmx) {
 				jmx.printStackTrace();
@@ -145,6 +147,21 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			session = null;
 			jobsTopic = null;
 			jobSender = null;
+		}
+
+		/**
+		 * Called to signal that a worker has completed all of its jobs.
+		 * @param msg The last message received
+		 * @throws JMSRuntimeException
+		 */
+		public void onCompletion(Message msg) throws JMSRuntimeException {
+			finished.set(true);
+			try {
+				assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			} 
 		}
 	}
 	
@@ -174,9 +191,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					}
 				}
 				else {
-					String workerID = msg.getJMSCorrelationID();
+					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
 					slaveWorkers.stream().filter(w -> w.workerID.equals(workerID)).findAny().ifPresent(w -> {
-						w.finished.set(true);
+						workerCompleted(w, msg);
 						if (workersFinished.incrementAndGet() >= expectedSlaves) {
 							synchronized (workersFinished) {
 								workersFinished.notify();
@@ -194,9 +211,22 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		};
 	}
 	
+	/**
+	 * Called when a worker has signalled its completion status. This method
+	 * can be used to perform additional tasks, but should always call the
+	 * {@link WorkerView#onCompletion(Message)} method.
+	 * 
+	 * @param worker The worker that has finished.
+	 * @param msg The message received from the worker to signal this.
+	 */
+	protected void workerCompleted(WorkerView worker, Message msg) {
+		worker.onCompletion(msg);
+		log(worker.workerID + " finished");
+	}
+
 	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
-		log("awaiting completion...");
-		while (workersFinished.get() < slaveWorkers.size()) {
+		log("Awaiting workers to signal completion...");
+		while (workersFinished.get() < expectedSlaves) {
 			synchronized (workersFinished) {
 				try {
 					workersFinished.wait();
@@ -204,7 +234,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				catch (InterruptedException ie) {}
 			}
 		}
-		log("All workers finished.");
+		log("All workers finished");
 	}
 	
 	@Override
@@ -235,7 +265,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					// Tell the worker what their ID is along with the configuration parameters
 					Message configMsg = regContext.createObjectMessage(config);
 					configMsg.setJMSReplyTo(tempQueue);
-					configMsg.setJMSCorrelationID(worker.workerID);
+					configMsg.setStringProperty(AbstractWorker.ID_PROPERTY, worker.workerID);
 					regProducer.send(worker.localBox, configMsg);
 				}
 				catch (JMSException jmx) {
@@ -252,7 +282,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				regContext.createConsumer(tempQueue).setMessageListener(response -> {
 					String wid;
 					try {
-						wid = response.getJMSCorrelationID();
+						wid = response.getStringProperty(AbstractWorker.ID_PROPERTY);
 					}
 					catch (JMSException jmx) {
 						throw new JMSRuntimeException(jmx.getMessage());
@@ -329,7 +359,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 
 	/**
-	 * Called when a worker has completed loading its configuration.
+	 * Called when a worker has completed loading its configuration. This method can be used to perform
+	 * additional tasks, but should always call {@link WorkerView#confirm(JMSContext)}.
+	 * 
 	 * @param worker The worker that has been configured.
 	 * @param session The context in which the listener was invoked.
 	 * @param workerReady The number of workers that have currently been configured, including this one.
