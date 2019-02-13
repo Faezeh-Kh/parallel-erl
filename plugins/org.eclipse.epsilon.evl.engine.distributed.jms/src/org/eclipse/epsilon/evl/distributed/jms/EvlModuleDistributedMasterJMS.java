@@ -92,10 +92,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected static final String LOG_PREFIX = "[MASTER] ";
 	
 	protected final String host;
-	protected final ConnectionFactory connectionFactory;
 	protected final List<WorkerView> slaveWorkers;
 	protected final int expectedSlaves;
-	final AtomicInteger workersFinished = new AtomicInteger();
+	protected final AtomicInteger workersFinished = new AtomicInteger();
+	protected ConnectionFactory connectionFactory;
 	
 	protected class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
@@ -151,8 +151,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers);
-		connectionFactory = new ActiveMQJMSConnectionFactory(this.host = host);
-		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
+		this.host = host;
 		slaveWorkers = new ArrayList<>(this.expectedSlaves = expectedWorkers);
 	}
 	
@@ -218,6 +217,13 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
+	}
+	
+	@Override
+	protected void prepareExecution() throws EolRuntimeException {
+		super.prepareExecution();
+		connectionFactory = new ActiveMQJMSConnectionFactory(host);
+		System.out.println(LOG_PREFIX+"connected to "+host+" at "+System.currentTimeMillis());
 	}
 	
 	@Override
@@ -348,7 +354,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 
 	@Override
-	protected final void postExecution() throws EolRuntimeException {
+	protected void postExecution() throws EolRuntimeException {
 		super.postExecution();
 		try {
 			teardown();

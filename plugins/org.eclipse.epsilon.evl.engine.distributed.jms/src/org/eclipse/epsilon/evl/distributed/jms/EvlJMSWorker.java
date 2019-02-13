@@ -132,30 +132,31 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					// End of jobs
 					finished.set(true);
 					System.out.println(workerID+" received all jobs by "+System.currentTimeMillis());
-					return;
-				}
-				
-				final Serializable objMsg = ((ObjectMessage)msg).getObject();
-				final Object resultObj;
-				
-				if (objMsg instanceof SerializableEvlInputAtom) {
-					resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
-				}
-				else if (objMsg instanceof DistributedEvlBatch) {
-					resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
 				}
 				else {
-					resultObj = null;
-					System.err.println("["+workerID+"] Received unexpected object of type "+objMsg.getClass().getName());
+					final Serializable objMsg = ((ObjectMessage)msg).getObject();
+					final Object resultObj;
+					
+					if (objMsg instanceof SerializableEvlInputAtom) {
+						resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+					}
+					else if (objMsg instanceof DistributedEvlBatch) {
+						resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
+					}
+					else {
+						resultObj = null;
+						System.err.println("["+workerID+"] Received unexpected object of type "+objMsg.getClass().getName());
+					}
+					
+					if (resultObj instanceof Serializable) {
+						resultProcessor.acceptThrows((Serializable) resultObj);
+					}
 				}
 				
-				if (resultObj instanceof Serializable) {
-					resultProcessor.acceptThrows((Serializable) resultObj);
-					if (finished.get()) {
-						// Wake up the main thread once the last job has been processed and sent
-						synchronized (finished) {
-							finished.notify();
-						}
+				if (finished.get()) {
+					// Wake up the main thread once the last job has been processed and sent
+					synchronized (finished) {
+						finished.notify();
 					}
 				}
 			}
