@@ -178,7 +178,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				else {
 					String workerID = msg.getJMSCorrelationID();
 					slaveWorkers.stream().filter(w -> w.workerID.equals(workerID)).findAny().ifPresent(w -> {
-						w.finished = true;
+						w.finished.set(true);
 						if (workersFinished.incrementAndGet() >= expectedSlaves) {
 							synchronized (workersFinished) {
 								workersFinished.notify();

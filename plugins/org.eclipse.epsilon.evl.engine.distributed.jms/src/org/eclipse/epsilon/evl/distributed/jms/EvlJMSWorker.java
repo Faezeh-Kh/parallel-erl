@@ -49,22 +49,9 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		}
 	}
 	
-	@Override
-	public void run() {
-		try {
-			setup();
-			processJobs();
-		}
-		catch (Exception ex) {
-			throw new RuntimeException(ex);
-		}
-	}
-	
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
 	String workerID;
-	volatile boolean finished;
-	final Object completionLock = new Object();
 
 	public EvlJMSWorker(String host) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -117,43 +104,34 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			);
 			
 			awaitCompletion();
-			
-			try (JMSContext finishedContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				// Tell the master we've finished
-				Message finishedMsg = finishedContext.createMessage();
-				finishedMsg.setJMSCorrelationID(workerID);
-				Destination finishedDest = finishedContext.createQueue(RESULTS_QUEUE_NAME);
-				finishedContext.createProducer().send(finishedDest, finishedMsg);
-			}
+	
+			// Tell the master we've finished
+			Message finishedMsg = jobContext.createMessage();
+			finishedMsg.setJMSCorrelationID(workerID);
+			resultsSender.send(resultsQueue, finishedMsg);
 		}
 	}
 	
 	void awaitCompletion() {
 		System.out.println(workerID+" awaiting jobs since "+System.currentTimeMillis());
-		while (!finished) {
+		while (!finished.get()) {
 			try {
-				synchronized (completionLock) {
-					completionLock.wait();
+				synchronized (finished) {
+					finished.wait();
 				}
 			}
-			catch (InterruptedException ex) {
-				// TODO Auto-generated catch block
-				ex.printStackTrace();
-			}
+			catch (InterruptedException ie) {}
 		}
 		System.out.println(workerID+" finished jobs at "+System.currentTimeMillis());
 	}
 	
-	protected MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
+	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
 		return msg -> {
 			try {
 				if (!(msg instanceof ObjectMessage)) {
 					// End of jobs
-					finished = true;
+					finished.set(true);
 					System.out.println(workerID+" received all jobs by "+System.currentTimeMillis());
-					synchronized (completionLock) {
-						completionLock.notify();
-					}
 					return;
 				}
 				
@@ -173,10 +151,10 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				
 				if (resultObj instanceof Serializable) {
 					resultProcessor.acceptThrows((Serializable) resultObj);
-					if (finished) {
+					if (finished.get()) {
 						// Wake up the main thread once the last job has been processed and sent
-						synchronized (completionLock) {
-							completionLock.notify();
+						synchronized (finished) {
+							finished.notify();
 						}
 					}
 				}
@@ -188,6 +166,17 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		};
 	}
 
+	@Override
+	public void run() {
+		try {
+			setup();
+			processJobs();
+		}
+		catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+	
 	@Override
 	public void close() throws Exception {
 		if (connectionFactory instanceof AutoCloseable) {

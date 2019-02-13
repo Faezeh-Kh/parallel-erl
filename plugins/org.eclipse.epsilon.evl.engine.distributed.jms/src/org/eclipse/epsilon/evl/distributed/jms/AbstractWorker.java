@@ -10,6 +10,7 @@
 package org.eclipse.epsilon.evl.distributed.jms;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.WorkerView;
 
 /**
@@ -20,8 +21,7 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.Wor
 abstract class AbstractWorker implements AutoCloseable {
 
 	protected String workerID;
-	protected volatile boolean finished;
-	protected final Object completionLock = new Object();
+	protected final AtomicBoolean finished = new AtomicBoolean(false);
 	
 	@Override
 	public boolean equals(Object obj) {
