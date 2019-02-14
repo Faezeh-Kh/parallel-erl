@@ -37,7 +37,7 @@ public class EvlModuleDistributedMasterJMSSynced extends EvlModuleDistributedMas
 	}
 	
 	@Override
-	protected void beforeEndRegistrationContext(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
+	protected void beforeEndRegistration(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
 		while (readyWorkers.get() < expectedSlaves) {
 			try {
 				synchronized (readyWorkers) {

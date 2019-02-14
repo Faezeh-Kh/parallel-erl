@@ -171,50 +171,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		slaveWorkers = new ArrayList<>(this.expectedSlaves = expectedWorkers);
 	}
 	
-	@SuppressWarnings("unchecked")
-	protected MessageListener getResultsMessageListener() {
-		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
-		return msg -> {
-			try {
-				if (msg instanceof ObjectMessage) {
-					Serializable contents = ((ObjectMessage)msg).getObject();
-					if (contents instanceof Iterable) {
-						for (SerializableEvlResultAtom sra : (Iterable<? extends SerializableEvlResultAtom>)contents) {
-							unsatisfiedConstraints.add(sra.deserializeResult(this));
-						}
-					}
-					else if (contents instanceof SerializableEvlResultAtom) {
-						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
-					}
-					else {
-						log("Received unexpected object of type "+contents.getClass().getSimpleName());
-					}
-				}
-				
-				if (msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
-					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
-					WorkerView worker = slaveWorkers.stream()
-						.filter(w -> w.workerID.equals(workerID))
-						.findAny()
-						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
-					
-					workerCompleted(worker, msg);
-					if (workersFinished.incrementAndGet() >= expectedSlaves) {
-						synchronized (workersFinished) {
-							workersFinished.notify();
-						}
-					}
-				}
-			}
-			catch (EolRuntimeException eox) {
-				throw new RuntimeException(eox);
-			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			}
-		};
-	}
-	
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
@@ -271,53 +227,88 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						.findAny()
 						.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
 					
-					int workersReady = readyWorkers.incrementAndGet();
 					try {
-						confirmWorker(worker, resultsContext, workersReady);
+						confirmWorker(worker, resultsContext, readyWorkers);
 					}
 					catch (JMSException jmx) {
 						throw new JMSRuntimeException(jmx.getMessage());
 					}
-					
-					if (workersReady >= expectedSlaves) {
-						synchronized (readyWorkers) {
-							readyWorkers.notify();
-						}
-					}
 				});
 				
-				beforeEndRegistrationContext(readyWorkers, resultsContext);
-			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			}
-			
-			try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				processJobs(jobContext);
-				waitForWorkersToFinishJobs(jobContext);
+				beforeEndRegistration(readyWorkers, resultsContext);
+				
+				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					processJobs(jobContext);
+					waitForWorkersToFinishJobs(jobContext);
+				}
 			}
 			catch (Exception ex) {
-				throw ex instanceof EolRuntimeException ? (EolRuntimeException) ex : new EolRuntimeException(ex);
+				if (ex instanceof JMSException) throw new JMSRuntimeException(ex.getMessage());
+				else if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
+				else throw new EolRuntimeException(ex);
 			}
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
+	protected MessageListener getResultsMessageListener() {
+		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
+		return msg -> {
+			try {
+				if (msg instanceof ObjectMessage) {
+					Serializable contents = ((ObjectMessage)msg).getObject();
+					if (contents instanceof Iterable) {
+						for (SerializableEvlResultAtom sra : (Iterable<? extends SerializableEvlResultAtom>)contents) {
+							unsatisfiedConstraints.add(sra.deserializeResult(this));
+						}
+					}
+					else if (contents instanceof SerializableEvlResultAtom) {
+						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
+					}
+					else {
+						log("Received unexpected object of type "+contents.getClass().getSimpleName());
+					}
+				}
+				
+				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
+					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
+					WorkerView worker = slaveWorkers.stream()
+						.filter(w -> w.workerID.equals(workerID))
+						.findAny()
+						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
+					
+					workerCompleted(worker, msg);
+				}
+			}
+			catch (EolRuntimeException eox) {
+				throw new RuntimeException(eox);
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+		};
+	}
+	
 	/**
-	 * This method can be used to perform any final steps, such as waiting, before the main JMSContext
-	 * used for registration is destroyed. The base implementation does nothing.
-	 * It is up to the subclass to decide how to use this method.
+	 * This method can be used to perform any final tasks, such as waiting for all
+	 * workers to connect, before moving on to job processing. The {@link #processJobs(JMSContext)}
+	 * method is called after this.
 	 * 
 	 * @param readyWorkers Convenience handle which may be used for synchronization, e.g.
 	 * to wait on the workers to be ready.
 	 * @param session The inner-most JMSContext, used by the results processor.
+	 * @throws EolRuntimeException
+	 * @throws JMSException
+	 * @see #getResultsMessageListener()
 	 */
-	protected void beforeEndRegistrationContext(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
+	protected void beforeEndRegistration(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
 		// Optional abstract method
 	}
 
 	/**
 	 * This method is called in the body of {@link #checkConstraints()}, and is intended
-	 * to be where the main processing logic goes.
+	 * to be where the main processing logic goes. Immediately after this method, the
+	 * {@link #waitForWorkersToFinishJobs(JMSContext)} is called.
 	 * 
 	 * @param jobContext
 	 * @throws Exception
@@ -347,6 +338,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected void workerCompleted(WorkerView worker, Message msg) {
 		worker.onCompletion(msg);
 		log(worker.workerID + " finished");
+		
+		if (workersFinished.incrementAndGet() >= expectedSlaves) {
+			synchronized (workersFinished) {
+				workersFinished.notify();
+			}
+		}
 	}
 
 	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
@@ -368,13 +365,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * 
 	 * @param worker The worker that has been configured.
 	 * @param session The context in which the listener was invoked.
-	 * @param workerReady The number of workers that have currently been configured, including this one.
-	 * That is, the value will never be less than 1.
+	 * @param workerReady The number of workers that have currently been configured, excluding this one.
+	 * Implementations are expected to increment this number and can use the object's lock to signal
+	 * when all workers are connected by comparing this number to {@linkplain #expectedSlaves}.
 	 * @throws JMSException 
 	 */
-	protected void confirmWorker(WorkerView worker, JMSContext session, int workersReady) throws JMSException {
+	protected void confirmWorker(WorkerView worker, JMSContext session, AtomicInteger workersReady) throws JMSException {
 		log(worker+" ready");
 		worker.confirm(session);
+		
+		if (workersReady.incrementAndGet() >= expectedSlaves) {
+			synchronized (workersReady) {
+				workersReady.notify();
+			}
+		}
 	}
 	
 	@Override

@@ -110,14 +110,11 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			
 			awaitCompletion();
 	
-			// For some silly reason apparently re-using the jobContext is invalid due to concurrency.
-			try (JMSContext finishedContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				// Tell the master we've finished
-				Message finishedMsg = finishedContext.createMessage();
-				finishedMsg.setStringProperty(ID_PROPERTY, workerID);
-				finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-				finishedContext.createProducer().send(finishedContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
-			}
+			// Tell the master we've finished
+			Message finishedMsg = jobContext.createMessage();
+			finishedMsg.setStringProperty(ID_PROPERTY, workerID);
+			finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+			resultsSender.send(resultsQueue, finishedMsg);
 		}
 	}
 	
