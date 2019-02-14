@@ -13,7 +13,7 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -404,6 +404,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 	
 	protected void log(String message) {
-		System.out.println("[MASTER] "+LocalDateTime.now()+" "+message);
+		System.out.println("[MASTER] "+LocalTime.now()+" "+message);
 	}
 }

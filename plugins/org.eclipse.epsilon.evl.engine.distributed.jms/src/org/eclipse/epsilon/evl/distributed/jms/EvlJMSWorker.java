@@ -13,7 +13,7 @@ import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMaster
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
@@ -195,6 +195,6 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	}
 	
 	void log(String message) {
-		System.out.println("["+workerID+"] "+LocalDateTime.now()+" "+message);
+		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
 	}
 }
