@@ -190,16 +190,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						log("Received unexpected object of type "+contents.getClass().getSimpleName());
 					}
 				}
-				else {
+				
+				if (msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
-					slaveWorkers.stream().filter(w -> w.workerID.equals(workerID)).findAny().ifPresent(w -> {
-						workerCompleted(w, msg);
-						if (workersFinished.incrementAndGet() >= expectedSlaves) {
-							synchronized (workersFinished) {
-								workersFinished.notify();
-							}
+					WorkerView worker = slaveWorkers.stream()
+						.filter(w -> w.workerID.equals(workerID))
+						.findAny()
+						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
+					
+					workerCompleted(worker, msg);
+					if (workersFinished.incrementAndGet() >= expectedSlaves) {
+						synchronized (workersFinished) {
+							workersFinished.notify();
 						}
-					});
+					}
 				}
 			}
 			catch (EolRuntimeException eox) {
@@ -209,32 +213,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				throw new JMSRuntimeException(jmx.getMessage());
 			}
 		};
-	}
-	
-	/**
-	 * Called when a worker has signalled its completion status. This method
-	 * can be used to perform additional tasks, but should always call the
-	 * {@link WorkerView#onCompletion(Message)} method.
-	 * 
-	 * @param worker The worker that has finished.
-	 * @param msg The message received from the worker to signal this.
-	 */
-	protected void workerCompleted(WorkerView worker, Message msg) {
-		worker.onCompletion(msg);
-		log(worker.workerID + " finished");
-	}
-
-	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
-		log("Awaiting workers to signal completion...");
-		while (workersFinished.get() < expectedSlaves) {
-			try {
-				synchronized (workersFinished) {
-					workersFinished.wait();
-				}
-			}
-			catch (InterruptedException ie) {}
-		}
-		log("All workers finished");
 	}
 	
 	@Override
@@ -358,6 +336,32 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		return worker;
 	}
 
+	/**
+	 * Called when a worker has signalled its completion status. This method
+	 * can be used to perform additional tasks, but should always call the
+	 * {@link WorkerView#onCompletion(Message)} method.
+	 * 
+	 * @param worker The worker that has finished.
+	 * @param msg The message received from the worker to signal this.
+	 */
+	protected void workerCompleted(WorkerView worker, Message msg) {
+		worker.onCompletion(msg);
+		log(worker.workerID + " finished");
+	}
+
+	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
+		log("Awaiting workers to signal completion...");
+		while (workersFinished.get() < expectedSlaves) {
+			try {
+				synchronized (workersFinished) {
+					workersFinished.wait();
+				}
+			}
+			catch (InterruptedException ie) {}
+		}
+		log("All workers finished");
+	}
+	
 	/**
 	 * Called when a worker has completed loading its configuration. This method can be used to perform
 	 * additional tasks, but should always call {@link WorkerView#confirm(JMSContext)}.

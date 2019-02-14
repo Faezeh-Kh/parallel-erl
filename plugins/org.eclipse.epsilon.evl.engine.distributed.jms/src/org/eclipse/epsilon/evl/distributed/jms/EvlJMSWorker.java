@@ -137,8 +137,6 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
 		return msg -> {
 			try {
-				boolean signal = false;
-				
 				if (msg instanceof ObjectMessage) {
 					jobsInProgress.incrementAndGet();
 					
@@ -160,11 +158,15 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 						resultProcessor.acceptThrows((Serializable) resultObj);
 					}
 					
-					signal = jobsInProgress.decrementAndGet() <= 0;
+					jobsInProgress.decrementAndGet();
 				}
 				
-				if (signal || msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
-					// Wake up the main thread once the last job has been processed and sent
+				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
+					finished.set(true);
+				}
+				
+				if (finished.get() && jobsInProgress.get() <= 0) {
+					// Wake up the main thread once all jobs have been processed.
 					synchronized (jobsInProgress) {
 						jobsInProgress.notify();
 					}
