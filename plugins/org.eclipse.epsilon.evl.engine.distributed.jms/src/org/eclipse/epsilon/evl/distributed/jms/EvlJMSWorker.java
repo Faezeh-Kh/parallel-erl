@@ -111,10 +111,12 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			awaitCompletion();
 	
 			// Tell the master we've finished
-			Message finishedMsg = jobContext.createMessage();
-			finishedMsg.setStringProperty(ID_PROPERTY, workerID);
-			finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-			resultsSender.send(resultsQueue, finishedMsg);
+			try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				Message finishedMsg = endContext.createMessage();
+				finishedMsg.setStringProperty(ID_PROPERTY, workerID);
+				finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+				endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
+			}
 		}
 	}
 	

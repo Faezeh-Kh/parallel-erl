@@ -95,6 +95,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected final int expectedSlaves;
 	protected final AtomicInteger workersFinished = new AtomicInteger();
 	protected ConnectionFactory connectionFactory;
+	// Set this to false for unbounded scalability
+	protected boolean refuseAdditionalWorkers = true;
 	
 	protected class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
@@ -192,6 +194,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			AtomicInteger registeredWorkers = new AtomicInteger();
 			// Triggered when a worker announces itself to the registration queue
 			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE)).setMessageListener(msg -> {
+				// For security / load purposes, stop additional workers from being picked up.
+				if (refuseAdditionalWorkers && registeredWorkers.get() >= expectedSlaves) return;
 				try {
 					// Assign worker ID
 					WorkerView worker = createWorker(registeredWorkers.incrementAndGet(), msg.getJMSReplyTo());
