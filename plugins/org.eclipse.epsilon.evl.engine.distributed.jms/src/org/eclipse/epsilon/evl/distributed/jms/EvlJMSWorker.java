@@ -122,11 +122,9 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (jobsInProgress.get() > 0 || !finished.get()) {
+		while (jobsInProgress.get() > 0 || !finished.get()) synchronized (jobsInProgress) {
 			try {
-				synchronized (jobsInProgress) {
-					jobsInProgress.wait();
-				}
+				jobsInProgress.wait();
 			}
 			catch (InterruptedException ie) {}
 		}

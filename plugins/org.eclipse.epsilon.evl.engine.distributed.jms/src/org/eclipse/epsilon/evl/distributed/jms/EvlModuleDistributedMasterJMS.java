@@ -257,8 +257,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	@SuppressWarnings("unchecked")
 	protected MessageListener getResultsMessageListener() {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
+		final AtomicInteger resultsInProgress = new AtomicInteger();
+		
 		return msg -> {
 			try {
+				resultsInProgress.incrementAndGet();
+				
 				if (msg instanceof ObjectMessage) {
 					Serializable contents = ((ObjectMessage)msg).getObject();
 					if (contents instanceof Iterable) {
@@ -281,7 +285,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						.findAny()
 						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
 					
-					workerCompleted(worker, msg);
+					workerCompleted(worker, msg, resultsInProgress);
+					
+					if (workersFinished.incrementAndGet() >= expectedSlaves) {
+						// Before signalling, we need to wait for all received results to be processed
+						while (resultsInProgress.get() > 1) synchronized (resultsInProgress) {
+							try {
+								resultsInProgress.wait();
+							}
+							catch (InterruptedException ie) {}
+						}
+						synchronized (workersFinished) {
+							workersFinished.notify();
+						}
+					}
 				}
 			}
 			catch (EolRuntimeException eox) {
@@ -289,6 +306,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			finally {
+				if (resultsInProgress.decrementAndGet() <= 1) synchronized (resultsInProgress) {
+					resultsInProgress.notify();
+				}
 			}
 		};
 	}
@@ -339,24 +361,16 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @param worker The worker that has finished.
 	 * @param msg The message received from the worker to signal this.
 	 */
-	protected void workerCompleted(WorkerView worker, Message msg) {
+	protected void workerCompleted(WorkerView worker, Message msg, AtomicInteger inProgress) {
 		worker.onCompletion(msg);
 		log(worker.workerID + " finished");
-		
-		if (workersFinished.incrementAndGet() >= expectedSlaves) {
-			synchronized (workersFinished) {
-				workersFinished.notify();
-			}
-		}
 	}
 
 	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
 		log("Awaiting workers to signal completion...");
-		while (workersFinished.get() < expectedSlaves) {
+		while (workersFinished.get() < expectedSlaves) synchronized (workersFinished) {
 			try {
-				synchronized (workersFinished) {
-					workersFinished.wait();
-				}
+				workersFinished.wait();
 			}
 			catch (InterruptedException ie) {}
 		}
@@ -378,10 +392,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		log(worker+" ready");
 		worker.confirm(session);
 		
-		if (workersReady.incrementAndGet() >= expectedSlaves) {
-			synchronized (workersReady) {
-				workersReady.notify();
-			}
+		if (workersReady.incrementAndGet() >= expectedSlaves) synchronized (workersReady) {
+			workersReady.notify();
 		}
 	}
 	
