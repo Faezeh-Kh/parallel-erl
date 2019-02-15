@@ -190,7 +190,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			log("Awaiting workers");
 			
-			AtomicInteger registeredWorkers = new AtomicInteger();
+			final AtomicInteger registeredWorkers = new AtomicInteger();
 			// Triggered when a worker announces itself to the registration queue
 			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE)).setMessageListener(msg -> {
 				// For security / load purposes, stop additional workers from being picked up.
@@ -211,12 +211,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				AtomicInteger workersFinished = new AtomicInteger();
+				final AtomicInteger workersFinished = new AtomicInteger();
 				
 				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME))
 					.setMessageListener(getResultsMessageListener(workersFinished));
 				
-				AtomicInteger readyWorkers = new AtomicInteger();
+				final AtomicInteger readyWorkers = new AtomicInteger();
 				// Triggered when a worker has completed loading the configuration
 				regContext.createConsumer(tempQueue).setMessageListener(response -> {
 					String wid;
@@ -266,7 +266,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * assignment) as well as co-ordination (signalling of completion etc.)
 	 */
 	@SuppressWarnings("unchecked")
-	protected MessageListener getResultsMessageListener(AtomicInteger workersFinished) {
+	protected MessageListener getResultsMessageListener(final AtomicInteger workersFinished) {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		final AtomicInteger resultsInProgress = new AtomicInteger();
 		
@@ -336,7 +336,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
 	 * @throws Exception
 	 */
-	abstract protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception;
+	abstract protected void processJobs(final AtomicInteger readyWorkers, final JMSContext jobContext) throws Exception;
 
 	/**
 	 * Called when a worker has registered.
@@ -393,7 +393,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * when all workers are connected by comparing this number to {@linkplain #expectedSlaves}.
 	 * @throws JMSException 
 	 */
-	protected void confirmWorker(WorkerView worker, JMSContext session, AtomicInteger workersReady) throws JMSException {
+	protected void confirmWorker(final WorkerView worker, final JMSContext session, final AtomicInteger workersReady) throws JMSException {
 		log(worker+" ready");
 		worker.confirm(session);
 		

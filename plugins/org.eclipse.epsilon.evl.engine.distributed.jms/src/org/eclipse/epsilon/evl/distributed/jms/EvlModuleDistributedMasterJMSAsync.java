@@ -58,8 +58,10 @@ public class EvlModuleDistributedMasterJMSAsync extends EvlModuleDistributedMast
 	@Override
 	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
 		EvlContextDistributedMaster evlContext = getContext();
+		log("Began processing own jobs");
 		for (ConstraintContextAtom cca : batches.get(0).split(jobs)) {
 			cca.execute(evlContext);
 		}
+		log("Finished processing own jobs");
 	}
 }

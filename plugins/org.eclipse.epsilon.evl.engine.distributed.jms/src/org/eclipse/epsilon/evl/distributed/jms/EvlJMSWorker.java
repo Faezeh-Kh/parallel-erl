@@ -16,9 +16,9 @@ import java.net.URISyntaxException;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
-import org.eclipse.epsilon.common.function.CheckedConsumer;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -56,7 +56,6 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
 	String workerID;
-	final AtomicInteger jobsInProgress = new AtomicInteger();
 
 	public EvlJMSWorker(String host) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -98,9 +97,14 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
 			JMSProducer resultsSender = jobContext.createProducer();
 			
-			CheckedConsumer<Serializable, JMSException> resultProcessor = obj -> {
+			Consumer<Serializable> resultProcessor = obj -> {
 				ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
-				resultsMessage.setStringProperty(ID_PROPERTY, workerID);
+				try {
+					resultsMessage.setStringProperty(ID_PROPERTY, workerID);
+				}
+				catch (JMSException jmx) {
+					throw new JMSRuntimeException(jmx.getMessage());
+				}
 				resultsSender.send(resultsQueue, resultsMessage);
 			};
 			
@@ -122,21 +126,22 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (jobsInProgress.get() > 0 || !finished.get()) synchronized (jobsInProgress) {
+		while (!finished.get()) synchronized (finished) {
 			try {
-				jobsInProgress.wait();
+				finished.wait();
 			}
 			catch (InterruptedException ie) {}
 		}
 		log("Finished all jobs");
 	}
 	
-	MessageListener getJobProcessor(final CheckedConsumer<Serializable, ? extends JMSException> resultProcessor, final EvlModuleDistributedSlave module) {
+	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final EvlModuleDistributedSlave module) {
+		final AtomicInteger jobsInProgress = new AtomicInteger();
 		return msg -> {
 			try {
+				jobsInProgress.incrementAndGet();
+				
 				if (msg instanceof ObjectMessage) {
-					jobsInProgress.incrementAndGet();
-					
 					final Serializable objMsg = ((ObjectMessage)msg).getObject();
 					final Object resultObj;
 					
@@ -152,7 +157,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					}
 					
 					if (resultObj instanceof Serializable) {
-						resultProcessor.acceptThrows((Serializable) resultObj);
+						resultProcessor.accept((Serializable) resultObj);
 					}
 					
 					jobsInProgress.decrementAndGet();
@@ -161,17 +166,20 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					finished.set(true);
 				}
-				
-				if (finished.get() && jobsInProgress.get() <= 0) {
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			catch (EolRuntimeException eox) {
+				throw new RuntimeException(eox);
+			}
+			finally {
+				if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) {
 					// Wake up the main thread once all jobs have been processed.
-					synchronized (jobsInProgress) {
-						jobsInProgress.notify();
+					synchronized (finished) {
+						finished.notify();
 					}
 				}
-			}
-			catch (JMSException | EolRuntimeException ex) {
-				// TODO Auto-generated catch block
-				ex.printStackTrace();
 			}
 		};
 	}
