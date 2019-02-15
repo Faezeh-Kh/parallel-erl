@@ -285,7 +285,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						.findAny()
 						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
 					
-					workerCompleted(worker, msg, resultsInProgress);
+					workerCompleted(worker, msg);
 					
 					if (workersFinished.incrementAndGet() >= expectedSlaves) {
 						// Before signalling, we need to wait for all received results to be processed
@@ -361,7 +361,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @param worker The worker that has finished.
 	 * @param msg The message received from the worker to signal this.
 	 */
-	protected void workerCompleted(WorkerView worker, Message msg, AtomicInteger inProgress) {
+	protected void workerCompleted(WorkerView worker, Message msg) {
 		worker.onCompletion(msg);
 		log(worker.workerID + " finished");
 	}
