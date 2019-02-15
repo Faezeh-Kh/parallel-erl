@@ -14,8 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSContext;
-import javax.jms.JMSException;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
@@ -37,20 +35,13 @@ public class EvlModuleDistributedMasterJMSSynced extends EvlModuleDistributedMas
 	}
 	
 	@Override
-	protected void beforeEndRegistration(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
-		while (readyWorkers.get() < expectedSlaves) {
-			try {
-				synchronized (readyWorkers) {
-					readyWorkers.wait();
-				}
-			}
-			catch (InterruptedException ie) {}
+	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
+		// Await workers
+		while (readyWorkers.get() < expectedSlaves) synchronized (readyWorkers) {
+			readyWorkers.wait();
 		}
 		log("All workers connected");
-	}
-	
-	@Override
-	protected void processJobs(JMSContext jobContext) throws Exception {
+		
 		final EvlContextDistributedMaster evlContext = getContext();
 		final int parallelism = evlContext.getDistributedParallelism()+1;
 		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);

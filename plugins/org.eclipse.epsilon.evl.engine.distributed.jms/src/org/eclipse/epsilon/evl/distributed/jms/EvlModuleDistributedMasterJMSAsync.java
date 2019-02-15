@@ -56,7 +56,7 @@ public class EvlModuleDistributedMasterJMSAsync extends EvlModuleDistributedMast
 	}
 	
 	@Override
-	protected void processJobs(JMSContext jobContext) throws Exception {
+	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
 		EvlContextDistributedMaster evlContext = getContext();
 		for (ConstraintContextAtom cca : batches.get(0).split(jobs)) {
 			cca.execute(evlContext);

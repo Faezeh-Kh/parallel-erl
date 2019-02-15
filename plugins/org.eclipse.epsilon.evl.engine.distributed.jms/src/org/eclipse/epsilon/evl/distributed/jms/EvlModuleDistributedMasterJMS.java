@@ -239,10 +239,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					}
 				});
 				
-				beforeEndRegistration(readyWorkers, resultsContext);
-				
-				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					processJobs(jobContext);
+				try (JMSContext jobContext = resultsContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					processJobs(readyWorkers, jobContext);
 					waitForWorkersToFinishJobs(jobContext);
 				}
 			}
@@ -316,30 +314,16 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 	
 	/**
-	 * This method can be used to perform any final tasks, such as waiting for all
-	 * workers to connect, before moving on to job processing. The {@link #processJobs(JMSContext)}
-	 * method is called after this.
-	 * 
-	 * @param readyWorkers Convenience handle which may be used for synchronization, e.g.
-	 * to wait on the workers to be ready.
-	 * @param session The inner-most JMSContext, used by the results processor.
-	 * @throws EolRuntimeException
-	 * @throws JMSException
-	 * @see #getResultsMessageListener()
-	 */
-	protected void beforeEndRegistration(AtomicInteger readyWorkers, JMSContext session) throws EolRuntimeException, JMSException {
-		// Optional abstract method
-	}
-
-	/**
 	 * This method is called in the body of {@link #checkConstraints()}, and is intended
 	 * to be where the main processing logic goes. Immediately after this method, the
 	 * {@link #waitForWorkersToFinishJobs(JMSContext)} is called.
 	 * 
-	 * @param jobContext
+	 * @param readyWorkers  Convenience handle which may be used for synchronization, e.g.
+	 * to wait on the workers to be ready.
+	 * @param jobContext The inner-most JMSContext.
 	 * @throws Exception
 	 */
-	abstract protected void processJobs(JMSContext jobContext) throws Exception;
+	abstract protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception;
 
 	/**
 	 * Called when a worker has registered.
