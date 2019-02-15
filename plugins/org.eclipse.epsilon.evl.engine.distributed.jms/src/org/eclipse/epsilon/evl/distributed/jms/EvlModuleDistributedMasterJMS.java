@@ -93,7 +93,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected final String host;
 	protected final List<WorkerView> slaveWorkers;
 	protected final int expectedSlaves;
-	protected final AtomicInteger workersFinished = new AtomicInteger();
 	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
@@ -212,8 +211,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				AtomicInteger workersFinished = new AtomicInteger();
+				
 				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME))
-					.setMessageListener(getResultsMessageListener());
+					.setMessageListener(getResultsMessageListener(workersFinished));
 				
 				AtomicInteger readyWorkers = new AtomicInteger();
 				// Triggered when a worker has completed loading the configuration
@@ -241,7 +242,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				
 				try (JMSContext jobContext = resultsContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 					processJobs(readyWorkers, jobContext);
-					waitForWorkersToFinishJobs(jobContext);
+					waitForWorkersToFinishJobs(workersFinished, jobContext);
 				}
 			}
 			catch (Exception ex) {
@@ -252,8 +253,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
+	/**
+	 * Main results processing listener. Implementations are expected to handle both results processing and
+	 * signalling of terminal waiting condition once all workers have indicated all results have been
+	 * processed. Due to the complexity of the implementation, it is not recommended that subclasses override
+	 * this method. It is non-final for completeness / extensibility only. Incomplete / incorrect implementations
+	 * will break the entire class, so overriding methods should be extremely careful and fully understand
+	 * the inner workings / implementation of the base class if overriding this method.
+	 * 
+	 * @param workersFinished Mutable number of workers which have signalled completion status.
+	 * @return A callback which can handle the semantics of results processing (i.e. deserialization and
+	 * assignment) as well as co-ordination (signalling of completion etc.)
+	 */
 	@SuppressWarnings("unchecked")
-	protected MessageListener getResultsMessageListener() {
+	protected MessageListener getResultsMessageListener(AtomicInteger workersFinished) {
 		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		final AtomicInteger resultsInProgress = new AtomicInteger();
 		
@@ -320,7 +333,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * 
 	 * @param readyWorkers  Convenience handle which may be used for synchronization, e.g.
 	 * to wait on the workers to be ready.
-	 * @param jobContext The inner-most JMSContext.
+	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
 	 * @throws Exception
 	 */
 	abstract protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception;
@@ -350,7 +363,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		log(worker.workerID + " finished");
 	}
 
-	protected void waitForWorkersToFinishJobs(JMSContext jobContext) {
+	/**
+	 * Waits for the critical condition <code>workersFinished.get() >= expectedSlaves</code>
+	 * to be signalled from the results processor as returned from {@linkplain #getResultsMessageListener()}.
+	 * 
+	 * @param workersFinished The number of workers that have signalled completion status. The value
+	 * should not be mutated by this method, and only used for synchronising on the condition.
+	 * @param jobContext The inner-most JMSContext from {@linkplain #checkConstraints()}.
+	 */
+	protected void waitForWorkersToFinishJobs(AtomicInteger workersFinished, JMSContext jobContext) {
 		log("Awaiting workers to signal completion...");
 		while (workersFinished.get() < expectedSlaves) synchronized (workersFinished) {
 			try {
@@ -392,6 +413,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
+	/**
+	 * Cleanup method used to free resources once execution has completed.
+	 * 
+	 * @throws Exception
+	 */
 	protected void teardown() throws Exception {
 		for (AutoCloseable worker : slaveWorkers) {
 			worker.close();
@@ -403,6 +429,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
+	/**
+	 * Convenience method used for diagnostic purposes.
+	 * 
+	 * @param message The message to output.
+	 */
 	protected void log(String message) {
 		System.out.println("[MASTER] "+LocalTime.now()+" "+message);
 	}
