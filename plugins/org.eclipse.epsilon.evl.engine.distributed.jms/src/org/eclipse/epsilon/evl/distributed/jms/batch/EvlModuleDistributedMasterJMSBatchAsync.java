@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.jms;
+package org.eclipse.epsilon.evl.distributed.jms.batch;
 
 import java.net.URISyntaxException;
 import java.util.List;
@@ -17,6 +17,7 @@ import javax.jms.JMSException;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
@@ -26,16 +27,16 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSAsync extends EvlModuleDistributedMasterJMS {
+public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistributedMasterJMS {
 
 	public static void main(String... args) throws Exception {
-		EvlModuleDistributedMasterJMS.extensibleMain(EvlModuleDistributedMasterJMSAsync.class, args);
+		extensibleMain(EvlModuleDistributedMasterJMSBatchAsync.class, args);
 	}
 	
 	List<ConstraintContextAtom> jobs;
 	List<DistributedEvlBatch> batches;
 	
-	public EvlModuleDistributedMasterJMSAsync(int expectedWorkers, String host) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMSBatchAsync(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers, host);
 	}
 

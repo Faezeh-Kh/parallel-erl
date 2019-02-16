@@ -14,6 +14,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -22,8 +23,7 @@ import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
+import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 
 /**
@@ -167,6 +167,13 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					
 					if (objMsg instanceof SerializableEvlInputAtom) {
 						resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+					}
+					else if (objMsg instanceof Iterable) {
+						ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
+						for (SerializableEvlInputAtom atom : (Iterable<SerializableEvlInputAtom>)objMsg) {
+							resultsCol.addAll(atom.evaluate(module));
+						}
+						resultObj = resultsCol;
 					}
 					else if (objMsg instanceof DistributedEvlBatch) {
 						resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);

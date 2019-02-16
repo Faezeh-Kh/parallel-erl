@@ -97,7 +97,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
 	
-	protected class WorkerView extends AbstractWorker {
+	public class WorkerView extends AbstractWorker {
 		public Destination localBox = null;
 		JMSContext session;
 		Topic jobsTopic;

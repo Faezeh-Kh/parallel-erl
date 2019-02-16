@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
@@ -100,7 +99,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	 * @return The data to be distributed.
 	 * @throws EolRuntimeException
 	 */
-	public static List<SerializableEvlInputAtom> createJobs(Iterable<ConstraintContext> constraintContexts, IEvlContext context, boolean shuffle) throws EolRuntimeException {
+	public static ArrayList<SerializableEvlInputAtom> createJobs(Iterable<ConstraintContext> constraintContexts, IEvlContext context, boolean shuffle) throws EolRuntimeException {
 		ArrayList<SerializableEvlInputAtom> problems = new ArrayList<>();
 		
 		for (ConstraintContext constraintContext : constraintContexts) {
