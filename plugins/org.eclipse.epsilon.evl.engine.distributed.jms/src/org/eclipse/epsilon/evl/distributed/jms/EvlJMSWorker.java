@@ -61,67 +61,87 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
 	}
 	
-	void setup() throws Exception {
-		try (JMSContext regContext = connectionFactory.createContext()) {
-			// Announce our presence to the master
-			Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE);
-			Destination tempQueue = regContext.createTemporaryQueue();
-			JMSProducer regProducer = regContext.createProducer();
-			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			Message initMsg = regContext.createMessage();
-			initMsg.setJMSReplyTo(tempQueue);
-			regProducer.send(regQueue, initMsg);
+	@Override
+	public void run() {
+		try {
+			try (JMSContext regContext = connectionFactory.createContext()) {
+				Runnable ackSender = setup(regContext);
+				
+				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					processJobs(jobContext);
+					
+					// Tell the master we're setup and ready to work. We need to send the message here
+					// because if the master is fast we may receive jobs before we have even created the listener!
+					ackSender.run();
+					
+					awaitCompletion();
 			
-			// Get the configuration and our ID from the reply
-			Message configMsg = regContext.createConsumer(tempQueue).receive();
-			this.workerID = configMsg.getStringProperty(ID_PROPERTY);
-			log("Configuration and ID received");
-			
-			configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
-			configContainer.preExecute();
-			((EvlModuleDistributedSlave)configContainer.getModule()).prepareExecution();
-			
-			// This is to acknowledge when we have completed loading the script(s) and model(s)
-			Message configuredAckMsg = regContext.createMessage();
-			configuredAckMsg.setStringProperty(ID_PROPERTY, workerID);
-			configuredAckMsg.setJMSReplyTo(tempQueue);
-			// Tell the master we're setup and ready to work
-			regProducer.send(configMsg.getJMSReplyTo(), configuredAckMsg);
+					// Tell the master we've finished
+					try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+						signalCompletion(endContext);
+					}
+				}
+			}
+		}
+		catch (Exception ex) {
+			throw new RuntimeException(ex);
 		}
 	}
 	
-	void processJobs() throws JMSException {
-		try (JMSContext jobContext = connectionFactory.createContext()) {
-			// Job processing, requires destinations for inputs (jobs) and outputs (results)
-			Destination jobDest = jobContext.createTopic(workerID + JOB_SUFFIX);
-			Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
-			JMSProducer resultsSender = jobContext.createProducer();
-			
-			Consumer<Serializable> resultProcessor = obj -> {
-				ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
-				try {
-					resultsMessage.setStringProperty(ID_PROPERTY, workerID);
-				}
-				catch (JMSException jmx) {
-					throw new JMSRuntimeException(jmx.getMessage());
-				}
-				resultsSender.send(resultsQueue, resultsMessage);
-			};
-			
-			jobContext.createConsumer(jobDest).setMessageListener(
-				getJobProcessor(resultProcessor, (EvlModuleDistributedSlave) configContainer.getModule())
-			);
-			
-			awaitCompletion();
+	Runnable setup(JMSContext regContext) throws Exception {
+		// Announce our presence to the master
+		Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE);
+		Destination tempQueue = regContext.createTemporaryQueue();
+		JMSProducer regProducer = regContext.createProducer();
+		regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+		Message initMsg = regContext.createMessage();
+		initMsg.setJMSReplyTo(tempQueue);
+		regProducer.send(regQueue, initMsg);
+		
+		// Get the configuration and our ID from the reply
+		Message configMsg = regContext.createConsumer(tempQueue).receive();
+		this.workerID = configMsg.getStringProperty(ID_PROPERTY);
+		log("Configuration and ID received");
+		
+		configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
+		configContainer.preExecute();
+		((EvlModuleDistributedSlave)configContainer.getModule()).prepareExecution();
+		
+		// This is to acknowledge when we have completed loading the script(s) and model(s)
+		Message configuredAckMsg = regContext.createMessage();
+		configuredAckMsg.setStringProperty(ID_PROPERTY, workerID);
+		configuredAckMsg.setJMSReplyTo(tempQueue);
+		Destination configAckDest = configMsg.getJMSReplyTo();
+		return () -> regProducer.send(configAckDest, configuredAckMsg);
+	}
 	
-			// Tell the master we've finished
-			try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				Message finishedMsg = endContext.createMessage();
-				finishedMsg.setStringProperty(ID_PROPERTY, workerID);
-				finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-				endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
+	void processJobs(JMSContext jobContext) throws JMSException {
+		// Job processing, requires destinations for inputs (jobs) and outputs (results)
+		Destination jobDest = jobContext.createTopic(workerID + JOB_SUFFIX);
+		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
+		JMSProducer resultsSender = jobContext.createProducer();
+		
+		Consumer<Serializable> resultProcessor = obj -> {
+			ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
+			try {
+				resultsMessage.setStringProperty(ID_PROPERTY, workerID);
 			}
-		}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			resultsSender.send(resultsQueue, resultsMessage);
+		};
+		
+		jobContext.createConsumer(jobDest).setMessageListener(
+			getJobProcessor(resultProcessor, (EvlModuleDistributedSlave) configContainer.getModule())
+		);
+	}
+	
+	void signalCompletion(JMSContext endContext) throws JMSException {
+		Message finishedMsg = endContext.createMessage();
+		finishedMsg.setStringProperty(ID_PROPERTY, workerID);
+		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
 	}
 	
 	void awaitCompletion() {
@@ -182,17 +202,6 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				}
 			}
 		};
-	}
-
-	@Override
-	public void run() {
-		try {
-			setup();
-			processJobs();
-		}
-		catch (Exception ex) {
-			throw new RuntimeException(ex);
-		}
 	}
 	
 	@Override

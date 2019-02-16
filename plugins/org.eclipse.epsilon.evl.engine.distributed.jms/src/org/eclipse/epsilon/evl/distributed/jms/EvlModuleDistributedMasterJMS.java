@@ -181,16 +181,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {
-		final Serializable config = getContext().getJobParameters();
-		
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Initial registration of workers
-			Destination tempQueue = regContext.createTemporaryQueue();
-			JMSProducer regProducer = regContext.createProducer();
+			final Destination tempQueue = regContext.createTemporaryQueue();
+			final JMSProducer regProducer = regContext.createProducer();
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			log("Awaiting workers");
-			
+			final Serializable config = getContext().getJobParameters();
 			final AtomicInteger registeredWorkers = new AtomicInteger();
+			
+			log("Awaiting workers");
 			// Triggered when a worker announces itself to the registration queue
 			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE)).setMessageListener(msg -> {
 				// For security / load purposes, stop additional workers from being picked up.
