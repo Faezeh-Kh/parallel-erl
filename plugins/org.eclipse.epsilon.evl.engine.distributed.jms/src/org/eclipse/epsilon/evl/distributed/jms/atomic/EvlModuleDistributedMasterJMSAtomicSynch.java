@@ -10,6 +10,7 @@
 package org.eclipse.epsilon.evl.distributed.jms.atomic;
 
 import java.net.URISyntaxException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSContext;
@@ -35,9 +36,6 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 
 	@Override
 	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
-		boolean userIsAGoat = readyWorkers != null;
-		if (userIsAGoat) throw new UnsupportedOperationException("TODO");
-		
 		// Await workers
 		while (readyWorkers.get() < expectedSlaves) synchronized (readyWorkers) {
 			readyWorkers.wait();
@@ -45,13 +43,29 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 		log("All workers connected");
 		
 		final EvlContextDistributedMaster evlContext = getContext();
+		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(
+			getConstraintContexts(), evlContext, false
+		);
 		final int parallelism = evlContext.getDistributedParallelism()+1;
-		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(getConstraintContexts(), evlContext, true);
-		assert slaveWorkers.size() == expectedSlaves;
+		final int selfBatch = jobs.size() / parallelism;
 		
-		// TODO implement distribution logic
+		assert slaveWorkers.size() == expectedSlaves;
+		assert expectedSlaves == parallelism-1;
+		
+		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
+		for (SerializableEvlInputAtom jobAtom : jobs.subList(selfBatch, jobs.size())) {
+			if (!workersIter.hasNext()) {
+				workersIter = slaveWorkers.iterator();
+			}
+			workersIter.next().sendJob(jobAtom, false);
+		}
+		slaveWorkers.forEach(WorkerView::signalEnd);
 		
 		log("Began processing own jobs");
+		
+		for (SerializableEvlInputAtom jobAtom : jobs.subList(0, selfBatch)) {
+			addToResults(jobAtom.evaluate(this));
+		}
 		
 		log("Finished processing own jobs");
 	}

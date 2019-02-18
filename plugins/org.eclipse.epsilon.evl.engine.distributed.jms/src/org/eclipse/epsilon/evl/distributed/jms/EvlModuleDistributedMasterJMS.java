@@ -132,6 +132,17 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			jobSender.send(jobsTopic, jobMsg);
 		}
 		
+		/**
+		 * Tells the worker that no more jobs will be sent to it.
+		 * 
+		 * @throws JMSRuntimeException
+		 */
+		public void signalEnd() throws JMSRuntimeException {
+			Message endMsg = session.createMessage();
+			setMessageParameters(endMsg, true);
+			jobSender.send(jobsTopic, endMsg);
+		}
+		
 		protected void setMessageParameters(Message msg, boolean last) throws JMSRuntimeException {
 			try {
 				msg.setStringProperty(ID_PROPERTY, workerID);

@@ -47,6 +47,8 @@ public class EvlModuleDistributedMasterJMSBatchSynch extends EvlModuleDistribute
 		final int parallelism = evlContext.getDistributedParallelism()+1;
 		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);
 		final List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs, parallelism);
+		
+		assert expectedSlaves == parallelism-1;
 		assert slaveWorkers.size() == expectedSlaves;
 		assert slaveWorkers.size() == batches.size()-1;
 		
