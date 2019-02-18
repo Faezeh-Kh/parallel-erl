@@ -13,11 +13,14 @@ import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
@@ -27,6 +30,7 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -102,6 +106,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		JMSContext session;
 		Topic jobsTopic;
 		JMSProducer jobSender;
+		public Map<String, Duration> execTimes;
 		
 		public WorkerView(String id) {
 			this.workerID = id;
@@ -163,17 +168,17 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 
 		/**
 		 * Called to signal that a worker has completed all of its jobs.
+		 * 
 		 * @param msg The last message received
-		 * @throws JMSRuntimeException
+		 * @throws JMSException
 		 */
-		public void onCompletion(Message msg) throws JMSRuntimeException {
+		public void onCompletion(Message msg) throws JMSException {
 			finished.set(true);
-			try {
-				assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
+			assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
+			
+			if (msg instanceof ObjectMessage) {
+				execTimes = msg.getBody(Map.class);
 			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			} 
 		}
 	}
 	
@@ -294,12 +299,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					else if (contents instanceof SerializableEvlResultAtom) {
 						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
 					}
-					else {
-						log("Received unexpected object of type "+contents.getClass().getSimpleName());
-					}
 				}
 				
-				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
+				if (msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
 					WorkerView worker = slaveWorkers.stream()
 						.filter(w -> w.workerID.equals(workerID))
@@ -368,7 +370,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @param worker The worker that has finished.
 	 * @param msg The message received from the worker to signal this.
 	 */
-	protected void workerCompleted(WorkerView worker, Message msg) {
+	protected void workerCompleted(WorkerView worker, Message msg) throws JMSException {
 		worker.onCompletion(msg);
 		log(worker.workerID + " finished");
 	}
@@ -414,8 +416,21 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
+		// Merge the worker execution times with tihs one
+		getContext().getExecutorFactory().getRuleProfiler().mergeExecutionTimes(
+			slaveWorkers.stream()
+				.flatMap(w -> w.execTimes.entrySet().stream())
+				.collect(Collectors.toMap(
+					e -> this.constraints.stream()
+						.filter(c -> c.getName().equals(e.getKey()))
+						.findAny().get(),
+					Map.Entry::getValue,
+					(t1, t2) -> t1.plus(t2)
+				))
+		);
+		
 		super.postExecution();
-		try {
+		try {	
 			teardown();
 		}
 		catch (Exception ex) {

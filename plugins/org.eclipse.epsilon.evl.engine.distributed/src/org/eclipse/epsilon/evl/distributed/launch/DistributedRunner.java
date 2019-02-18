@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed.launch;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
@@ -63,6 +64,16 @@ public class DistributedRunner extends EvlRunConfiguration {
 				.withModels(modelsAndProperties)
 				.withModule(evlModule)
 				.withParameters(parameters)
+			);
+	}
+	
+	public Map<String, java.time.Duration> getSerializableRuleExecutionTimes() {
+		return getModule().getContext()
+			.getExecutorFactory().getRuleProfiler()
+			.getExecutionTimes()
+			.entrySet().stream()
+			.collect(Collectors.toMap(
+				e -> e.getKey().getName(), Map.Entry::getValue)
 			);
 	}
 	

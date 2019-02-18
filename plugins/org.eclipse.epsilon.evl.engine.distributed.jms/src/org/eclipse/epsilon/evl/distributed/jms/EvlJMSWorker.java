@@ -44,7 +44,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		}
 		catch (URISyntaxException urx) {
 			System.err.println(urx);
-			host = "tcp://127.0.0.1:61616";
+			host = "tcp://localhost:61616";
 			System.err.println("Using default "+host);
 		}
 		
@@ -138,9 +138,10 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	}
 	
 	void signalCompletion(JMSContext endContext) throws JMSException {
-		Message finishedMsg = endContext.createMessage();
+		ObjectMessage finishedMsg = endContext.createObjectMessage();
 		finishedMsg.setStringProperty(ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+		finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
 		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
 	}
 	
@@ -162,25 +163,25 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				jobsInProgress.incrementAndGet();
 				
 				if (msg instanceof ObjectMessage) {
-					final Serializable objMsg = ((ObjectMessage)msg).getObject();
+					final Serializable msgObj = ((ObjectMessage)msg).getObject();
 					final Object resultObj;
 					
-					if (objMsg instanceof SerializableEvlInputAtom) {
-						resultObj  = ((SerializableEvlInputAtom) objMsg).evaluate(module);
+					if (msgObj instanceof SerializableEvlInputAtom) {
+						resultObj  = ((SerializableEvlInputAtom) msgObj).evaluate(module);
 					}
-					else if (objMsg instanceof Iterable) {
+					else if (msgObj instanceof Iterable) {
 						ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-						for (SerializableEvlInputAtom atom : (Iterable<SerializableEvlInputAtom>)objMsg) {
+						for (SerializableEvlInputAtom atom : (Iterable<SerializableEvlInputAtom>)msgObj) {
 							resultsCol.addAll(atom.evaluate(module));
 						}
 						resultObj = resultsCol;
 					}
-					else if (objMsg instanceof DistributedEvlBatch) {
-						resultObj = module.evaluateBatch((DistributedEvlBatch) objMsg);
+					else if (msgObj instanceof DistributedEvlBatch) {
+						resultObj = module.evaluateBatch((DistributedEvlBatch) msgObj);
 					}
 					else {
 						resultObj = null;
-						log("Received unexpected object of type "+objMsg.getClass().getName());
+						log("Received unexpected object of type "+msgObj.getClass().getName());
 					}
 					
 					if (resultObj instanceof Serializable) {
@@ -190,8 +191,11 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					jobsInProgress.decrementAndGet();
 				}
 				
-				if (!(msg instanceof ObjectMessage) || msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
+				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					finished.set(true);
+				}
+				else if (!(msg instanceof ObjectMessage)) {
+					log("Received unexpected message of type "+msg.getClass().getName());
 				}
 			}
 			catch (JMSException jmx) {
