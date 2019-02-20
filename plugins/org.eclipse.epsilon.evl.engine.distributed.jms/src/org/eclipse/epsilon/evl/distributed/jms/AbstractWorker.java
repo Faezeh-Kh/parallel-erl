@@ -24,23 +24,23 @@ abstract class AbstractWorker implements AutoCloseable {
 		LAST_MESSAGE_PROPERTY = "lastMsg",
 		ID_PROPERTY = "wid";
 	
-	protected String workerID;
+	protected String id;
 	protected final AtomicBoolean finished = new AtomicBoolean(false);
 	
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (!(obj instanceof WorkerView)) return false;
-		return Objects.equals(this.workerID, ((WorkerView)obj).workerID);
+		return Objects.equals(this.id, ((WorkerView)obj).id);
 	}
 	
 	@Override
 	public int hashCode() {
-		return Objects.hashCode(workerID);
+		return Objects.hashCode(id);
 	}
 	
 	@Override
 	public String toString() {
-		return getClass().getName()+"-"+workerID;
+		return getClass().getName()+"-"+id;
 	}
 }

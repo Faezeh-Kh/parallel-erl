@@ -55,7 +55,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	final ConnectionFactory connectionFactory;
 	DistributedRunner configContainer;
-	String workerID;
+	EvlModuleDistributedSlave module;
 
 	public EvlJMSWorker(String host) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -100,16 +100,16 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		
 		// Get the configuration and our ID from the reply
 		Message configMsg = regContext.createConsumer(tempQueue).receive();
-		this.workerID = configMsg.getStringProperty(ID_PROPERTY);
+		this.id = configMsg.getStringProperty(ID_PROPERTY);
 		log("Configuration and ID received");
 		
 		configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
 		configContainer.preExecute();
-		((EvlModuleDistributedSlave)configContainer.getModule()).prepareExecution();
+		(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
 		
 		// This is to acknowledge when we have completed loading the script(s) and model(s)
 		Message configuredAckMsg = regContext.createMessage();
-		configuredAckMsg.setStringProperty(ID_PROPERTY, workerID);
+		configuredAckMsg.setStringProperty(ID_PROPERTY, id);
 		configuredAckMsg.setJMSReplyTo(tempQueue);
 		Destination configAckDest = configMsg.getJMSReplyTo();
 		return () -> regProducer.send(configAckDest, configuredAckMsg);
@@ -117,14 +117,14 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	void processJobs(JMSContext jobContext) throws JMSException {
 		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Destination jobDest = jobContext.createTopic(workerID + JOB_SUFFIX);
+		Destination jobDest = jobContext.createTopic(id + JOB_SUFFIX);
 		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
 		JMSProducer resultsSender = jobContext.createProducer();
 		
 		Consumer<Serializable> resultProcessor = obj -> {
 			ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
 			try {
-				resultsMessage.setStringProperty(ID_PROPERTY, workerID);
+				resultsMessage.setStringProperty(ID_PROPERTY, id);
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
@@ -133,13 +133,13 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		};
 		
 		jobContext.createConsumer(jobDest).setMessageListener(
-			getJobProcessor(resultProcessor, (EvlModuleDistributedSlave) configContainer.getModule())
+			getJobProcessor(resultProcessor, module)
 		);
 	}
 	
 	void signalCompletion(JMSContext endContext) throws JMSException {
 		ObjectMessage finishedMsg = endContext.createObjectMessage();
-		finishedMsg.setStringProperty(ID_PROPERTY, workerID);
+		finishedMsg.setStringProperty(ID_PROPERTY, id);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
 		finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
 		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
@@ -171,9 +171,16 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 					}
 					else if (msgObj instanceof Iterable) {
 						ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-						for (SerializableEvlInputAtom atom : (Iterable<SerializableEvlInputAtom>)msgObj) {
-							resultsCol.addAll(atom.evaluate(module));
+						
+						for (Object obj : (Iterable<?>) msgObj) {
+							if (obj instanceof SerializableEvlInputAtom) {
+								resultsCol.addAll(((SerializableEvlInputAtom) obj).evaluate(module));
+							}
+							else if (obj instanceof DistributedEvlBatch) {
+								resultsCol.addAll(module.evaluateBatch((DistributedEvlBatch) obj));
+							}
 						}
+						
 						resultObj = resultsCol;
 					}
 					else if (msgObj instanceof DistributedEvlBatch) {
@@ -223,6 +230,6 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	}
 	
 	void log(String message) {
-		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
+		System.out.println("["+id+"] "+LocalTime.now()+" "+message);
 	}
 }

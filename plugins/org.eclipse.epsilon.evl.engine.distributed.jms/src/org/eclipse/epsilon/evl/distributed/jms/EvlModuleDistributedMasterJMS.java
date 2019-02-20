@@ -30,7 +30,6 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -109,7 +108,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		public Map<String, Duration> execTimes;
 		
 		public WorkerView(String id) {
-			this.workerID = id;
+			this.id = id;
 		}
 		
 		public void confirm() {
@@ -120,7 +119,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			session = parentSession != null ?
 				parentSession.createContext(JMSContext.AUTO_ACKNOWLEDGE) :
 				connectionFactory.createContext();
-			jobsTopic = session.createTopic(workerID + JOB_SUFFIX);
+			jobsTopic = session.createTopic(id + JOB_SUFFIX);
 			jobSender = session.createProducer();
 		}
 		
@@ -150,7 +149,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		
 		protected void setMessageParameters(Message msg, boolean last) throws JMSRuntimeException {
 			try {
-				msg.setStringProperty(ID_PROPERTY, workerID);
+				msg.setStringProperty(ID_PROPERTY, id);
 				msg.setBooleanProperty(LAST_MESSAGE_PROPERTY, last);
 			}
 			catch (JMSException jmx) {
@@ -217,7 +216,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					// Tell the worker what their ID is along with the configuration parameters
 					Message configMsg = regContext.createObjectMessage(config);
 					configMsg.setJMSReplyTo(tempQueue);
-					configMsg.setStringProperty(AbstractWorker.ID_PROPERTY, worker.workerID);
+					configMsg.setStringProperty(AbstractWorker.ID_PROPERTY, worker.id);
 					regProducer.send(worker.localBox, configMsg);
 				}
 				catch (JMSException jmx) {
@@ -243,7 +242,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					}
 					
 					WorkerView worker = slaveWorkers.stream()
-						.filter(w -> w.workerID.equals(wid))
+						.filter(w -> w.id.equals(wid))
 						.findAny()
 						.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+wid));
 					
@@ -304,7 +303,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				if (msg.getBooleanProperty(AbstractWorker.LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(AbstractWorker.ID_PROPERTY);
 					WorkerView worker = slaveWorkers.stream()
-						.filter(w -> w.workerID.equals(workerID))
+						.filter(w -> w.id.equals(workerID))
 						.findAny()
 						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
 					
@@ -372,7 +371,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 */
 	protected void workerCompleted(WorkerView worker, Message msg) throws JMSException {
 		worker.onCompletion(msg);
-		log(worker.workerID + " finished");
+		log(worker.id + " finished");
 	}
 
 	/**
@@ -416,7 +415,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
-		// Merge the worker execution times with tihs one
+		// Merge the worker execution times with this one
 		getContext().getExecutorFactory().getRuleProfiler().mergeExecutionTimes(
 			slaveWorkers.stream()
 				.flatMap(w -> w.execTimes.entrySet().stream())
