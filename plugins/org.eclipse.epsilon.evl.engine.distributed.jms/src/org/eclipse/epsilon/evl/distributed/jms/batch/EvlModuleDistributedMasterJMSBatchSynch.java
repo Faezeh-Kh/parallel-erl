@@ -52,14 +52,12 @@ public class EvlModuleDistributedMasterJMSBatchSynch extends EvlModuleDistribute
 		assert slaveWorkers.size() == expectedSlaves;
 		assert slaveWorkers.size() == batches.size()-1;
 		
-		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
 		Iterator<DistributedEvlBatch> batchesIter = batches.iterator();
 		
-		while (workersIter.hasNext()) {
-			WorkerView worker = workersIter.next();
-			worker.sendJob(batchesIter.next(), true);
-			log("Finished submitting to "+worker);
+		for (Object worker : slaveWorkers.keySet()) {
+			sendJob(batchesIter.next());
 		}
+		signalCompletion();
 		
 		log("Began processing own jobs");
 		

@@ -16,6 +16,8 @@ import java.net.URISyntaxException;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import javax.jms.*;
@@ -34,7 +36,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
  * @author Sina Madani
  * @since 1.6
  */
-public final class EvlJMSWorker extends AbstractWorker implements Runnable {
+public final class EvlJMSWorker implements Runnable, AutoCloseable {
 
 	public static void main(String[] args) throws Exception {
 		String host = args[0];
@@ -53,7 +55,9 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		}
 	}
 	
+	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
+	String id;
 	DistributedRunner configContainer;
 	EvlModuleDistributedSlave module;
 
@@ -68,7 +72,7 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				Runnable ackSender = setup(regContext);
 				
 				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					processJobs(jobContext);
+					prepareToProcessJobs(jobContext);
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
@@ -88,17 +92,18 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	Runnable setup(JMSContext regContext) throws Exception {
 		// Announce our presence to the master
-		Destination regQueue = regContext.createQueue(REGISTRATION_QUEUE);
-		Destination tempQueue = regContext.createTemporaryQueue();
+		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE);
 		JMSProducer regProducer = regContext.createProducer();
 		regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 		Message initMsg = regContext.createMessage();
+		Queue tempQueue = regContext.createTemporaryQueue();
 		initMsg.setJMSReplyTo(tempQueue);
 		regProducer.send(regQueue, initMsg);
 		
-		// Get the configuration and our ID from the reply
+		// Get the configuration and our ID
 		Message configMsg = regContext.createConsumer(tempQueue).receive();
 		this.id = configMsg.getStringProperty(ID_PROPERTY);
 		log("Configuration and ID received");
@@ -110,14 +115,12 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 		// This is to acknowledge when we have completed loading the script(s) and model(s)
 		Message configuredAckMsg = regContext.createMessage();
 		configuredAckMsg.setStringProperty(ID_PROPERTY, id);
-		configuredAckMsg.setJMSReplyTo(tempQueue);
 		Destination configAckDest = configMsg.getJMSReplyTo();
 		return () -> regProducer.send(configAckDest, configuredAckMsg);
 	}
 	
-	void processJobs(JMSContext jobContext) throws JMSException {
+	void prepareToProcessJobs(JMSContext jobContext) throws JMSException {
 		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Destination jobDest = jobContext.createTopic(id + JOB_SUFFIX);
 		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
 		JMSProducer resultsSender = jobContext.createProducer();
 		
@@ -132,9 +135,18 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 			resultsSender.send(resultsQueue, resultsMessage);
 		};
 		
-		jobContext.createConsumer(jobDest).setMessageListener(
+		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE)).setMessageListener(
 			getJobProcessor(resultProcessor, module)
 		);
+		
+		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC)).setMessageListener(msg -> {
+			//assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
+			synchronized (finished) {
+				finished.set(true);
+				finished.notify();
+			}
+			log("Acknowledged end of jobs");
+		});
 	}
 	
 	void signalCompletion(JMSContext endContext) throws JMSException {
@@ -212,11 +224,9 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 				throw new RuntimeException(eox);
 			}
 			finally {
-				if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) {
-					// Wake up the main thread once all jobs have been processed.
-					synchronized (finished) {
-						finished.notify();
-					}
+				// Wake up the main thread once all jobs have been processed.
+				if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) synchronized (finished) {
+					finished.notify();
 				}
 			}
 		};
@@ -231,5 +241,22 @@ public final class EvlJMSWorker extends AbstractWorker implements Runnable {
 	
 	void log(String message) {
 		System.out.println("["+id+"] "+LocalTime.now()+" "+message);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (!(obj instanceof EvlJMSWorker)) return false;
+		return Objects.equals(this.id, ((EvlJMSWorker)obj).id);
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(id);
+	}
+	
+	@Override
+	public String toString() {
+		return getClass().getName()+"-"+id;
 	}
 }

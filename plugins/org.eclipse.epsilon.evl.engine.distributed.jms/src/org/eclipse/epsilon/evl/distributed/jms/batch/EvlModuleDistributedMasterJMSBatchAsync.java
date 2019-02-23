@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSContext;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
@@ -50,14 +51,17 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	}
 	
 	@Override
-	protected void confirmWorker(WorkerView worker, JMSContext session, AtomicInteger workersReady) throws JMSException {
-		worker.confirm(session);
-		worker.sendJob(batches.get(workersReady.incrementAndGet()), true);
-		log("Sent job to "+worker);
+	protected void confirmWorker(Message confirmation, JMSContext session, AtomicInteger workersReady) throws JMSException {
+		int batchNum = workersReady.incrementAndGet();
+		sendJob(batches.get(batchNum));
+		
+		if (batchNum >= expectedSlaves) {
+			signalCompletion();
+		}
 	}
 	
 	@Override
-	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
+	protected void processJobs(AtomicInteger workersReady, JMSContext jobContext) throws Exception {
 		EvlContextDistributedMaster evlContext = getContext();
 		log("Began processing own jobs");
 		for (ConstraintContextAtom cca : batches.get(0).split(jobs)) {
