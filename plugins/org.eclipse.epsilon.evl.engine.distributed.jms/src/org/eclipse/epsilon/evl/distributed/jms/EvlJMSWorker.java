@@ -92,7 +92,6 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	Runnable setup(JMSContext regContext) throws Exception {
 		// Announce our presence to the master
 		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE);

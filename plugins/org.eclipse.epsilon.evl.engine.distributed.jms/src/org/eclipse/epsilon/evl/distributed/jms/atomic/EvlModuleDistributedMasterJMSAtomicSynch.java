@@ -10,7 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.jms.atomic;
 
 import java.net.URISyntaxException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSContext;
@@ -52,14 +51,10 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 		assert slaveWorkers.size() == expectedSlaves;
 		assert expectedSlaves == parallelism-1;
 		
-		Iterator<WorkerView> workersIter = slaveWorkers.iterator();
 		for (SerializableEvlInputAtom jobAtom : jobs.subList(selfBatch, jobs.size())) {
-			if (!workersIter.hasNext()) {
-				workersIter = slaveWorkers.iterator();
-			}
-			workersIter.next().sendJob(jobAtom, false);
+			sendJob(jobAtom);
 		}
-		slaveWorkers.forEach(WorkerView::signalEnd);
+		signalCompletion();
 		
 		log("Began processing own jobs");
 		

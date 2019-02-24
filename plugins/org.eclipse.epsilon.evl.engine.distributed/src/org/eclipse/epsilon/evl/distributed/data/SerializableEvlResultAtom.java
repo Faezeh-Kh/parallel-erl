@@ -103,8 +103,9 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 		Object modelElement = findElement(context);
 		uc.setInstance(modelElement);
 		uc.setMessage(message);
-		Constraint constraint = module.getConstraints()
-			.getConstraint(constraintName, module.getConstraintContext(contextName), modelElement, context, false)
+		Constraint constraint = module.getConstraint(
+				constraintName, module.getConstraintContext(contextName), modelElement, context, false
+			)
 			.orElseThrow(() -> new EvlConstraintNotFoundException(constraintName, module));
 		uc.setConstraint(constraint);
 		
