@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.jms.*;
@@ -30,7 +31,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
@@ -77,7 +78,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		new URI(addr);
 		
 		EolConfigParser.main(new String[] {
-			"CONFIG:"+DistributedRunner.class.getName(),
+			"CONFIG:"+DistributedEvlRunConfiguration.class.getName(),
 			args[0],
 			"-models",
 				"\"emf.DistributableEmfModel#"
@@ -101,7 +102,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	protected final String host;
 	protected final int expectedSlaves;
-	protected final ConcurrentHashMap<String, Map<String, Duration>> slaveWorkers;
+	protected final ConcurrentMap<String, Map<String, Duration>> slaveWorkers;
 	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
@@ -233,10 +234,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(ID_PROPERTY);
-					slaveWorkers.keySet().stream()
-						.filter(workerID::equals)
-						.findAny()
-						.orElseThrow(() -> new java.lang.IllegalStateException("Could not find worker with ID "+workerID));
+					if (!slaveWorkers.containsKey(workerID)) {
+						throw new java.lang.IllegalStateException("Could not find worker with ID "+workerID);
+					}
 					
 					workerCompleted(workerID, msg);
 					
@@ -302,7 +302,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		if (msg instanceof ObjectMessage) {
 			Serializable body = ((ObjectMessage) msg).getObject();
 			if (body instanceof Map) {
-				slaveWorkers.computeIfPresent(worker, (k, v) -> (Map<String, Duration>) body);
+				slaveWorkers.put(worker, (Map<String, Duration>) body);
 			}
 		}
 		log(worker + " finished");
@@ -341,10 +341,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected void confirmWorker(final Message response, final JMSContext session, final AtomicInteger workersReady) throws JMSException {
 		String worker = response.getStringProperty(ID_PROPERTY);
 		
-		slaveWorkers.keySet().stream()
-			.filter(worker::equals)
-			.findAny()
-			.orElseThrow(() -> new JMSRuntimeException("Could not find worker with id "+worker));
+		if (!slaveWorkers.containsKey(worker)) {
+			throw new JMSRuntimeException("Could not find worker with id "+worker);
+		}
 		
 		log(worker+" ready");
 		
@@ -393,7 +392,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * 
 	 * @param message The message to output.
 	 */
-	protected void log(String message) {
+	protected void log(Object message) {
 		System.out.println("[MASTER] "+LocalTime.now()+" "+message);
 	}
 }

@@ -21,7 +21,7 @@ import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
@@ -40,7 +40,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		return EolThreadPoolExecutor.adaptiveExecutor(numThreads);
 	}
 	
-	public static DistributedRunner parseJobParameters(Map<String, ? extends Serializable> config) throws Exception {
+	public static DistributedEvlRunConfiguration parseJobParameters(Map<String, ? extends Serializable> config) throws Exception {
 		Path evlScriptPath = Paths.get(Objects.toString(config.get("evlScript"), null));
 		
 		int numModels = Integer.parseInt(Objects.toString(config.get("numberOfModels"), null));
@@ -58,7 +58,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 			Integer.parseInt(Objects.toString(config.get("localParallelism"), "0"))
 		);
 		
-		return new DistributedRunner(
+		return new DistributedEvlRunConfiguration(
 			evlScriptPath,
 			localModelsAndProperties,
 			localModule,

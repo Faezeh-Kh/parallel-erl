@@ -16,7 +16,7 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**
  * Performs one-time setup on slave nodes. This mainly involves parsing the script,
@@ -30,7 +30,7 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 	private static final long serialVersionUID = -9011432964023365634L;
 	
 	protected transient EvlModuleDistributedSlave localModule;
-	protected transient DistributedRunner configContainer;
+	protected transient DistributedEvlRunConfiguration configContainer;
 	
 	public static Configuration getParameters(RuntimeContext context, Configuration additionalParameters) {
 		GlobalJobParameters globalParameters = context.getExecutionConfig().getGlobalJobParameters();

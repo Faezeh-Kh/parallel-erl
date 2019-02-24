@@ -26,7 +26,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.*;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedRunner;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**
  * Reactive slave worker.
@@ -58,7 +58,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	String id;
-	DistributedRunner configContainer;
+	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
 
 	public EvlJMSWorker(String host) {
@@ -92,6 +92,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	Runnable setup(JMSContext regContext) throws Exception {
 		// Announce our presence to the master
 		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE);
@@ -238,7 +239,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	void log(String message) {
+	void log(Object message) {
 		System.out.println("["+id+"] "+LocalTime.now()+" "+message);
 	}
 	
