@@ -26,6 +26,8 @@ import org.eclipse.epsilon.common.concurrent.ConcurrentCASList;
 import org.eclipse.ocl.pivot.internal.labels.LabelSubstitutionLabelProvider;
 
 /**
+ * Validates model elements using the EValidator API.
+ * 
  * @author Sina Madani
  * @see org.eclipse.ocl.examples.test.xtext.PivotDocumentationExamples.java
  **/

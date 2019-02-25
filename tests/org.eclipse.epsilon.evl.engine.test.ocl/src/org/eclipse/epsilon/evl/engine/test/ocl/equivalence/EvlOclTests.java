@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.engine.test.ocl.equivalence;
 import static org.junit.Assert.*;
 import static org.eclipse.epsilon.evl.engine.test.acceptance.EvlAcceptanceTestUtil.*;
 import static org.eclipse.epsilon.common.util.FileUtil.getFileName;
-import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;

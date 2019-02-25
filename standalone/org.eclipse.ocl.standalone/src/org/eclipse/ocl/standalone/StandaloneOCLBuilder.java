@@ -16,6 +16,8 @@ import org.eclipse.epsilon.common.cli.ConfigParser;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 
 /**
+ * Utility class for creating OCL run configuration. Effectively a container for
+ * script, model, metamodel etc. Can be invoked from the command-line.
  * 
  * @author Sina Madani
  */

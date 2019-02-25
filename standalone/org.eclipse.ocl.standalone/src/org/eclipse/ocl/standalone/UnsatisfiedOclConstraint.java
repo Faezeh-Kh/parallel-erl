@@ -22,6 +22,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
 /**
+ * Convenient representation of an UnsatisfiedConstraint in OCL.
  * 
  * @author Sina Madani
  */
@@ -82,6 +83,6 @@ public class UnsatisfiedOclConstraint {
             .entrySet()
             .stream()
             .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a + b, LinkedHashMap::new));
 	}
 }

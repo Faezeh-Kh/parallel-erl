@@ -16,6 +16,7 @@ import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
+import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
 import org.eclipse.ocl.pivot.utilities.OCL;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
 import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
@@ -117,22 +118,39 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	@Override
 	protected final void preExecute() throws Exception {
 		super.preExecute();
-		Resource modelResource = registerAndLoadModel();
-		registerValidator();
-		diagnostician = createDiagnostician(modelResource);
-		Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
+		
+		Resource modelResource = profileExecution ?
+			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
+			registerAndLoadModel();
+		
+		Runnable validatorPreparation = () -> {
+			registerValidator();
+			diagnostician = createDiagnostician(modelResource);
+			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
+		};
+		
+		if (profileExecution) {
+			profileExecutionStage(profiledStages, "Prepare validator", validatorPreparation);
+		}
+		else {
+			validatorPreparation.run();
+		}
 	}
 	
 	@Override
 	protected final Collection<UnsatisfiedOclConstraint> execute() {
-		return unsatisfiedConstraints = diagnostician.validate();
+		return unsatisfiedConstraints = profileExecution ?
+			profileExecutionStage(profiledStages, "validate",
+				(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
+			) :
+			diagnostician.validate();
 	}
 	
 	@Override
 	protected void postExecute() throws Exception {
 		super.postExecute();
 		
-		if (profileExecution || showResults) {
+		if (unsatisfiedConstraints != null && (profileExecution || showResults)) {
 			if (unsatisfiedConstraints.isEmpty()) {
 				writeOut("All constraints satisfied.");
 			}
