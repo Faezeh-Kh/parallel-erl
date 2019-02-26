@@ -11,6 +11,7 @@ package org.eclipse.epsilon.performance.eol.imdb;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
@@ -25,9 +26,9 @@ import org.eclipse.epsilon.eol.types.EolSet;
  * 
  * @author Sina Madani
  */
-public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
+public class imdb_filter extends ProfilableRunConfiguration {
 
-	static class Builder extends ProfilableRunConfiguration.Builder<ImdbQueryBenchmark, Builder> {
+	static class Builder extends ProfilableRunConfiguration.Builder<imdb_filter, Builder> {
 		EmfModel model;
 		boolean parallel;
 		
@@ -46,12 +47,12 @@ public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 		}
 		
 		@Override
-		public ImdbQueryBenchmark build() throws IllegalArgumentException, IllegalStateException {
-			return new ImdbQueryBenchmark(this);
+		public imdb_filter build() throws IllegalArgumentException, IllegalStateException {
+			return new imdb_filter(this);
 		}
 	}
 	
-	ImdbQueryBenchmark(Builder builder) {
+	imdb_filter(Builder builder) {
 		super(builder);
 		this.propertyGetter = (this.model = builder.model).getPropertyGetter();
 		this.parallel = builder.parallel;
@@ -73,10 +74,10 @@ public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 		BenchmarkUtils.profileExecutionStage(profiledStages, "execute()", new CheckedEolRunnable() {
 			@Override
 			public void runThrows() throws EolRuntimeException {
-				
 				var result = StreamSupport.stream(model.getAllOfKind("Person").spliterator(), parallel)
 					.filter(a -> coactors(a).stream().anyMatch(co -> areCoupleCoactors(a, co)))
-					.count();
+					.collect(Collectors.toList())
+					.size();
 				System.out.println(result);
 			}
 		});
@@ -92,7 +93,7 @@ public class ImdbQueryBenchmark extends ProfilableRunConfiguration {
 		var metamodelPath = args[1];
 		var resultsFile = args[2];
 		
-		var jarName = new java.io.File(ImdbQueryBenchmark.class
+		var jarName = new java.io.File(imdb_filter.class
 			.getProtectionDomain()
 			.getCodeSource()
 			.getLocation()

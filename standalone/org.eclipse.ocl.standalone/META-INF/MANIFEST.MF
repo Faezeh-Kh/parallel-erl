@@ -28,4 +28,5 @@ Require-Bundle: org.eclipse.epsilon.common,
  org.eclipse.ocl.xtext.essentialocl;visibility:=reexport,
  org.eclipse.ocl.xtext.completeocl;visibility:=reexport,
  org.eclipse.ocl.xtext.oclinecore;visibility:=reexport,
- org.eclipse.ocl.common;visibility:=reexport
+ org.eclipse.ocl.common;visibility:=reexport,
+ org.eclipse.epsilon.emc.emf

@@ -130,7 +130,7 @@ public class EvlOclTests {
 	@Test
 	public void testConstraints() {
 		Collection<UnsatisfiedOclConstraint>
-			expectedConstraints = expectedConfig.getUnsatisfiedConstraints(),
+			expectedConstraints = expectedConfig.getResult(),
 			
 			actualConstraints = actualConfig
 				.getModule()

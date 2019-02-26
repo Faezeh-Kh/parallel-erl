@@ -1,5 +1,5 @@
 /*********************************************************************
- * Copyright (c) 2017 The University of York.
+ * Copyright (c) 2017-2019 The University of York.
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -18,6 +18,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
 import org.eclipse.ocl.pivot.utilities.OCL;
+import org.eclipse.ocl.pivot.utilities.ParserException;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
 import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
 
@@ -87,9 +88,9 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 		resourceSet.getPackageRegistry().put(metamodelPackage.getNsURI(), metamodelPackage);
 		
-		Resource resource = resourceSet.createResource(model);
-		resource.load(Collections.EMPTY_MAP);
-		return resource;
+		Resource modelResource = resourceSet.createResource(model);
+		modelResource.load(Collections.EMPTY_MAP);
+		return modelResource;
 	}
 	
 	protected void registerValidator() {
@@ -99,7 +100,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
 				validator = new CompleteOCLEObjectValidator(
 					metamodelPackage,
-					URI.createURI(script.toUri().toString()),
+					org.eclipse.emf.common.util.URI.createURI(script.toUri().toString()),
 					ocl.getEnvironmentFactory()
 				);
 			}
@@ -119,7 +120,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	protected final void preExecute() throws Exception {
 		super.preExecute();
 		
-		Resource modelResource = profileExecution ?
+		modelResource = profileExecution ?
 			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
 			registerAndLoadModel();
 		
@@ -137,8 +138,10 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 	}
 	
+	Resource modelResource;
+	
 	@Override
-	protected final Collection<UnsatisfiedOclConstraint> execute() {
+	protected final Collection<UnsatisfiedOclConstraint> execute() throws ParserException {
 		return unsatisfiedConstraints = profileExecution ?
 			profileExecutionStage(profiledStages, "validate",
 				(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
@@ -164,7 +167,9 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 	}
 	
-	public Collection<UnsatisfiedOclConstraint> getUnsatisfiedConstraints() {
+	@Override
+	public Collection<UnsatisfiedOclConstraint> getResult() {
+		super.getResult();
 		return unsatisfiedConstraints;
 	}
 	
