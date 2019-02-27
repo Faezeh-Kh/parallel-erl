@@ -10,6 +10,9 @@
 package org.eclipse.ocl.standalone;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.eclipse.emf.common.util.*;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
@@ -21,7 +24,7 @@ import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
 import static org.eclipse.emf.common.util.URI.createURI;
 import org.eclipse.ocl.pivot.ExpressionInOCL;
-import org.eclipse.ocl.pivot.Operation;
+import org.eclipse.ocl.pivot.resource.ASResource;
 import org.eclipse.ocl.pivot.utilities.OCL;
 import org.eclipse.ocl.pivot.utilities.ParserException;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
@@ -46,6 +49,12 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  * ConstraintDiagnostician but may not be by the underlying
  * {@linkplain EValidator}.
  * <br/>
+ * In addition, an OCL query can be executed if there exists
+ * a no-args operation called QUERY defined in the context of
+ * a type which has at least one model element preset.
+ * Doing so will skip validation, so it is important to not
+ * have such an operation if validation is also desired.
+ * <br/>
  * For a command-line interface and initialisation utilities,
  * @see {@link StandaloneOCLBuilder}
  * 
@@ -57,6 +66,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	protected ConstraintDiagnostician diagnostician;
 	protected EPackage metamodelPackage;
 	protected EValidator validator;
+	protected Resource modelResource;
 	public final URI model, metamodel;
 	
 	public StandaloneOCL(StandaloneOCLBuilder builder) {
@@ -100,7 +110,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	protected void registerValidator() {
 		if (validator == null) {
 			org.eclipse.ocl.pivot.model.OCLstdlib.install();
-			if						 (script != null) {
+			if (script != null) {
 				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
 				validator = new CompleteOCLEObjectValidator(
 					metamodelPackage,
@@ -118,6 +128,39 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	
 	protected ConstraintDiagnostician createDiagnostician(final Resource modelImpl) {
 		return new ConstraintDiagnostician(modelImpl);
+	}
+	
+	protected Optional<Supplier<?>> checkForQuery(ASResource scriptResource) throws ParserException {
+		final Function<EObject, Stream<EObject>> flatMapper = e -> e.eContents().stream();
+		org.eclipse.ocl.pivot.Operation queryOp = scriptResource
+			.getContents().stream()
+			.flatMap(flatMapper)
+			.filter(e -> e instanceof org.eclipse.ocl.pivot.Package)
+			.flatMap(flatMapper)
+			.filter(e -> e instanceof org.eclipse.ocl.pivot.Class)
+			.flatMap(flatMapper)
+			.filter(e -> e instanceof org.eclipse.ocl.pivot.Operation)
+			.map(org.eclipse.ocl.pivot.Operation.class::cast)
+			.filter(op -> "QUERY".equals(op.getName()))
+			.findAny().orElse(null);
+		
+		if (queryOp != null) {
+			String fullyQualifiedType = queryOp.eContainer().toString();
+			int pkgIndex = fullyQualifiedType.indexOf("::");
+			String typeName = fullyQualifiedType.substring(pkgIndex+2);
+			
+			EClassifier targetType = metamodelPackage.getEClassifiers()
+				.stream().filter(e -> e.getName().equals(typeName)).findAny()
+				.orElseThrow(() -> new IllegalStateException("Could not find type "+fullyQualifiedType+" in "+metamodel));
+			
+			EObject contextElement = modelResource.getContents()
+				.stream().filter(targetType::isInstance).findAny()
+				.orElseThrow(() -> new IllegalStateException("Could not find a model element of type "+fullyQualifiedType+" in "+model));
+			
+			ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), queryOp.getBodyExpression().getBody());
+			return Optional.of(() -> ocl.evaluate(contextElement, asQuery));
+		}
+		else return Optional.empty();
 	}
 	
 	@Override
@@ -142,45 +185,38 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 	}
 	
-	Resource modelResource;
-	
 	@Override
 	protected final Object execute() throws ParserException {
+		final ASResource scriptResource = profileExecution ?
+			profileExecutionStage(profiledStages, "Parse script", () -> ocl.parse(createURI(script.toUri().toString()))) :
+			ocl.parse(createURI(script.toUri().toString()));
 		
-		final Resource scriptResource = ocl.parse(createURI(script.toUri().toString()));
-		
-		for (EObject eObj : (Iterable<EObject>) scriptResource::getAllContents) {
-			if (eObj instanceof Operation) {
-				Operation op = (Operation) eObj;
-				if ("QUERY".equals(op.getName())) {
-					String fullyQualifiedType = op.eContainer().toString();
-					int pkgIndex = fullyQualifiedType.indexOf("::");
-					String typeName = fullyQualifiedType.substring(pkgIndex+2);
-					EClassifier targetType = metamodelPackage.getEClassifiers().stream().filter(e -> e.getName().equals(typeName)).findAny().get();
-					EObject contextElement = modelResource.getContents().stream().filter(targetType::isInstance).findAny().get();
-					ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), op.getBodyExpression().getBody());
-					return result = profileExecution ?
-						profileExecutionStage(profiledStages, "execute query",
-							() -> ocl.evaluate(contextElement, asQuery)
-						) : ocl.evaluate(contextElement, asQuery);
-				}
-			}
-		}
-		
-		return result = profileExecution ?
-			profileExecutionStage(profiledStages, "validate",
-				(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
-			) :
-			diagnostician.validate();
+		return result = checkForQuery(scriptResource)
+			.map(evaluator -> profileExecution ?
+				profileExecutionStage(profiledStages, "execute query", evaluator) :
+				evaluator.get()
+			)
+			.orElseGet(() -> profileExecution ?
+				profileExecutionStage(profiledStages, "validate",
+					(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
+				) :
+				diagnostician.validate()
+			);
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void postExecute() throws Exception {
-		super.postExecute();
-		ocl.dispose();
+		if (profileExecution) {
+			profileExecutionStage(profiledStages, "dispose", ocl::dispose);
+		}
+		else {
+			ocl.dispose();
+		}
 		
-		if (getResult() instanceof Collection && (profileExecution || showResults)) {
+		super.postExecute();
+		
+		if (result instanceof Collection && (profileExecution || showResults)) {
 			Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints = (Collection<UnsatisfiedOclConstraint>) result;
 			
 			if (unsatisfiedConstraints.isEmpty()) {
