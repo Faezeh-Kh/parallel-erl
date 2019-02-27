@@ -20,9 +20,9 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.epsilon.common.function.CheckedFunction;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
-import static org.eclipse.emf.common.util.URI.createURI;
 import org.eclipse.ocl.pivot.ExpressionInOCL;
 import org.eclipse.ocl.pivot.resource.ASResource;
 import org.eclipse.ocl.pivot.utilities.OCL;
@@ -107,30 +107,11 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		return modelResource;
 	}
 	
-	protected void registerValidator() {
-		if (validator == null) {
-			org.eclipse.ocl.pivot.model.OCLstdlib.install();
-			if (script != null) {
-				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
-				validator = new CompleteOCLEObjectValidator(
-					metamodelPackage,
-					createURI(script.toUri().toString()),
-					ocl.getEnvironmentFactory()
-				);
-			}
-			else {
-				org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup.doSetup();
-				validator = new OCLinEcoreEObjectValidator();
-			}
-		}
-		EValidator.Registry.INSTANCE.put(metamodelPackage, validator);
-	}
-	
 	protected ConstraintDiagnostician createDiagnostician(final Resource modelImpl) {
 		return new ConstraintDiagnostician(modelImpl);
 	}
 	
-	protected Optional<Supplier<?>> checkForQuery(ASResource scriptResource) throws ParserException {
+	protected Supplier<?> checkForQuery(ASResource scriptResource) throws ParserException {
 		final Function<EObject, Stream<EObject>> flatMapper = e -> e.eContents().stream();
 		org.eclipse.ocl.pivot.Operation queryOp = scriptResource
 			.getContents().stream()
@@ -158,9 +139,28 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 				.orElseThrow(() -> new IllegalStateException("Could not find a model element of type "+fullyQualifiedType+" in "+model));
 			
 			ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), queryOp.getBodyExpression().getBody());
-			return Optional.of(() -> ocl.evaluate(contextElement, asQuery));
+			return () -> ocl.evaluate(contextElement, asQuery);
 		}
-		else return Optional.empty();
+		else return null;
+	}
+	
+	protected void registerValidator(URI oclUri) {
+		if (validator == null) {
+			org.eclipse.ocl.pivot.model.OCLstdlib.install();
+			if (script != null) {
+				validator = new CompleteOCLEObjectValidator(
+					metamodelPackage, oclUri, ocl.getEnvironmentFactory()
+				);
+			}
+			else {
+				validator = new OCLinEcoreEObjectValidator();
+			}
+		}
+		
+		assert validator != null;
+		EValidator.Registry.INSTANCE.put(metamodelPackage, validator);
+		diagnostician = createDiagnostician(modelResource);
+		Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
 	}
 	
 	@Override
@@ -171,37 +171,56 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
 			registerAndLoadModel();
 		
-		Runnable validatorPreparation = () -> {
-			registerValidator();
-			diagnostician = createDiagnostician(modelResource);
-			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
-		};
+		final boolean completeOCL = script != null;
+		final Runnable setup = completeOCL ?
+			org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup::doSetup :
+			org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup::doSetup;
+		
+		
 		
 		if (profileExecution) {
-			profileExecutionStage(profiledStages, "Prepare validator", validatorPreparation);
+			profileExecutionStage(profiledStages, "setup", setup);
 		}
 		else {
-			validatorPreparation.run();
+			setup.run();
 		}
 	}
 	
 	@Override
 	protected final Object execute() throws ParserException {
-		final ASResource scriptResource = profileExecution ?
-			profileExecutionStage(profiledStages, "Parse script", () -> ocl.parse(createURI(script.toUri().toString()))) :
-			ocl.parse(createURI(script.toUri().toString()));
+		Supplier<?> resultExecutor;
+		final URI scriptUri = URI.createURI(script.toUri().toString());
+		final Function<URI, ASResource> scriptParser = ocl::parse;
+		final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
+		final boolean isValidate;
 		
-		return result = checkForQuery(scriptResource)
-			.map(evaluator -> profileExecution ?
-				profileExecutionStage(profiledStages, "execute query", evaluator) :
-				evaluator.get()
-			)
-			.orElseGet(() -> profileExecution ?
-				profileExecutionStage(profiledStages, "validate",
-					(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
-				) :
-				diagnostician.validate()
-			);
+		if (profileExecution) {
+			ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser, scriptUri);
+			resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
+		}
+		else {
+			resultExecutor = scriptParser.andThen(queryEvaluatorGetter).apply(scriptUri);
+		}
+		
+		if (isValidate = (resultExecutor == null)) {
+			resultExecutor = diagnostician::validate;
+		}
+		
+		if (profileExecution) {
+			if (isValidate) {
+				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator, scriptUri);
+			}
+			String resultDesc = isValidate ? "validate" : "execute query";
+			result = profileExecutionStage(profiledStages, resultDesc, resultExecutor);
+		}
+		else {
+			if (isValidate) {
+				registerValidator(scriptUri);
+			}
+			result = resultExecutor.get();
+		}
+		
+		return result;
 	}
 	
 	@SuppressWarnings("unchecked")
