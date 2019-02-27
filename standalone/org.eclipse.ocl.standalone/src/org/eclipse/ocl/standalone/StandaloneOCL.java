@@ -11,12 +11,17 @@ package org.eclipse.ocl.standalone;
 
 import java.util.*;
 import org.eclipse.emf.common.util.*;
+import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
+import static org.eclipse.emf.common.util.URI.createURI;
+import org.eclipse.ocl.pivot.ExpressionInOCL;
+import org.eclipse.ocl.pivot.Operation;
 import org.eclipse.ocl.pivot.utilities.OCL;
 import org.eclipse.ocl.pivot.utilities.ParserException;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
@@ -48,7 +53,6 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  */
 public class StandaloneOCL extends ProfilableRunConfiguration {
 	
-	protected Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints;
 	protected OCL ocl = OCL.newInstance();
 	protected ConstraintDiagnostician diagnostician;
 	protected EPackage metamodelPackage;
@@ -96,11 +100,11 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	protected void registerValidator() {
 		if (validator == null) {
 			org.eclipse.ocl.pivot.model.OCLstdlib.install();
-			if (script != null) {
+			if						 (script != null) {
 				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
 				validator = new CompleteOCLEObjectValidator(
 					metamodelPackage,
-					org.eclipse.emf.common.util.URI.createURI(script.toUri().toString()),
+					createURI(script.toUri().toString()),
 					ocl.getEnvironmentFactory()
 				);
 			}
@@ -141,19 +145,44 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	Resource modelResource;
 	
 	@Override
-	protected final Collection<UnsatisfiedOclConstraint> execute() throws ParserException {
-		return unsatisfiedConstraints = profileExecution ?
+	protected final Object execute() throws ParserException {
+		
+		final Resource scriptResource = ocl.parse(createURI(script.toUri().toString()));
+		
+		for (EObject eObj : (Iterable<EObject>) scriptResource::getAllContents) {
+			if (eObj instanceof Operation) {
+				Operation op = (Operation) eObj;
+				if ("QUERY".equals(op.getName())) {
+					String fullyQualifiedType = op.eContainer().toString();
+					int pkgIndex = fullyQualifiedType.indexOf("::");
+					String typeName = fullyQualifiedType.substring(pkgIndex+2);
+					EClassifier targetType = metamodelPackage.getEClassifiers().stream().filter(e -> e.getName().equals(typeName)).findAny().get();
+					EObject contextElement = modelResource.getContents().stream().filter(targetType::isInstance).findAny().get();
+					ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), op.getBodyExpression().getBody());
+					return result = profileExecution ?
+						profileExecutionStage(profiledStages, "execute query",
+							() -> ocl.evaluate(contextElement, asQuery)
+						) : ocl.evaluate(contextElement, asQuery);
+				}
+			}
+		}
+		
+		return result = profileExecution ?
 			profileExecutionStage(profiledStages, "validate",
 				(java.util.function.Supplier<Collection<UnsatisfiedOclConstraint>>) diagnostician::validate
 			) :
 			diagnostician.validate();
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void postExecute() throws Exception {
 		super.postExecute();
+		ocl.dispose();
 		
-		if (unsatisfiedConstraints != null && (profileExecution || showResults)) {
+		if (getResult() instanceof Collection && (profileExecution || showResults)) {
+			Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints = (Collection<UnsatisfiedOclConstraint>) result;
+			
 			if (unsatisfiedConstraints.isEmpty()) {
 				writeOut("All constraints satisfied.");
 			}
@@ -167,12 +196,6 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 	}
 	
-	@Override
-	public Collection<UnsatisfiedOclConstraint> getResult() {
-		super.getResult();
-		return unsatisfiedConstraints;
-	}
-	
 	/**
 	 * Copy constructor.
 	 */
@@ -183,6 +206,6 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		this.ocl = other.ocl;
 		this.validator = other.validator;
 		this.metamodelPackage = other.metamodelPackage;
-		this.unsatisfiedConstraints = other.unsatisfiedConstraints;
+		this.result = other.result;
 	}
 }

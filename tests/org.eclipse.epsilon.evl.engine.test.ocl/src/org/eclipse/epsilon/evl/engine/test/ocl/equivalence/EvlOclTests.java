@@ -129,8 +129,9 @@ public class EvlOclTests {
 	
 	@Test
 	public void testConstraints() {
+		@SuppressWarnings("unchecked")
 		Collection<UnsatisfiedOclConstraint>
-			expectedConstraints = expectedConfig.getResult(),
+			expectedConstraints = (Collection<UnsatisfiedOclConstraint>) expectedConfig.getResult(),
 			
 			actualConstraints = actualConfig
 				.getModule()
