@@ -35,7 +35,7 @@ public class StandaloneOCLBuilder extends ProfilableRunConfiguration.Builder<Sta
 	static class OCLConfigParser extends ConfigParser<StandaloneOCL, StandaloneOCLBuilder> {
 		final boolean checkArguments;
 		
-		private OCLConfigParser(boolean checkArgs) {
+		OCLConfigParser(boolean checkArgs) {
 			super(new StandaloneOCLBuilder());
 			this.checkArguments = checkArgs;
 			
@@ -97,20 +97,23 @@ public class StandaloneOCLBuilder extends ProfilableRunConfiguration.Builder<Sta
 		return new StandaloneOCL(this);
 	}
 	
-	public static StandaloneOCL newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) {
+	public static StandaloneOCLBuilder compiledInstanceBuilder(EPackage rootPackage, String... args) {
 		if (args.length == 0 ||
 			(args.length == 1 && (args[0].length() < 5 || !args[0].endsWith(".xmi"))) ||
 			(args.length >= 3 && args[1].length() < 5)
 		) {
 			throw new IllegalArgumentException("Must provide absolute path to EMF model!");
 		}
-		StandaloneOCLBuilder builder = new StandaloneOCLBuilder()
-				.withPackage(rootPackage)
-				.withValidator(customValidator);
+		
+		StandaloneOCLBuilder builder = new StandaloneOCLBuilder().withPackage(rootPackage);
 		
 		if (args.length >= 1)
 			builder = builder.withModel(args[0]);
 		
-		return builder.build();
+		return builder;
+	}
+	
+	public static StandaloneOCL newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) {
+		return compiledInstanceBuilder(rootPackage, args).withValidator(customValidator).build();
 	}
 }

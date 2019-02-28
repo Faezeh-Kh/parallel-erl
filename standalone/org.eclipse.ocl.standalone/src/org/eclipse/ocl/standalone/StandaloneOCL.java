@@ -63,11 +63,11 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
 public class StandaloneOCL extends ProfilableRunConfiguration {
 	
 	protected OCL ocl = OCL.newInstance();
-	protected ConstraintDiagnostician diagnostician;
 	protected EPackage metamodelPackage;
-	protected EValidator validator;
 	protected Resource modelResource;
+	protected EValidator validator;
 	public final URI model, metamodel;
+	Supplier<?> resultExecutor;
 	
 	public StandaloneOCL(StandaloneOCLBuilder builder) {
 		super(builder);
@@ -85,7 +85,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	}
 	
 
-	protected Resource registerAndLoadModel() throws Exception {
+	protected void registerAndLoadModel() throws Exception {
 		ResourceSet resourceSet = ocl.getResourceSet();
 		
 		if (metamodelPackage == null) {
@@ -102,13 +102,15 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		}
 		resourceSet.getPackageRegistry().put(metamodelPackage.getNsURI(), metamodelPackage);
 		
-		Resource modelResource = resourceSet.createResource(model);
+		modelResource = resourceSet.createResource(model);
 		modelResource.load(Collections.EMPTY_MAP);
-		return modelResource;
 	}
 	
-	protected ConstraintDiagnostician createDiagnostician(final Resource modelImpl) {
-		return new ConstraintDiagnostician(modelImpl);
+	protected EObject getModelElementByType(EClassifier type) throws IllegalStateException {
+		return modelResource.getContents()
+			.stream().filter(type::isInstance).findAny().orElseThrow(() ->
+				new IllegalStateException("Could not find a model element of type "+type.getName()+" in "+model)
+			);
 	}
 	
 	protected Supplier<?> checkForQuery(ASResource scriptResource) throws ParserException {
@@ -130,13 +132,8 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 			int pkgIndex = fullyQualifiedType.indexOf("::");
 			String typeName = fullyQualifiedType.substring(pkgIndex+2);
 			
-			EClassifier targetType = metamodelPackage.getEClassifiers()
-				.stream().filter(e -> e.getName().equals(typeName)).findAny()
-				.orElseThrow(() -> new IllegalStateException("Could not find type "+fullyQualifiedType+" in "+metamodel));
-			
-			EObject contextElement = modelResource.getContents()
-				.stream().filter(targetType::isInstance).findAny()
-				.orElseThrow(() -> new IllegalStateException("Could not find a model element of type "+fullyQualifiedType+" in "+model));
+			EClassifier targetType = metamodelPackage.getEClassifier(typeName);
+			EObject contextElement = getModelElementByType(targetType);
 			
 			ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), queryOp.getBodyExpression().getBody());
 			return () -> ocl.evaluate(contextElement, asQuery);
@@ -144,12 +141,14 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		else return null;
 	}
 	
-	protected void registerValidator(URI oclUri) {
+	protected void registerValidator() {
 		if (validator == null) {
 			org.eclipse.ocl.pivot.model.OCLstdlib.install();
 			if (script != null) {
 				validator = new CompleteOCLEObjectValidator(
-					metamodelPackage, oclUri, ocl.getEnvironmentFactory()
+					metamodelPackage,
+					URI.createURI(script.toUri().toString()),
+					ocl.getEnvironmentFactory()
 				);
 			}
 			else {
@@ -159,68 +158,78 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 		
 		assert validator != null;
 		EValidator.Registry.INSTANCE.put(metamodelPackage, validator);
-		diagnostician = createDiagnostician(modelResource);
-		Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
+	}
+	
+	protected ConstraintDiagnostician createDiagnostician() {
+		return new ConstraintDiagnostician(modelResource);
 	}
 	
 	@Override
-	protected final void preExecute() throws Exception {
+	protected void preExecute() throws Exception {
 		super.preExecute();
 		
-		modelResource = profileExecution ?
-			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
-			registerAndLoadModel();
-		
-		final boolean completeOCL = script != null;
-		final Runnable setup = completeOCL ?
-			org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup::doSetup :
-			org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup::doSetup;
-		
-		
-		
 		if (profileExecution) {
-			profileExecutionStage(profiledStages, "setup", setup);
+			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel);
 		}
 		else {
-			setup.run();
+			registerAndLoadModel();
+		}
+		
+		if (script != null) {
+			final Supplier<ASResource> scriptParser = () -> ocl.parse(URI.createURI(script.toUri().toString()));
+			final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
+			if (profileExecution) {
+				profileExecutionStage(profiledStages, "setup",
+					org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup::doSetup
+				);
+				ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser);
+				resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
+			}
+			else {
+				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
+				resultExecutor = queryEvaluatorGetter.apply(scriptParser.get());
+			}
+		}
+		else  {
+			if (profileExecution) {
+				profileExecutionStage(profiledStages, "setup", 
+					org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup::doSetup
+				);
+			}
+			else {
+				org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup.doSetup();
+			}
+			
+			// TODO support queries written in OCLinEcore
+		}
+
+		// Assume this is a validation exercise
+		if (resultExecutor == null) {
+			ConstraintDiagnostician diagnostician = createDiagnostician();
+			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
+			resultExecutor = diagnostician::validate;
+			
+			if (profileExecution) {
+				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator);
+			}
+			else {
+				registerValidator();
+			}
 		}
 	}
-	
+
 	@Override
-	protected final Object execute() throws ParserException {
-		Supplier<?> resultExecutor;
-		final URI scriptUri = URI.createURI(script.toUri().toString());
-		final Function<URI, ASResource> scriptParser = ocl::parse;
-		final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
-		final boolean isValidate;
-		
-		if (profileExecution) {
-			ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser, scriptUri);
-			resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
+	protected final Object execute() throws Exception {
+		return result = profileExecution ? 
+			profileExecutionStage(profiledStages, "execute", this::executeImpl) :
+			executeImpl();
+	}
+	
+	protected Object executeImpl() throws Exception {
+		if (resultExecutor == null) {
+			throw new IllegalStateException("Cannot execute without a provided query or script!");
 		}
-		else {
-			resultExecutor = scriptParser.andThen(queryEvaluatorGetter).apply(scriptUri);
-		}
-		
-		if (isValidate = (resultExecutor == null)) {
-			resultExecutor = diagnostician::validate;
-		}
-		
-		if (profileExecution) {
-			if (isValidate) {
-				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator, scriptUri);
-			}
-			String resultDesc = isValidate ? "validate" : "execute query";
-			result = profileExecutionStage(profiledStages, resultDesc, resultExecutor);
-		}
-		else {
-			if (isValidate) {
-				registerValidator(scriptUri);
-			}
-			result = resultExecutor.get();
-		}
-		
-		return result;
+		return resultExecutor.get();
 	}
 	
 	@SuppressWarnings("unchecked")
