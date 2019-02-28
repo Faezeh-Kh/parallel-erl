@@ -24,9 +24,11 @@ public class ImdbSelectLauncher {
 	public static void main(String[] args) {
 		new StandaloneOCL(StandaloneOCLBuilder
 			.compiledInstanceBuilder(MoviesPackage.eINSTANCE, args)
+			.withProfiling()
+			.withResults()
 		) {
 			@Override
-			protected Object executeImpl() {
+			protected java.math.BigInteger executeImpl() {
 				Person element = (Person) getModelElementByType(MoviesPackage.eINSTANCE.getEClassifier("Person"));
 				if (element == null) {
 					throw new IllegalStateException("Could not find Person in "+modelResource);

@@ -114,6 +114,6 @@ public class StandaloneOCLBuilder extends ProfilableRunConfiguration.Builder<Sta
 	}
 	
 	public static StandaloneOCL newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) {
-		return compiledInstanceBuilder(rootPackage, args).withValidator(customValidator).build();
+		return compiledInstanceBuilder(rootPackage, args).withValidator(customValidator).withProfiling().build();
 	}
 }
