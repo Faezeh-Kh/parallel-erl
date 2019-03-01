@@ -19,15 +19,9 @@ import javaMM.util.JavaMMValidator;
  * @author Sina Madani
  */
 public class JavaMMLauncher {
-	public static void main(String[] args) {
-		new StandaloneOCL(
-			StandaloneOCLBuilder.newCompiledInstance(JavaMMPackage.eINSTANCE, JavaMMValidator.INSTANCE, args)
-		) {
-			@Override
-			protected ConstraintDiagnostician createDiagnostician() {
-				return new ConstraintDiagnostician(modelResource, false);
-			}
-		}
-		.run();
+	public static void main(String... args) {
+		StandaloneOCLBuilder.newCompiledInstance(
+			JavaMMPackage.eINSTANCE, JavaMMValidator.INSTANCE, args
+		).run();
 	}
 }

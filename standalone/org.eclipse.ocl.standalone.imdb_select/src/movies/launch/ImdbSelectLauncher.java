@@ -21,7 +21,7 @@ import movies.Person;
  */
 public class ImdbSelectLauncher {
 
-	public static void main(String[] args) {
+	public static void main(String... args) {
 		new StandaloneOCL(StandaloneOCLBuilder
 			.compiledInstanceBuilder(MoviesPackage.eINSTANCE, args)
 			.withProfiling()

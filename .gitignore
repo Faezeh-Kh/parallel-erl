@@ -1,4 +1,5 @@
 bin/
 *.settings/
-*.classpath
+plugins/org.eclipse.epsilon.evl.engine.distributed.flink/.classpath
+plugins/org.eclipse.epsilon.evl.engine.distributed.jms/.classpath
 *activemq-data/

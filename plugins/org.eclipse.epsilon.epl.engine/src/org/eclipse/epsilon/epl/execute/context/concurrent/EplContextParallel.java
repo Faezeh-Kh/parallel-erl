@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.epl.execute.context.concurrent;
 
+import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolForkJoinExecutor;
 import org.eclipse.epsilon.epl.IEplModule;
 import org.eclipse.epsilon.erl.execute.context.concurrent.ErlContextParallel;
@@ -36,5 +37,12 @@ public class EplContextParallel extends ErlContextParallel {
 	@Override
 	public IEplModule getModule() {
 		return (IEplModule) super.getModule();
+	}
+	
+	@Override
+	public void setModule(IModule module) {
+		if (module instanceof IEplModule) {
+			super.setModule(module);
+		}
 	}
 }
