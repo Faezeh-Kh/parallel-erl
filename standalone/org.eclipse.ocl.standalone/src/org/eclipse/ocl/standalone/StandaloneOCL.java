@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.epsilon.common.function.CheckedFunction;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
@@ -62,7 +63,7 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  */
 public class StandaloneOCL extends ProfilableRunConfiguration {
 	
-	protected OCL ocl = OCL.newInstance();
+	protected OCL ocl = OCL.newInstance(new ResourceSetImpl());
 	protected EPackage metamodelPackage;
 	protected Resource modelResource;
 	protected EValidator validator;

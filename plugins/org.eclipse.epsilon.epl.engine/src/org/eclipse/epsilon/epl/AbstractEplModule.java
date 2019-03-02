@@ -40,7 +40,6 @@ import org.eclipse.epsilon.epl.execute.PatternMatch;
 import org.eclipse.epsilon.epl.parse.EplLexer;
 import org.eclipse.epsilon.epl.parse.EplParser;
 import org.eclipse.epsilon.erl.ErlModule;
-import org.eclipse.epsilon.erl.execute.context.IErlContext;
 
 /**
  * 
@@ -244,7 +243,6 @@ public abstract class AbstractEplModule extends ErlModule implements IEplModule 
 	 * @throws EolRuntimeException
 	 */
 	protected final Optional<PatternMatch> matchCombination(Collection<? extends Iterable<?>> combination, Pattern pattern) throws EolRuntimeException {
-		IErlContext context = getContext();
 		Optional<PatternMatch> result;
 		Frame frame = context.getFrameStack().enterLocal(FrameType.PROTECTED, pattern);
 		
