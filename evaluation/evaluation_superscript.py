@@ -57,8 +57,7 @@ g1gc = args.g1gc
 jmc = args.jmc
 smt = args.smt
 numa = args.numa
-yarccCores = 12
-logicalCores = yarccCores if sge else os.cpu_count()
+logicalCores = 24 if sge else os.cpu_count()
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
 resultsRegex = r'(?i)(?:execute\(\)).{2}((?:[0-9]{1,2}:){0,3}(?:[0-9]{2})\.[0-9]{3}).{1,2}(?:([0-9]+).{0,1}(?:ms|(?:millis(?:econds)?)).).{2}([0-9]+).{2,3}'
 fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
@@ -67,16 +66,16 @@ writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else Non
 rows = []
 columns = ['MODULE', 'THREADS', 'SCRIPT', 'MODEL', 'TIME', 'TIME_STDEV', 'SPEEDUP', 'EFFICIENCY', 'MEMORY', 'MEMORY_STDEV', 'MEMORY_DELTA']
 
-sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(yarccCores/4))+'''
+sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -cwd
 #$ -o ../../stdout
 #$ -e ../../stderr
 #$ -l exclusive=TRUE
 #$ -l ram-128=TRUE
 #$ -l E5-2650v4=TRUE
-#$ -binding linear:'''+str(yarccCores)+'''
-#$ -pe smp '''+str(yarccCores)+'''
-#$ -l h_vmem='''+str(60/yarccCores)+'''G
+#$ -binding linear:'''+str(logicalCores)+'''
+#$ -pe smp '''+str(logicalCores)+'''
+#$ -l h_vmem='''+str(60/logicalCores)+'''G
 #$ -l h_rt=7:59:59
 '''
 jvmFlags = 'java -Xms768m -XX:MaxRAMPercentage=90 -XX:'
@@ -189,6 +188,7 @@ eclipseRanges = imdbRanges + ['3.5', '4.0']
 imdbModels = [imdbPrefix + imdbR + '.xmi' for imdbR in imdbRanges]
 javaModels = [eclipsePrefix + eclipseR + '.xmi' for eclipseR in eclipseRanges]
 
+# Validation (EVL, OCL)
 javaValidationScripts = [
     'java_findbugs',
     'java_simple',
@@ -199,7 +199,6 @@ javaValidationScripts = [
     #'java_noguard'
 ]
 
-# EVL
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
     'EvlModuleParallelElements'
@@ -220,18 +219,19 @@ for evlModule in evlParallelModules:
         evlModulesAndArgs.append([evlModule+threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
 programs.append(['EVL', evlScenarios, evlModulesAndArgs])
 
-# OCL
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
 programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]]])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
-# First-Order Operations
+# First-Order Operations (EOL, OCL, Java)
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_selectOne', 'imdb_filter']
+imdbOCLFOOPScripts = ['imdb_select']
+imdbJavaFOOPScripts = ['imdb_filter', 'imdb_parallelFilter']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
-compiledEOLScripts = ['imdb_filter', 'imdb_parallelFilter']
 eolModule = 'EolModule'
+javaModule = 'Java'
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
@@ -241,9 +241,14 @@ for numThread in threads:
 
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
-for p in compiledEOLScripts:
-    programs.append(['EOL_'+p, [(imdbMM, [p], imdbModels)], [['Java']]])
+for p in imdbJavaFOOPScripts:
+    programs.append([javaModule, [(imdbMM, [p], imdbModels)], [[javaModule]]])
 
+for p in imdbOCLFOOPScripts:
+    programs.append(['OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]]])
+    programs.append(['OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]]])
+
+# Generate scenarios
 if isGenerate:
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
@@ -307,20 +312,27 @@ if isGenerate:
     write_generated_file('run_all', allSubs)
 
     # Specific benchmark scenarios
+    imdbBenchmarkModels = ['all', '2.0', '1.0', '0.5', '0.1']
 
-    def write_eol_benchmark_scenarios(modelSizes, name = 'firstorder'):
+    def write_operation_benchmark_scenarios(modelSizes, name = 'firstorder'):
         firstOrderScenarios = []
         for modelSize in modelSizes:
+            modelName = 'imdb-'+modelSize
             for foopScript in imdbFOOPScripts:
-                firstOrderScenarios.append((eolModulesDefault[0], foopScript, 'imdb-'+modelSize))
+                firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
             for foopScript in imdbParallelFOOPScripts[:2]:
                 for module in eolModulesDefault[1:]:
-                    firstOrderScenarios.append((module, foopScript, 'imdb-'+modelSize))
+                    firstOrderScenarios.append((module, foopScript, modelName))
             for foopScript in imdbParallelFOOPScripts[2:]:
-                firstOrderScenarios.append((eolModulesDefault[-1], foopScript, 'imdb-'+modelSize))
+                firstOrderScenarios.append((eolModulesDefault[-1], foopScript, modelName))
+            for foopScript in imdbJavaFOOPScripts:
+                firstOrderScenarios.append((javaModule, foopScript, modelName))
+            for foopScript in imdbOCLFOOPScripts:
+                for module in oclModules:
+                    firstOrderScenarios.append((module, foopScript, modelName))
         write_benchmark_scenarios(name, firstOrderScenarios)
 
-    write_eol_benchmark_scenarios(['all', '2.5', '1.0', '0.5', '0.1'])
+    write_operation_benchmark_scenarios(imdbBenchmarkModels)
 
     write_benchmark_scenarios('validation',
         [(module, 'dblp_isbn', 'dblp-all') for module in evlModulesDefault]+
@@ -336,6 +348,7 @@ if isGenerate:
         [(module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]]
     )
 
+# Analysis / post-processing results
 else:
     if (not os.path.isfile(resultsFileName) or os.stat(resultsFileName).st_size == 0):
         writer.writerow(columns)
@@ -436,8 +449,6 @@ r'''\documentclass{article}
 \begin{document}
 \LTcapwidth=\textwidth\setlength\LTleft{-3cm}
 ''')
-
         write_table(columns[:5]+columns[6:7]+columns[8:9], (row[:5]+row[6:7]+row[8:9] for row in rows), 'All results', 1, True)
-
         texFile.write(r'\end{document}')
         texFile.close()
