@@ -1,4 +1,7 @@
 import "imdb_foop.eol";
-var Collectors = Native("java.util.stream.Collectors");
 
-Person.allInstances().parallelStream().filter(a | a.coactors().exists(co | a.areCoupleCoactors(co)))./*collect(Collectors.toList()).size*/count().println();
+return Person.allInstances()
+	.parallelStream()
+	.filter(a | a.hasCoupleCoactors())
+	/*.collect(toList()).size*/
+	.count();

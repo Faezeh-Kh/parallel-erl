@@ -1,0 +1,4 @@
+import "imdb_foop.eol";
+
+return Movie.allInstances()
+	.atLeastNMatch(m | m.nestedActors(), getN());

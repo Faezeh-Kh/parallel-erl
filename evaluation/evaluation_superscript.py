@@ -78,7 +78,9 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_vmem='''+str(60/logicalCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms768m -XX:MaxRAMPercentage=90 -XX:'
+jvmFlags = 'java -Xms768m -XX:MaxRAM'
+jvmFlags += 'Fraction=1' if sge else 'Percentage=90'
+jvmFlags += ' -XX:'
 jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
 if numa:
     jvmFlags += ' -XX:+UseNUMA'
@@ -226,10 +228,10 @@ programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScrip
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations (EOL, OCL, Java)
-imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_selectOne', 'imdb_filter']
+imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_parallelFilter']
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelSelectOne', 'imdb_parallelFilter']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelatLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 javaModule = 'Java'
 eolModuleParallel = eolModule+'Parallel'
@@ -279,7 +281,7 @@ if isGenerate:
                             if isOCL:
                                 command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                             else:
-                                command += '-models "emf.EmfModel#cached=true,concurrent=true,parallel=true'+ \
+                                command += '-models "emf.EmfModel#cached=true,concurrent=true'+ \
                                 ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
                                 ',modelUri=file:///' + modelDir+model
                             command += '" -profile'

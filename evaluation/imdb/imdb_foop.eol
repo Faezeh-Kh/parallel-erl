@@ -2,15 +2,27 @@
  * @see http://atenea.lcc.uma.es/Descargas/LinTra/casestudies/imdb/transformations/FindCouples.etl
 **/
 
-operation Movie movieQuery() : Boolean {
-	var magicPerson = Person.all.get((Person.all.size()/2).asInteger());
+operation Movie nestedActors() : Boolean {
+	var actors = Person.allInstances().asSequence();
+	var n = getN();
+	var toIndex = n * n;
+	if (toIndex <= actors.size()) return false;
+	var magicActors = actors.subList(0, toIndex);
 	return self.persons
-		.collect(p | p.coactorsCached())
-		.exists(a |
-			a.movies <> null and
-			a.hashCode() == magicPerson.hashCode() and
-			a.name = magicPerson.name
+		.exists(ac |
+			actors.exists(mp |
+				ac.hashCode() == mp.hashCode() and
+				mp.movies.size() == ac.movies.size()
+			)
 		);
+}
+
+operation getN() : Integer {
+	return 32;
+}
+
+operation Person hasCoupleCoactors() : Boolean {
+	return self.coactors().exists(co | a.areCoupleCoactors(co));
 }
 
 operation Person areCoupleCoactors(co : Person) : Boolean {
@@ -21,15 +33,19 @@ operation Person areCoupleCoactors(co : Person) : Boolean {
 }
 
 @cached
-operation Person coactorsCached() : Set(movies!Person) {
+operation Person coactorsCached() : Set(Person) {
 	return self.coactors();
 }
 
-operation Person coactors() : Set(movies!Person) {
+operation Person coactors() : Set(Person) {
 	return self.movies.collect(m | m.persons).flatten().asSet();
 }
 
 @cached
 operation Person areCouple(p : Person) : Boolean {
 	return self.movies.excludingAll(p.movies).size() <= (self.movies.size() - 3);
+}
+
+operation toList() {
+	return Native("java.util.stream.Collectors").toList();
 }

@@ -1,0 +1,21 @@
+import imdb : 'http://movies/1.0'
+
+package movies
+
+context Person
+	def: coactors : Set = self.movies->collect(persons)->flatten()->asSet()
+
+context Movie
+	def: magicPerson : Boolean = 
+		let magicPerson = Person.allInstances()->get((Person.allInstances()->size()/2)->asInteger())
+		self.persons
+			.collect(p | p.coactorsCached())
+			.exists(a |
+				a.hashCode() == magicPerson.hashCode() and
+				a.name == magicPerson.name and
+				a.movies.size() == magicPerson.movies.size()
+			)
+
+	Movie.allInstances()
+		.atLeastN(m | m.magicPerson(), getMagicN())
+		.println();

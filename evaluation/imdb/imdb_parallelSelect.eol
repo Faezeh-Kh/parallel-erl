@@ -1,3 +1,5 @@
 import "imdb_foop.eol";
 
-Person.allInstances().parallelSelect(a | a.coactors().exists(co | a.areCoupleCoactors(co))).size().println();
+return Person.allInstances()
+	.parallelSelect(a | a.hasCoupleCoactors())
+	.size();
