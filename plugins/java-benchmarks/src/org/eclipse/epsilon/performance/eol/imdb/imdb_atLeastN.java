@@ -13,25 +13,26 @@ import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
 
 /**
- * 
+ *
  * @author Sina Madani
  */
-public class imdb_count extends AbstractIMDBQuery {
-	
+public class imdb_atLeastN extends AbstractIMDBQuery {
+
 	public static void main(String... args) throws Exception {
-		extensibleMain(imdb_count.class, args);
+		extensibleMain(imdb_atLeastN.class, args);
 	}
 	
-	protected imdb_count(Builder<?> builder) {
+	public imdb_atLeastN(Builder<?> builder) {
 		super(builder);
 	}
-	
+
 	@Override
-	protected Number execute() throws Exception {
+	protected Boolean execute() throws Exception {
 		return BenchmarkUtils.profileExecutionStage(profiledStages, "execute()", () -> {
-			return StreamSupport.stream(model.getAllOfKind("Person").spliterator(), parallel)
-				.filter(a -> coactors(a).stream().anyMatch(co -> areCoupleCoactors(a, co)))
-				.count();
+			return StreamSupport.stream(model.getAllOfKind("Movie").spliterator(), parallel)
+				.filter(this::nestedActors)
+				.count() <= getN();
 		});
 	}
+
 }

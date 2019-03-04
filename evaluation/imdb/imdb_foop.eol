@@ -5,12 +5,11 @@
 operation Movie nestedActors() : Boolean {
 	var actors = Person.allInstances().asSequence();
 	var n = getN();
-	var toIndex = n * n;
-	if (toIndex <= actors.size()) return false;
-	var magicActors = actors.subList(0, toIndex);
+	var toIndex = actors.size() / n;
+	var subActors = actors.subList(0, toIndex);
 	return self.persons
 		.exists(ac |
-			actors.exists(mp |
+			subActors.exists(mp |
 				ac.hashCode() == mp.hashCode() and
 				mp.movies.size() == ac.movies.size()
 			)
@@ -22,7 +21,7 @@ operation getN() : Integer {
 }
 
 operation Person hasCoupleCoactors() : Boolean {
-	return self.coactors().exists(co | a.areCoupleCoactors(co));
+	return self.coactors().exists(co | co.areCoupleCoactors(self));
 }
 
 operation Person areCoupleCoactors(co : Person) : Boolean {

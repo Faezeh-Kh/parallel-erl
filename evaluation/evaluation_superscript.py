@@ -230,7 +230,7 @@ validationModulesDefault = evlModulesDefault + oclModules
 # First-Order Operations (EOL, OCL, Java)
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
-imdbJavaFOOPScripts = ['imdb_filter', 'imdb_parallelFilter']
+imdbJavaFOOPScripts = ['imdb_filter', 'imdb_parallelFilter', 'imdb_atLeastN', 'imdb_parallelAtLeastN']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelatLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 javaModule = 'Java'
