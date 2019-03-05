@@ -230,10 +230,13 @@ validationModulesDefault = evlModulesDefault + oclModules
 # First-Order Operations (EOL, OCL, Java)
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
-imdbJavaFOOPScripts = ['imdb_filter', 'imdb_parallelFilter', 'imdb_atLeastN', 'imdb_parallelAtLeastN']
+imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
+imdbParallelJavaFOOPScripts = ['imdb_parallelFilter', 'imdb_parallelAtLeastN']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelatLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
-javaModule = 'Java'
+javaModule = 'JavaQuery'
+standardJavaModulesAndArgs = [[javaModule]]
+parallelJavaModulesAndArgs = [[javaModule, '-parallel']]
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
@@ -244,7 +247,9 @@ for numThread in threads:
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, [(imdbMM, [p], imdbModels)], [[javaModule]]])
+    programs.append([javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs])
+for p in imdbParallelJavaFOOPScripts:
+    programs.append([javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs])
 
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]]])
@@ -254,10 +259,13 @@ for p in imdbOCLFOOPScripts:
 if isGenerate:
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
+        selfContained = '_' in program
         isOCL = program.startswith('OCL')
-        selfContained = len(program) > 3 and program[3] == '_'
+        isJava = program.startswith('Java')
+        programName = program if not selfContained else program.partition('_')[0]
+        programCommand = program if isOCL or isJava or selfContained else 'epsilon-engine'
         programSubset = []
-        progFilePre = program+'_run_'
+        progFilePre = programName+'_run_'
         for metamodel, scripts, models in scenarios:
             for script in scripts:
                 scriptSubset = []
@@ -272,9 +280,7 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ binDir
-                        command += program if isOCL or selfContained else 'epsilon-engine'
-                        command += '.jar"'
+                        command += ' -jar "'+ binDir +programCommand+'.jar"'
 
                         if not selfContained:
                             command += ' "'+ scriptDir+script +'" '

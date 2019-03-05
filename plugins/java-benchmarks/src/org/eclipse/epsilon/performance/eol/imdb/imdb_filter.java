@@ -12,6 +12,7 @@ package org.eclipse.epsilon.performance.eol.imdb;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 
 /**
  * 
@@ -19,16 +20,12 @@ import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
  */
 public class imdb_filter extends AbstractIMDBQuery {
 	
-	public static void main(String... args) throws Exception {
-		extensibleMain(imdb_count.class, args);
-	}
-	
-	protected imdb_filter(Builder<?> builder) {
+	public imdb_filter(Builder<?, ?> builder) {
 		super(builder);
 	}
 	
 	@Override
-	protected Number execute() throws Exception {
+	protected Number execute() throws EolRuntimeException {
 		return BenchmarkUtils.profileExecutionStage(profiledStages, "execute()", () -> {
 			return StreamSupport.stream(model.getAllOfKind("Person").spliterator(), parallel)
 				.filter(a -> coactors(a).stream().anyMatch(co -> areCoupleCoactors(a, co)))

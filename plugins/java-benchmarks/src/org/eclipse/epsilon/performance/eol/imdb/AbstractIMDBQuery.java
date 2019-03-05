@@ -12,7 +12,6 @@ package org.eclipse.epsilon.performance.eol.imdb;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
-import org.eclipse.epsilon.emc.emf.EmfModel;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.operations.contributors.IterableOperationContributor;
 import org.eclipse.epsilon.eol.types.EolSet;
@@ -25,11 +24,7 @@ import org.eclipse.epsilon.performance.eol.AbstractBenchmark;
  */
 public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	
-	protected static <B extends AbstractBenchmark> void extensibleMain(Class<B> clazz, String... args) throws Exception {
-		extensibleMain(clazz, new EmfModel(), args);
-	}
-	
-	protected AbstractIMDBQuery(Builder<?> builder) {
+	protected AbstractIMDBQuery(Builder<?, ?> builder) {
 		super(builder);
 	}
 	
@@ -41,16 +36,16 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	
 	protected boolean nestedActors(Object self) {
 		try {
-			var actors = new ArrayList<>(model.getAllOfKind("Person"));
-			var n = getN();
-			var toIndex = actors.size() / n;
-			var subActors = actors.subList(0, toIndex);
-			var persons = (Collection<?>) propertyGetter.invoke(self, "persons");
+			ArrayList<?> actors = new ArrayList<>(model.getAllOfKind("Person"));
+			int n = getN();
+			int toIndex = actors.size() / n;
+			Collection<?> subActors = actors.subList(0, toIndex);
+			Collection<?> persons = (Collection<?>) propertyGetter.invoke(self, "persons");
 			return persons.stream().anyMatch(ac -> 
 				subActors.stream().anyMatch(mp -> {
 					if (ac.hashCode() == mp.hashCode()) try {
-						var mpMovies = (Collection<?>) propertyGetter.invoke(mp, "movies");
-						var acMovies = (Collection<?>) propertyGetter.invoke(ac, "movies");
+						Collection<?> mpMovies = (Collection<?>) propertyGetter.invoke(mp, "movies");
+						Collection<?> acMovies = (Collection<?>) propertyGetter.invoke(ac, "movies");
 						return mpMovies.size() == acMovies.size();
 					}
 					catch (EolRuntimeException ex) {
@@ -71,10 +66,10 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	
 	protected Set<?> coactors(Object self) {
 		try {
-			var movies = (Collection<?>) propertyGetter.invoke(self, "movies");
-			var results = new EolSet<>();
-			for (var movie : movies) {
-				for (var moviePerson : ((Iterable<?>) propertyGetter.invoke(movie, "persons"))) {
+			Collection<?> movies = (Collection<?>) propertyGetter.invoke(self, "movies");
+			EolSet<Object> results = new EolSet<>();
+			for (Object movie : movies) {
+				for (Object moviePerson : ((Iterable<?>) propertyGetter.invoke(movie, "persons"))) {
 					results.add(moviePerson);
 				}
 			}
@@ -87,11 +82,10 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	
 	protected boolean areCoupleCoactors(Object self, Object co) {
 		try {
-			var selfName = (String) propertyGetter.invoke(self, "name");
-			var coName = (String) propertyGetter.invoke(co, "name");
-			var comparison = selfName.compareTo(coName);
-			if (comparison < 0) {
-				var bMovies = (Collection<?>) propertyGetter.invoke(co, "movies");
+			String selfName = (String) propertyGetter.invoke(self, "name");
+			String coName = (String) propertyGetter.invoke(co, "name");
+			if (selfName.compareTo(coName) < 0) {
+				Collection<?> bMovies = (Collection<?>) propertyGetter.invoke(co, "movies");
 				if (bMovies.size() >= threshold) {
 					return areCouple(self, co);
 				}
@@ -104,10 +98,10 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	}
 	
 	protected boolean areCouple(Object self, Object p) throws EolRuntimeException {
-		var selfMovies = (Collection<?>) propertyGetter.invoke(self, "movies");
-		var pMovies = (Collection<?>) propertyGetter.invoke(p, "movies");
-		var excludingPMoviesSize = new IterableOperationContributor(selfMovies).excludingAll(pMovies).size();
-		var targetSize = selfMovies.size() - threshold;
+		Collection<?> selfMovies = (Collection<?>) propertyGetter.invoke(self, "movies");
+		Collection<?> pMovies = (Collection<?>) propertyGetter.invoke(p, "movies");
+		int excludingPMoviesSize = new IterableOperationContributor(selfMovies).excludingAll(pMovies).size();
+		int targetSize = selfMovies.size() - threshold;
 		return excludingPMoviesSize <= targetSize;
 	}
 }

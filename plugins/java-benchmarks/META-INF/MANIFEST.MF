@@ -6,4 +6,5 @@ Bundle-Version: 1.0.0.qualifier
 Automatic-Module-Name: java-benchmarks
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Require-Bundle: org.eclipse.epsilon.eol.engine,
- org.eclipse.epsilon.emc.emf
+ org.eclipse.epsilon.emc.emf,
+ org.eclipse.epsilon.eol.cli

@@ -9,95 +9,100 @@
 **********************************************************************/
 package org.eclipse.epsilon.performance.eol;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
-import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
+import org.eclipse.epsilon.common.util.FileUtil;
+import org.eclipse.epsilon.eol.EolModule;
+import org.eclipse.epsilon.eol.IEolModule;
+import org.eclipse.epsilon.eol.cli.EolConfigParser;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.introspection.IPropertyGetter;
+import org.eclipse.epsilon.eol.launch.IEolRunConfiguration;
 import org.eclipse.epsilon.eol.models.IModel;
 
-public abstract class AbstractBenchmark extends ProfilableRunConfiguration {
+public abstract class AbstractBenchmark extends IEolRunConfiguration {
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public static void main(String... args) throws Exception {
+		extensibleMain(new Builder(AbstractBenchmark.class), args);
+	}
+	
+	protected static <C extends AbstractBenchmark, B extends Builder<C, B>> void extensibleMain(B builder, String... args) throws Exception {
+		new BenchmarkConfigParser<>(builder).apply(args).run();
+	}
+	
+	public static class Builder<C extends AbstractBenchmark, B extends Builder<C, B>> extends IEolRunConfiguration.Builder<C, B> {
+		public Builder(Class<C> runConfigClass) {
+			super(runConfigClass);
+		}
 
-	public static abstract class Builder<BENCH extends AbstractBenchmark> extends ProfilableRunConfiguration.Builder<BENCH, Builder<BENCH>> {
-		static final String fileProtocol = "file:///";
+		boolean parallel = false;
 		
-		IModel model;
-		boolean parallel;
-		StringProperties modelProperties = new StringProperties();
+		public Builder<C, B> parallel() {
+			return parallel(true);
+		}
 		
-		public Builder<BENCH> parallel(boolean p) {
+		public Builder<C, B> parallel(boolean p) {
 			this.parallel = p;
 			return this;
 		}
 		
-		public Builder<BENCH> withModel(IModel model, String modelPath, String metamodelPath) {
-			this.model = model;
-			modelProperties.put("cached", true);
-			modelProperties.put("concurrent", true);
-			modelProperties.put("fileBasedMetamodelUri", fileProtocol+metamodelPath);
-			modelProperties.put("modelUri", fileProtocol+metamodelPath);
-			return this;
-		}
-		
-		protected boolean isParallelJar() {
-			return new java.io.File(getClass()
-				.getProtectionDomain()
-				.getCodeSource()
-				.getLocation()
-				.getPath()
-			)
-			.getName().toLowerCase().contains("parallel");
-		}
-	}
-	
-	
-	
-	protected static <B extends AbstractBenchmark> void extensibleMain(Class<B> clazz, IModel model, String... args) throws Exception {
-		if (args.length < 3) throw new IllegalArgumentException(
-			"Must include path to model, metamodel and output file!"
-		);
-		
-		var modelPath = args[0];
-		var metamodelPath = args[1];
-		var resultsFile = args[2];
-		
-		var builder = new Builder<B>() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public B build() throws IllegalArgumentException, IllegalStateException {
-				try {
-					return (B) clazz.getConstructors()[0].newInstance(this);
-				}
-				catch (InstantiationException | IllegalAccessException | InvocationTargetException | SecurityException ex) {
-					throw new IllegalStateException(ex);
-				}
+		@SuppressWarnings("unchecked")
+		@Override
+		public C build() {
+			try {
+				String scriptName = FileUtil.getFileName(script.getFileName().toString(), false);
+				String className = "org.eclipse.epsilon.performance.eol."+scriptName.split("_")[0]+"."+scriptName;
+				return (C) Class.forName(className).getDeclaredConstructors()[0].newInstance(this);
 			}
-		};
-		builder
-			.withOutputFile(resultsFile)
-			.withProfiling().withResults()
-			.withModel(model, modelPath, metamodelPath)
-			.parallel(builder.isParallelJar())
-			.build()
-			.run();
+			catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException | SecurityException | ClassNotFoundException ex) {
+				throw new IllegalStateException(ex);
+			}
+		}
 	}
 	
-	protected AbstractBenchmark(Builder<?> builder) {
+	protected static class BenchmarkConfigParser<C extends AbstractBenchmark, B extends Builder<C, B>> extends EolConfigParser<C, B> {
+		public BenchmarkConfigParser(B builder) {
+			super(builder);
+		}
+
+		@Override
+		protected void parseArgs(String[] args) throws Exception {
+			super.parseArgs(args);
+			builder.parallel = cmdLine.hasOption("parallel");
+		}
+	}
+	
+	protected AbstractBenchmark(Builder<?, ?> builder) {
 		super(builder);
-		this.propertyGetter = (this.model = builder.model).getPropertyGetter();
 		this.parallel = builder.parallel;
-		this.modelProperties = builder.modelProperties;
+		this.propertyGetter =
+			(model = modelsAndProperties.keySet().iterator().next())
+			.getPropertyGetter();
 	}
 	
 	protected final IModel model;
-	protected final StringProperties modelProperties;
 	protected final IPropertyGetter propertyGetter;
 	protected final boolean parallel;
-	
+
 	@Override
-	protected void preExecute() throws Exception {
-		super.preExecute();
-		BenchmarkUtils.profileExecutionStage(profiledStages, "Model loading", () -> model.load(modelProperties));
+	protected IEolModule getDefaultModule() {
+		return new EolModule() {
+			@Override
+			public boolean parse(File file) {
+				return true;
+			}
+			@Override
+			public Object execute() throws EolRuntimeException {
+				throw new UnsupportedOperationException();
+			}
+		};
 	}
 	
+	@Override
+	protected void postExecute() throws Exception {
+		profiledStages.removeIf(pd -> "Parsing script".equals(pd.stageName));
+		super.postExecute();
+	}
 }
