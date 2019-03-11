@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import os, argparse, re, csv, statistics, math, sys
 
 parser = argparse.ArgumentParser()
@@ -168,7 +169,8 @@ def compute_descriptive_stats(data, roundToInt = True):
     return tuple(stats)
 
 def get_scenario_name(moduleConfig, script, model):
-    return moduleConfig+'_'+script+'_'+model
+    module = moduleConfig if isinstance(moduleConfig, str) else moduleConfig[0]
+    return module+'_'+script+'_'+model
 
 def write_generated_file(filename, lines):
     with open(genDir + filename + fileExt, 'w') as qsbFile:
@@ -232,7 +234,7 @@ imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
 imdbParallelJavaFOOPScripts = ['imdb_parallelFilter', 'imdb_parallelAtLeastN']
-imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelatLeastN', 'imdb_parallelFilter']
+imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelAtLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 javaModule = 'JavaQuery'
 standardJavaModulesAndArgs = [[javaModule]]
@@ -320,12 +322,10 @@ if isGenerate:
     write_generated_file('run_all', allSubs)
 
     # Specific benchmark scenarios
-    imdbBenchmarkModels = ['all', '2.0', '1.0', '0.5', '0.1']
 
-    def write_operation_benchmark_scenarios(modelSizes, name = 'firstorder'):
+    def write_all_operation_benchmark_scenarios(name = 'firstorder_all'):
         firstOrderScenarios = []
-        for modelSize in modelSizes:
-            modelName = 'imdb-'+modelSize
+        for modelSize in imdbModels:
             for foopScript in imdbFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
             for foopScript in imdbParallelFOOPScripts[:2]:
@@ -340,7 +340,32 @@ if isGenerate:
                     firstOrderScenarios.append((module, foopScript, modelName))
         write_benchmark_scenarios(name, firstOrderScenarios)
 
-    write_operation_benchmark_scenarios(imdbBenchmarkModels)
+    write_all_operation_benchmark_scenarios()
+
+    write_benchmark_scenarios('select_imdb-2.5',
+        [(module, imdbParallelFOOPScripts[0], 'imdb-2.5') for module in eolModulesAndArgs[1:]]+
+        [
+            (eolModulesAndArgs[0], imdbFOOPScripts[0], 'imdb-2.5'),
+            (eolModulesAndArgs[0], imdbFOOPScripts[1], 'imdb-2.5'),
+            (eolModulesAndArgs[-1], imdbParallelFOOPScripts[1], 'imdb-2.5'),
+        ]+
+        [(module, imdbOCLFOOPScripts[0], 'imdb-2.5') for module in oclModules]+
+        [
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], 'imdb-2.5'),
+            (parallelJavaModulesAndArgs[0], imdbParallelJavaFOOPScripts[0], 'imdb-2.5')
+        ]
+    )
+
+    eoloclscenarios = []
+    for i in [0, 2, 3, 5, 8]:
+        model = imdbModels[i]
+        eoloclscenarios.extend([
+            (oclModules[0], imdbOCLFOOPScripts[0], model),
+            (oclModules[1], imdbOCLFOOPScripts[0], model),
+            (eolModulesDefault[0], imdbFOOPScripts[0], model),
+            (eolModulesDefault[-1], imdbParallelFOOPScripts[0], model)
+        ])
+    write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
     write_benchmark_scenarios('validation',
         [(module, 'dblp_isbn', 'dblp-all') for module in evlModulesDefault]+
