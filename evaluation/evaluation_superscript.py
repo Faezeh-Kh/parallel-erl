@@ -282,26 +282,20 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ binDir +programCommand+'.jar"'
-
-                        if not selfContained:
-                            command += ' "'+ scriptDir+script +'" '
-                            if isOCL:
-                                command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
-                            else:
-                                command += '-models "emf.EmfModel#cached=true,concurrent=true'+ \
-                                ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
-                                ',modelUri=file:///' + modelDir+model
-                            command += '" -profile'
+                        command += ' -jar "'+ binDir +programCommand+'.jar" "'+ scriptDir+script +'" '
+                        
+                        if isOCL:
+                            command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
                         else:
-                            command += ' "'+modelDir+model+'" "'+metamodelDir+metamodel+'"'
+                            command += '-models "emf.EmfModel#cached=true,concurrent=true'+ \
+                            ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
+                            ',modelUri=file:///' + modelDir+model
+                        command += '" -profile'
                         
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
-                            if not selfContained:
-                                command += ' -outfile'
-                            command +=  ' "' + stdDir + fileName + intermediateExt + '"'
+                            command +=  ' -outfile "' + stdDir + fileName + intermediateExt + '"'
 
                         write_generated_file(fileName, [command])
                         modelSubset.append(subCmdPrefix +'"'+ fileName + fileExt + '"'+ subCmdSuffix)
