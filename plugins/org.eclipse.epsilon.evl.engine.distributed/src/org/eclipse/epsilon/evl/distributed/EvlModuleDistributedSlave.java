@@ -37,7 +37,7 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	}
 	
 	public EvlModuleDistributedSlave(int parallelism) {
-		this.context = new EvlContextDistributedSlave(parallelism);
+		setContext(new EvlContextDistributedSlave(parallelism));
 	}
 	
 	List<ConstraintContextAtom> contextJobsCache;
@@ -61,7 +61,7 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 
 	@Override
 	public EvlContextDistributedSlave getContext() {
-		return (EvlContextDistributedSlave) context;
+		return (EvlContextDistributedSlave) super.getContext();
 	}
 	
 	@Override

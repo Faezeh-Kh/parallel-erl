@@ -41,7 +41,7 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 
 	public EvlModuleDistributedMaster(int parallelism) {
-		context = new EvlContextDistributedMaster(0, parallelism);
+		setContext(new EvlContextDistributedMaster(0, parallelism));
 	}
 
 	@Override
@@ -81,7 +81,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	
 	@Override
 	public EvlContextDistributedMaster getContext() {
-		return (EvlContextDistributedMaster) context;
+		return (EvlContextDistributedMaster) super.getContext();
 	}
 	
 	@Override

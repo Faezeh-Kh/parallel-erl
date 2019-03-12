@@ -44,7 +44,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	/**
 	 * Deserializes this element, executes it and transforms the results into a collection of
 	 * serialized {@linkplain UnsatisfiedConstraint}s.
-	 * @param context
+	 * @param module
 	 * @return
 	 * @throws EolRuntimeException
 	 */
