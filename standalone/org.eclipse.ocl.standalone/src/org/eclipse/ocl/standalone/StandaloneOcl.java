@@ -57,11 +57,11 @@ import org.eclipse.ocl.xtext.oclinecore.validation.OCLinEcoreEObjectValidator;
  * have such an operation if validation is also desired.
  * <br/>
  * For a command-line interface and initialisation utilities,
- * @see {@link StandaloneOCLBuilder}
+ * @see {@link StandaloneOclBuilder}
  * 
  * @author Sina Madani
  */
-public class StandaloneOCL extends ProfilableRunConfiguration {
+public class StandaloneOcl extends ProfilableRunConfiguration {
 	
 	protected OCL ocl = OCL.newInstance(new ResourceSetImpl());
 	protected EPackage metamodelPackage;
@@ -70,7 +70,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	public final URI model, metamodel;
 	Supplier<?> resultExecutor;
 	
-	public StandaloneOCL(StandaloneOCLBuilder builder) {
+	public StandaloneOcl(StandaloneOclBuilder builder) {
 		super(builder);
 		this.model = builder.modelUri;
 		this.metamodel = builder.metamodelUri;
@@ -264,7 +264,7 @@ public class StandaloneOCL extends ProfilableRunConfiguration {
 	/**
 	 * Copy constructor.
 	 */
-	public StandaloneOCL(StandaloneOCL other) {
+	public StandaloneOcl(StandaloneOcl other) {
 		super(other);
 		this.model = other.model;
 		this.metamodel = other.metamodel;

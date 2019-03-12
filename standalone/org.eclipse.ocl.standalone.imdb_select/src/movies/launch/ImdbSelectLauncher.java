@@ -9,8 +9,8 @@
 **********************************************************************/
 package movies.launch;
 
-import org.eclipse.ocl.standalone.StandaloneOCL;
-import org.eclipse.ocl.standalone.StandaloneOCLBuilder;
+import org.eclipse.ocl.standalone.StandaloneOcl;
+import org.eclipse.ocl.standalone.StandaloneOclBuilder;
 import movies.MoviesPackage;
 import movies.Person;
 
@@ -22,10 +22,8 @@ import movies.Person;
 public class ImdbSelectLauncher {
 
 	public static void main(String... args) {
-		new StandaloneOCL(StandaloneOCLBuilder
+		new StandaloneOcl(StandaloneOclBuilder
 			.compiledInstanceBuilder(MoviesPackage.eINSTANCE, args)
-			.withProfiling()
-			.withResults()
 		) {
 			@Override
 			protected java.math.BigInteger executeImpl() {

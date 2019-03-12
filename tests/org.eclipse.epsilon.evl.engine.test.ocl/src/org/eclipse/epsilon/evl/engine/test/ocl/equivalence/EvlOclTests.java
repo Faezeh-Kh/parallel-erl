@@ -39,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
  * and element (EObject) combination. This structure is stored in
  * StandaloneOCL.UnsatisfiedOclConstraint.
  * 
- * @see org.eclipse.epsilon.evl.engine.test.acceptance.equivalence.StandaloneOCL
+ * @see org.eclipse.epsilon.evl.engine.test.acceptance.equivalence.StandaloneOcl
  * @author Sina Madani
  */
 @RunWith(Parameterized.class)
@@ -64,26 +64,26 @@ public class EvlOclTests {
 	};
 	
 	// The oracle scenario.
-	final StandaloneOCL expectedConfig;
+	final StandaloneOcl expectedConfig;
 	
 	// The scenario and module combination under test. This is the parameterised test variable.
 	final EvlRunConfiguration actualConfig;
 	
 	// Used to identify which scenario to compare our results with.
-	static final Map<Integer, StandaloneOCL> expectedConfigIDs = new HashMap<>();
+	static final Map<Integer, StandaloneOcl> expectedConfigIDs = new HashMap<>();
 	
 	// The oracle configurations
-	static final Collection<StandaloneOCL> expectedConfigs = getStandaloneOCLConfigsFrom(oclTestInputs);
+	static final Collection<StandaloneOcl> expectedConfigs = getStandaloneOCLConfigsFrom(oclTestInputs);
 	
 	public EvlOclTests(EvlRunConfiguration configUnderTest) {
 		this.actualConfig = configUnderTest;
 		expectedConfig = expectedConfigIDs.get(actualConfig.getId());
 	}
 	
-	private static List<StandaloneOCL> getStandaloneOCLConfigsFrom(Collection<String[]> uriss) {
+	private static List<StandaloneOcl> getStandaloneOCLConfigsFrom(Collection<String[]> uriss) {
 		return uriss
 			.stream()
-			.map(uris -> new StandaloneOCLBuilder()
+			.map(uris -> new StandaloneOclBuilder()
 				.withId(idCalculator.apply(uris))
 				.withURIs(uris)
 				.build()
@@ -106,7 +106,7 @@ public class EvlOclTests {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		for (StandaloneOCL expectedConfig : expectedConfigs) {
+		for (StandaloneOcl expectedConfig : expectedConfigs) {
 			expectedConfigIDs.put(expectedConfig.getId(), expectedConfig);
 			expectedConfig.run();
 		}

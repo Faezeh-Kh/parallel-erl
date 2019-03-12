@@ -20,7 +20,7 @@ import javaMM.util.JavaMMValidator;
  */
 public class JavaMMLauncher {
 	public static void main(String... args) {
-		StandaloneOCLBuilder.newCompiledInstance(
+		StandaloneOclBuilder.newCompiledInstance(
 			JavaMMPackage.eINSTANCE, JavaMMValidator.INSTANCE, args
 		).run();
 	}
