@@ -9,6 +9,8 @@
 **********************************************************************/
 package org.eclipse.ocl.standalone;
 
+import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.epsilon.common.cli.ConfigParser;
 
 public class StandaloneOclConfigParser extends ConfigParser<StandaloneOcl, StandaloneOclBuilder> {
@@ -17,11 +19,11 @@ public class StandaloneOclConfigParser extends ConfigParser<StandaloneOcl, Stand
 		new StandaloneOclConfigParser(true).apply(args).run();
 	}
 	
-	final boolean checkArguments;
+	final boolean isInterpreted;
 	
 	protected StandaloneOclConfigParser(boolean checkArgs) {
 		super(new StandaloneOclBuilder());
-		this.checkArguments = checkArgs;
+		this.isInterpreted = checkArgs;
 		
 		requiredUsage = "Must provide absolute path to "+nL
 		  + "  [Complete OCL Document] (if metamodel doesn't contain constraints) "+nL
@@ -31,12 +33,37 @@ public class StandaloneOclConfigParser extends ConfigParser<StandaloneOcl, Stand
 	
 	@Override
 	protected void parseArgs(String[] args) throws Exception {
-		if (checkArguments && args.length < 3) {
-			throw new IllegalArgumentException();
+		if (isInterpreted) {
+			if (args.length < 2) throw new IllegalArgumentException();
+			if (args.length > 1) builder.withModel(args[1]);
+			if (args.length > 2) builder.withMetamodel(args[2]);
+		}
+		super.parseArgs(args);
+		if (!isInterpreted) {
+			builder.script = null;
+		}
+	}
+	
+	public static StandaloneOclBuilder compiledInstanceBuilder(EPackage rootPackage, String... args) throws Exception {
+		StandaloneOclConfigParser parser = new StandaloneOclConfigParser(false);
+		parser.parseArgs(args);
+		
+		if (args.length == 0 ||
+			(args.length == 1 && (args[0].length() < 5 || !args[0].endsWith(".xmi"))) ||
+			(args.length >= 3 && args[1].length() < 5)
+		) {
+			throw new IllegalArgumentException("Must provide absolute path to EMF model!");
 		}
 		
-		super.parseArgs(args);
-		if (args.length > 1) builder.withModel(args[1]);
-		if (args.length > 2) builder.withMetamodel(args[2]);
+		StandaloneOclBuilder builder = parser.builder;
+		
+		if (args.length >= 1)
+			builder = builder.withModel(args[0]);
+		
+		return builder.withPackage(rootPackage);
+	}
+	
+	public static StandaloneOcl newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) throws Exception {
+		return compiledInstanceBuilder(rootPackage, args).withValidator(customValidator).build();
 	}
 }

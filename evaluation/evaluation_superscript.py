@@ -282,10 +282,11 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ binDir +programCommand+'.jar" "'+ scriptDir+script +'" '
-                        
-                        if isOCL:
-                            command += '"'+modelDir+model +'" "'+ metamodelDir+metamodel
+                        command += ' -jar "'+ binDir +programCommand+'.jar" "'
+                        if selfContained:
+                            command += modelDir+model
+                        elif isOCL:
+                            command += scriptDir+script+'" "'+modelDir+model+'" "'+ metamodelDir+metamodel
                         else:
                             command += '-models "emf.EmfModel#cached=true,concurrent=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \

@@ -61,24 +61,4 @@ public class StandaloneOclBuilder extends ProfilableRunConfiguration.Builder<Sta
 	public StandaloneOcl build() throws IllegalArgumentException, IllegalStateException {
 		return new StandaloneOcl(this);
 	}
-	
-	public static StandaloneOclBuilder compiledInstanceBuilder(EPackage rootPackage, String... args) {
-		if (args.length == 0 ||
-			(args.length == 1 && (args[0].length() < 5 || !args[0].endsWith(".xmi"))) ||
-			(args.length >= 3 && args[1].length() < 5)
-		) {
-			throw new IllegalArgumentException("Must provide absolute path to EMF model!");
-		}
-		
-		StandaloneOclBuilder builder = new StandaloneOclBuilder().withPackage(rootPackage);
-		
-		if (args.length >= 1)
-			builder = builder.withModel(args[0]);
-		
-		return builder;
-	}
-	
-	public static StandaloneOcl newCompiledInstance(EPackage rootPackage, EValidator customValidator, String... args) {
-		return compiledInstanceBuilder(rootPackage, args).withValidator(customValidator).build();
-	}
 }

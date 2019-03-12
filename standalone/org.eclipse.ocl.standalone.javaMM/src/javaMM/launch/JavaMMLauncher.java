@@ -19,8 +19,8 @@ import javaMM.util.JavaMMValidator;
  * @author Sina Madani
  */
 public class JavaMMLauncher {
-	public static void main(String... args) {
-		StandaloneOclBuilder.newCompiledInstance(
+	public static void main(String... args) throws Exception {
+		StandaloneOclConfigParser.newCompiledInstance(
 			JavaMMPackage.eINSTANCE, JavaMMValidator.INSTANCE, args
 		).run();
 	}
