@@ -282,16 +282,16 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ binDir +programCommand+'.jar" "'
+                        command += ' -jar "'+ binDir +programCommand+'.jar" '
                         if selfContained:
-                            command += modelDir+model
+                            command += '"'+modelDir+model+'"'
                         elif isOCL:
-                            command += scriptDir+script+'" "'+modelDir+model+'" "'+ metamodelDir+metamodel
+                            command += '"'+scriptDir+script+'" "'+modelDir+model+'" "'+ metamodelDir+metamodel+'"'
                         else:
-                            command += '-models "emf.EmfModel#cached=true,concurrent=true'+ \
+                            command += '"'+scriptDir+script+'" -models "emf.EmfModel#cached=true,concurrent=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
-                            ',modelUri=file:///' + modelDir+model
-                        command += '" -profile'
+                            ',modelUri=file:///' + modelDir+model+'"'
+                        command += ' -profile'
                         
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
