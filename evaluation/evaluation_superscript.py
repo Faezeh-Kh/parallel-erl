@@ -180,6 +180,13 @@ def write_benchmark_scenarios(name, scenariosArgs):
     lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*5)
 
+def make_parallel(scriptName, pword = 'parallel'):
+    match = re.search(r'(_)([a-z])', scriptName)
+    if match:
+        replacement = match.group(1)+pword+match.group(2).upper()
+        return scriptName.replace(match.group(0), replacement)
+    return scriptName
+
 # (Meta)Models
 # Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
 javaMM = 'java.ecore'
@@ -233,7 +240,6 @@ validationModulesDefault = evlModulesDefault + oclModules
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
-imdbParallelJavaFOOPScripts = ['imdb_parallelFilter', 'imdb_parallelAtLeastN']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelAtLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 javaModule = 'JavaQuery'
@@ -249,10 +255,9 @@ for numThread in threads:
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs])
-for p in imdbParallelJavaFOOPScripts:
-    programs.append([javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs])
-
+    model = [(imdbMM, [p], imdbModels)]
+    programs.append([javaModule, model, standardJavaModulesAndArgs])
+    programs.append([javaModule, model, parallelJavaModulesAndArgs])
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]]])
     programs.append(['OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]]])
@@ -277,6 +282,9 @@ if isGenerate:
                     modelName = os.path.splitext(model)[0]
                     for margs in modulesAndArgs:
                         moduleName = margs[0]
+                        if isJava and len(margs) > 1 and 'parallel' in margs[1]:
+                            scriptName = make_parallel(scriptName)
+
                         fileName = get_scenario_name(moduleName, scriptName, modelName)
                         command = sgeDirectives if sge else ''
                         command += jvmFlags
@@ -347,7 +355,7 @@ if isGenerate:
         [(module, imdbOCLFOOPScripts[0], 'imdb-2.5') for module in oclModules]+
         [
             (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], 'imdb-2.5'),
-            (parallelJavaModulesAndArgs[0], imdbParallelJavaFOOPScripts[0], 'imdb-2.5')
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], 'imdb-2.5')
         ]
     )
 
