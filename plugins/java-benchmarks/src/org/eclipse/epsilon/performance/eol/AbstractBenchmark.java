@@ -65,6 +65,7 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 	protected static class BenchmarkConfigParser<C extends AbstractBenchmark, B extends Builder<C, B>> extends EolConfigParser<C, B> {
 		public BenchmarkConfigParser(B builder) {
 			super(builder);
+			options.addOption("parallel", false, "Whether to parallelise");
 		}
 
 		@Override

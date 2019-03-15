@@ -179,6 +179,14 @@ def write_benchmark_scenarios(name, scenariosArgs):
     lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*5)
 
+def normalize_foop(script):
+        normalFOOP = script.replace('_parallel', '_')
+        if len(normalFOOP) == len(script):
+            return script
+        metamodelScriptIndex = script.index('_')+1
+        normalFOOP = normalFOOP[0:metamodelScriptIndex] + normalFOOP[metamodelScriptIndex].lower() + normalFOOP[metamodelScriptIndex+1:] if normalFOOP else script
+        return normalFOOP
+
 # (Meta)Models
 # Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
 javaMM = 'java.ecore'
@@ -232,6 +240,7 @@ validationModulesDefault = evlModulesDefault + oclModules
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
+imdbParallelJavaFOOPScripts = ['imdb_parallelFilter', 'imdb_parallelAtLeastN']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelAtLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
 javaModule = 'JavaQuery'
@@ -247,23 +256,15 @@ for numThread in threads:
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
 programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 for p in imdbJavaFOOPScripts:
-    model = [(imdbMM, [p], imdbModels)]
-    programs.append([javaModule, model, standardJavaModulesAndArgs])
-    programs.append([javaModule, model, parallelJavaModulesAndArgs])
+    programs.append([javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs])
+for p in imdbParallelJavaFOOPScripts:
+    programs.append([javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs])
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]]])
     programs.append(['OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]]])
 
 # Generate scenarios
 if isGenerate:
-
-    def make_parallel_foop(scriptName, pword = 'parallel'):
-        match = re.search(r'(_)([a-z])', scriptName)
-        if match:
-            replacement = match.group(1)+pword+match.group(2).upper()
-            return scriptName.replace(match.group(0), replacement)
-        return scriptName
-
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
         selfContained = '_' in program
@@ -282,9 +283,6 @@ if isGenerate:
                     modelName = os.path.splitext(model)[0]
                     for margs in modulesAndArgs:
                         moduleName = margs[0]
-                        if isJava and len(margs) > 1 and 'parallel' in margs[1]:
-                            scriptName = make_parallel_foop(scriptName)
-
                         fileName = get_scenario_name(moduleName, scriptName, modelName)
                         command = sgeDirectives if sge else ''
                         command += jvmFlags
@@ -296,6 +294,8 @@ if isGenerate:
                         elif isOCL:
                             command += '"'+scriptDir+script+'" "'+modelDir+model+'" "'+ metamodelDir+metamodel+'"'
                         else:
+                            if isJava and len(margs) > 1 and 'parallel' in margs[1]:
+                                script = normalize_foop(script)
                             command += '"'+scriptDir+script+'" -models "emf.EmfModel#cached=true,concurrent=true'+ \
                             ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
                             ',modelUri=file:///' + modelDir+model+'"'
@@ -450,15 +450,7 @@ else:
                     memDelta = round(nestedRow[6]/row[6], decimalPlaces) if nestedRow[6] and row[6] else None
                     return (speedup, efficiency, memDelta)
         return currentMetrics
-
-    def normalize_foop(script):
-        normalFOOP = script.replace('_parallel', '_')
-        if len(normalFOOP) == len(script):
-            return script
-        metamodelScriptIndex = script.index('_')+1
-        normalFOOP = normalFOOP[0:metamodelScriptIndex] + normalFOOP[metamodelScriptIndex].lower() + normalFOOP[metamodelScriptIndex+1:] if normalFOOP else script
-        return normalFOOP
-
+    
     # Second pass - compute performance metrics, update rows and write to CSV file
     for i in range(0, len(rows)):
         row = rows[i]
