@@ -60,7 +60,6 @@ smt = args.smt
 numa = args.numa
 logicalCores = 24 if sge else os.cpu_count()
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
-resultsRegex = r'(?i)(?:execute\(\)).{2}((?:[0-9]{1,2}:){0,3}(?:[0-9]{2})\.[0-9]{3}).{1,2}(?:([0-9]+).{0,1}(?:ms|(?:millis(?:econds)?)).).{2}([0-9]+).{2,3}'
 fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
 resultsFile = open(resultsFileName, 'w') if not isGenerate else None
 writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else None
@@ -180,13 +179,6 @@ def write_benchmark_scenarios(name, scenariosArgs):
     lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*5)
 
-def make_parallel(scriptName, pword = 'parallel'):
-    match = re.search(r'(_)([a-z])', scriptName)
-    if match:
-        replacement = match.group(1)+pword+match.group(2).upper()
-        return scriptName.replace(match.group(0), replacement)
-    return scriptName
-
 # (Meta)Models
 # Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
 javaMM = 'java.ecore'
@@ -264,6 +256,14 @@ for p in imdbOCLFOOPScripts:
 
 # Generate scenarios
 if isGenerate:
+
+    def make_parallel_foop(scriptName, pword = 'parallel'):
+        match = re.search(r'(_)([a-z])', scriptName)
+        if match:
+            replacement = match.group(1)+pword+match.group(2).upper()
+            return scriptName.replace(match.group(0), replacement)
+        return scriptName
+
     allSubs = []
     for program, scenarios, modulesAndArgs in programs:
         selfContained = '_' in program
@@ -283,7 +283,7 @@ if isGenerate:
                     for margs in modulesAndArgs:
                         moduleName = margs[0]
                         if isJava and len(margs) > 1 and 'parallel' in margs[1]:
-                            scriptName = make_parallel(scriptName)
+                            scriptName = make_parallel_foop(scriptName)
 
                         fileName = get_scenario_name(moduleName, scriptName, modelName)
                         command = sgeDirectives if sge else ''
@@ -329,6 +329,7 @@ if isGenerate:
     def write_all_operation_benchmark_scenarios(name = 'firstorder_all'):
         firstOrderScenarios = []
         for modelSize in imdbModels:
+            modelName = imdbPrefix+modelSize
             for foopScript in imdbFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
             for foopScript in imdbParallelFOOPScripts[:2]:
@@ -361,7 +362,7 @@ if isGenerate:
 
     eoloclscenarios = []
     for i in [0, 2, 3, 5, 8]:
-        model = imdbModels[i]
+        model = imdbModels[i].replace('.xmi', '')
         eoloclscenarios.extend([
             (oclModules[0], imdbOCLFOOPScripts[0], model),
             (oclModules[1], imdbOCLFOOPScripts[0], model),
@@ -403,12 +404,15 @@ else:
             script = fileNameMatch.group(2)
             model = fileNameMatch.group(3)
 
-            if (program.startswith('EOCL')):
+            if program.startswith('EOCL'):
                 module = program
                 program = 'OCL'
+            elif program.startswith('Java'):
+                module = program
+                program = 'Java'
             else:
                 program = program[:3]
-                moduleAndArgs = re.match(r'('+program+r'(?i)Module(?:[A-Za-z]*))([0-9]*)', filename)
+                moduleAndArgs = re.match(r'(?i)('+program+r'Module(?:[A-Za-z]*))([0-9]*)', filename)
                 module = moduleAndArgs.group(1)
                 numThread = moduleAndArgs.group(2)
                 numThread = 1 if not numThread else int(numThread)
@@ -420,7 +424,7 @@ else:
             with open(os.path.join(dirpath, filename), 'r') as inFile:
                 raw = inFile.read()
             
-            for resultMatch in re.findall(resultsRegex, raw):
+            for resultMatch in re.findall(r'(?im)^(?:execute(?:\(\))?)(.*?)([0-9]+).?(?:ms|(?:millis(?:econds)?)).*?([0-9]+).{2,3}', raw):
                 if resultMatch[1]:
                     times.append(int(resultMatch[1]))
                 if resultMatch[2]:
@@ -434,7 +438,7 @@ else:
             row.append(program)
             
             rows.append(row)
-        break   #Non-recursive
+        break   # Non-recursive
 
     # For reference, each row = [module, threads, script, model, timeMean, timeStdev, memoryMean, memoryStdev, memoryDelta, program]
     def compute_metrics_closure(currentMetrics, relModule, row, filterCondition, relScript = row[2], decimalPlaces = 3):
@@ -461,11 +465,16 @@ else:
         rowResults = row[:-1]
         # This is a nested for loop but with repetition factored out into a function
         metrics = (None, None, None)
-        # Only one of the following will change the value in this iteration!
+        # Only one of the following calls will change the value in this iteration!
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[-1].upper() == 'EVL' or row[0] == oclModules[0])
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[0] == oclModules[1])
         metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
-
+        metrics = compute_metrics_closure(metrics, javaModule, row, row[0] == eolModule, normalize_foop(row[2]))
+        metrics = compute_metrics_closure(metrics, javaModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
+        for oclModule in oclModules:
+            metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
+            metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModule, normalize_foop(row[2]))
+        
         rowResults.insert(6, metrics[0])
         rowResults.insert(7, metrics[1])
         rowResults.insert(10, metrics[2])
