@@ -67,23 +67,21 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	@Override
 	public void run() {
-		try {
-			try (JMSContext regContext = connectionFactory.createContext()) {
-				Runnable ackSender = setup(regContext);
-				
-				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					prepareToProcessJobs(jobContext);
-					
-					// Tell the master we're setup and ready to work. We need to send the message here
-					// because if the master is fast we may receive jobs before we have even created the listener!
-					ackSender.run();
-					
-					awaitCompletion();
+		try (JMSContext regContext = connectionFactory.createContext()) {
+			Runnable ackSender = setup(regContext);
 			
-					// Tell the master we've finished
-					try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-						signalCompletion(endContext);
-					}
+			try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				prepareToProcessJobs(jobContext);
+				
+				// Tell the master we're setup and ready to work. We need to send the message here
+				// because if the master is fast we may receive jobs before we have even created the listener!
+				ackSender.run();
+				
+				awaitCompletion();
+		
+				// Tell the master we've finished
+				try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					signalCompletion(endContext);
 				}
 			}
 		}
