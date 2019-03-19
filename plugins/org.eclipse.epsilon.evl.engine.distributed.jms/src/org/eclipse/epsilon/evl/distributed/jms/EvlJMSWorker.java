@@ -38,30 +38,34 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  */
 public final class EvlJMSWorker implements Runnable, AutoCloseable {
 
-	public static void main(String[] args) throws Exception {
-		String host = args[0];
+	public static void main(String... args) throws Exception {
+		if (args.length < 1) throw new java.lang.IllegalStateException(
+			"Must provide base path!"
+		);
 		
-		if (args.length > 0) try {
-			host = new URI(args[0]).toString();
+		String basePath = args[0];
+		
+		String host = "tcp://localhost:61616";
+		if (args.length > 1) try {
+			host = new URI(args[1]).toString();
 		}
 		catch (URISyntaxException urx) {
 			System.err.println(urx);
-			host = "tcp://localhost:61616";
 			System.err.println("Using default "+host);
 		}
 		
-		try (EvlJMSWorker worker = new EvlJMSWorker(host)) {
+		try (EvlJMSWorker worker = new EvlJMSWorker(host, basePath)) {
 			worker.run();
 		}
 	}
 	
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
-	String id;
+	String id, basePath;
 	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
 
-	public EvlJMSWorker(String host) {
+	public EvlJMSWorker(String host, String basePath) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
 	}
 	
@@ -90,7 +94,6 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	Runnable setup(JMSContext regContext) throws Exception {
 		// Announce our presence to the master
 		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE);
@@ -106,7 +109,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		this.id = configMsg.getStringProperty(ID_PROPERTY);
 		log("Configuration and ID received");
 		
-		configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class));
+		configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class), basePath);
 		configContainer.preExecute();
 		(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
 		

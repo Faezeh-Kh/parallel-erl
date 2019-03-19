@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.context.Variable;
 import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
@@ -33,7 +34,7 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
 	protected int distributedParallelism;
-	protected String outputDir;
+	protected String outputDir, basePath;
 	
 	public EvlContextDistributedMaster(int localParallelism, int distributedParallelism) {
 		super(localParallelism);
@@ -63,6 +64,10 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	public void setOutputPath(String out) {
 		this.outputDir = out;
 	}
+	
+	public void setBasePath(String path) {
+		this.basePath = path;
+	}
 
 	/**
 	 * Saves the frame stack for the benefit of slave nodes.
@@ -76,6 +81,10 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 			.collect(Collectors.toSet());
 	}
 	
+	protected String removeBasePath(String fullPath) {
+		return DistributedEvlRunConfiguration.removeBasePath(basePath, fullPath);
+	}
+	
 	/**
 	 * Converts the program's configuration into serializable key-value pairs which
 	 * can then be used by slave modules to re-build an equivalent state. Such information
@@ -86,9 +95,10 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	public HashMap<String, ? extends Serializable> getJobParameters() {
 		HashMap<String, Serializable> config = new HashMap<>();
 		
+		config.put("basePath", basePath);
 		config.put("localParallelism", numThreads);
 		config.put("distributedParallelism", distributedParallelism);
-		config.put("evlScript", getModule().getFile().toPath().toString());
+		config.put("evlScript", removeBasePath(getModule().getFile().toPath().toString()));
 		config.put("output", outputDir);
 		
 		List<IModel> models = getModelRepository().getModels();
@@ -105,6 +115,7 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 					models.get(i).getClass().getName().replace("org.eclipse.epsilon.emc.", "")+"#"+
 					modelPropertiesIter.next().entrySet().stream()
 						.map(entry -> entry.getKey()+"="+entry.getValue())
+						.map(this::removeBasePath)
 						.collect(Collectors.joining(","))
 				);
 			}

@@ -24,10 +24,6 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
  * @since 1.6
  */
 public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistributedMasterJMS {
-
-	public static void main(String... args) throws Exception {
-		extensibleMain(EvlModuleDistributedMasterJMSAtomicSynch.class, args);
-	}
 	
 	public EvlModuleDistributedMasterJMSAtomicSynch(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers, host);

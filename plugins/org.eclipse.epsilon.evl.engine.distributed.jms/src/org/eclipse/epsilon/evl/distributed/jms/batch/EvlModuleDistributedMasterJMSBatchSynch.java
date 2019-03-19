@@ -25,10 +25,6 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  * @since 1.6
  */
 public class EvlModuleDistributedMasterJMSBatchSynch extends EvlModuleDistributedMasterJMS {
-
-	public static void main(String... args) throws Exception {
-		extensibleMain(EvlModuleDistributedMasterJMSBatchSynch.class, args);
-	}
 	
 	public EvlModuleDistributedMasterJMSBatchSynch(int expectedWorkers, String host) throws URISyntaxException {
 		super(expectedWorkers, host);

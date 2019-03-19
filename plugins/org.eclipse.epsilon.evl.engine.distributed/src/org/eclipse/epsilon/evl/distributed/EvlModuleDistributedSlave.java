@@ -11,7 +11,6 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -65,7 +64,7 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 	}
 	
 	@Override
-	public Set<UnsatisfiedConstraint> executeImpl() throws EolRuntimeException {
+	public Collection<UnsatisfiedConstraint> executeImpl() throws EolRuntimeException {
 		throw new UnsupportedOperationException("This method should only be called by the master!");
 	}
 	

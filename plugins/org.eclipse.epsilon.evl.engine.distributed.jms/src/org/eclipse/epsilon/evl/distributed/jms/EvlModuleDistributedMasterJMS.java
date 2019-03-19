@@ -10,8 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.jms;
 
 import java.io.Serializable;
-import java.net.InetAddress;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.LocalTime;
@@ -26,12 +24,10 @@ import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedConsumer;
 import org.eclipse.epsilon.common.function.CheckedRunnable;
-import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
@@ -63,32 +59,6 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * @since 1.6
  */
 public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
-	
-	public static void extensibleMain(Class<? extends EvlModuleDistributedMasterJMS> moduleClass, String... args) throws Exception {
-		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
-		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
-		String expectedWorkers = args[3];
-		String addr = args.length > 4 ? args[4] : null;
-		
-		if (addr == null || addr.length() < 5) {
-			addr = "tcp://"+InetAddress.getLocalHost().getHostAddress()+":61616";
-		}
-		
-		// For validation purposes
-		new URI(addr);
-		
-		EolConfigParser.main(new String[] {
-			"CONFIG:"+DistributedEvlRunConfiguration.class.getName(),
-			args[0],
-			"-models",
-				"\"emf.DistributableEmfModel#"
-				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
-				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
-			"-module", moduleClass.getName().substring(20),
-				"int="+expectedWorkers,
-				"String="+addr
-		});
-	}
 	
 	public static final String
 		JOBS_QUEUE = "worker-jobs",

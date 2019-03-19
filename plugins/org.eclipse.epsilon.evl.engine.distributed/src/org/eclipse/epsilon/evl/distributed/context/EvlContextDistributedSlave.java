@@ -40,7 +40,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		return EolThreadPoolExecutor.adaptiveExecutor(numThreads);
 	}
 	
-	public static DistributedEvlRunConfiguration parseJobParameters(Map<String, ? extends Serializable> config) throws Exception {
+	public static DistributedEvlRunConfiguration parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {
 		Path evlScriptPath = Paths.get(Objects.toString(config.get("evlScript"), null));
 		
 		int numModels = Integer.parseInt(Objects.toString(config.get("numberOfModels"), null));
@@ -48,6 +48,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		for (int i = 0; i < numModels; i++) {
 			modelsConfig[i] = Objects.toString(config.get("model"+i), null);
 		}
+		
 		Map<IModel, StringProperties> localModelsAndProperties = parseModelParameters(modelsConfig);
 		
 		Map<String, Object> scriptVariables = parseScriptParameters(
@@ -59,6 +60,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		);
 		
 		return new DistributedEvlRunConfiguration(
+			basePath,
 			evlScriptPath,
 			localModelsAndProperties,
 			localModule,

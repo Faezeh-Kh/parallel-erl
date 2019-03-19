@@ -30,10 +30,6 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  */
 public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistributedMasterJMS {
 
-	public static void main(String... args) throws Exception {
-		extensibleMain(EvlModuleDistributedMasterJMSBatchAsync.class, args);
-	}
-	
 	List<ConstraintContextAtom> jobs;
 	List<DistributedEvlBatch> batches;
 	

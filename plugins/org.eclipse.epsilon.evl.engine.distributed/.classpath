@@ -11,12 +11,12 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.epsilon.eol.engine"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.epsilon.erl.engine"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.epsilon.evl.engine"/>
-	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.common_2.14.0.v20180308-1144.jar"/>
-	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.ecore.xmi_2.14.0.v20180129-1548.jar"/>
-	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.eclipse.emf.ecore_2.14.0.v20180213-0937.jar"/>
-	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.antlr.runtime_3.2.0.v201101311130.jar"/>
-	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/org.apache.commons.cli_1.4.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.epsilon.common.cli"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.epsilon.eol.cli"/>
+	<classpathentry kind="lib" path="C:/Users/Sina/Google Drive/PhD/Experiments/bin/dependencies/org.apache.commons.cli_1.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sina/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.common_2.15.0.v20180914-1817.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sina/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.ecore.xmi_2.15.0.v20180706-1146.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sina/Google Drive/PhD/Experiments/bin/dependencies/org.eclipse.emf.ecore_2.16.0.v20181124-0637.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Sina/Google Drive/PhD/Experiments/bin/dependencies/org.antlr.runtime_3.2.0.v201101311130.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -10,6 +10,7 @@
 package org.eclipse.epsilon.evl.distributed.launch;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,18 +32,65 @@ import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
  */
 public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 	
-	public static Builder<DistributedEvlRunConfiguration, ?> Builder() {
-		return Builder(DistributedEvlRunConfiguration.class);
+	public static Builder<? extends DistributedEvlRunConfiguration, ?> Builder() {
+		return new Builder<>(DistributedEvlRunConfiguration.class);
 	}
+	
+	@SuppressWarnings("unchecked")
+	public static class Builder<D extends DistributedEvlRunConfiguration, B extends Builder<D, B>> extends EvlRunConfiguration.Builder<D, B> {
+		public String basePath;
+		
+		protected Builder(Class<D> runConfigClass) {
+			super(runConfigClass);
+		}
+		
+		public B withBasePath(String base) {
+			this.basePath = base;
+			return (B) this;
+		}
+		
+		@Override
+		public D build() {
+			for (StringProperties props : modelsAndProperties.values()) {
+				props.replaceAll((k, v) -> {
+					if (v instanceof String) {
+						String s = (String) v;
+						String fp = "file://";
+						return s.replace(fp, fp + basePath);
+					}
+					return v;
+				});
+			}
+			if (script != null) {
+				script = Paths.get(basePath, script.toString());
+			}
+			if (outputFile != null) {
+				outputFile = Paths.get(basePath, outputFile.toString());
+			}
+			
+			return super.build();
+		}
+	}
+	
+	public static String removeBasePath(String basePath, String fullPath) {
+		String fp = "file://";
+		return fullPath
+			.replace(fp+basePath, "")
+			.replace(fp+"/"+basePath, "");
+	}
+	
+	protected final String basePath;
 	
 	public DistributedEvlRunConfiguration(EvlRunConfiguration other) {
 		super(other);
+		basePath = "/";
 	}
 	
-	public DistributedEvlRunConfiguration(Builder<DistributedEvlRunConfiguration, ?> builder) {
-		super(builder.withProfiling());
+	public DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
+		super(builder);
 		EvlContextDistributedMaster context = (EvlContextDistributedMaster) getModule().getContext();
 		context.setModelProperties(this.modelsAndProperties.values());
+		context.setBasePath(this.basePath = builder.basePath);
 		if (outputFile != null) {
 			context.setOutputPath(outputFile.toString());
 		}
@@ -51,17 +99,20 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 	/**
 	 * This constructor is to be called by workers as a convenient
 	 * data holder for initializing Epsilon.
+	 * 
 	 * @param evlFile
 	 * @param modelsAndProperties
 	 * @param evlModule
 	 * @param parameters
 	 */
 	public DistributedEvlRunConfiguration(
+		String basePath,
 		Path evlFile,
 		Map<IModel, StringProperties> modelsAndProperties,
 		EvlModuleDistributedSlave evlModule,
 		Map<String, Object> parameters) {
-			super(Builder(DistributedEvlRunConfiguration.class)
+			this((Builder<? extends DistributedEvlRunConfiguration, ?>)Builder()
+				.withBasePath(basePath)
 				.withScript(evlFile)
 				.withModels(modelsAndProperties)
 				.withModule(evlModule)
@@ -69,7 +120,7 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 				//.withProfiling()
 			);
 	}
-	
+
 	/**
 	 * Convenience method for serializing the profiling information of a
 	 * slave worker to be sent to the master.
