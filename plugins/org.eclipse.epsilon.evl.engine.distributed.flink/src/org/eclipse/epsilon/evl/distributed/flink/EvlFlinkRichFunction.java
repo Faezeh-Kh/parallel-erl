@@ -53,7 +53,7 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 	public void open(Configuration additionalParameters) throws Exception {
 		
 		configContainer = EvlContextDistributedSlave.parseJobParameters(
-			getParameters(getRuntimeContext(), additionalParameters).toMap()
+			getParameters(getRuntimeContext(), additionalParameters).toMap(), null
 		);
 		localModule = (EvlModuleDistributedSlave) configContainer.getModule();
 		

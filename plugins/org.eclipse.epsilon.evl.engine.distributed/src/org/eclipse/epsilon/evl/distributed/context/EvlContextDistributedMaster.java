@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.context.Variable;
 import org.eclipse.epsilon.eol.models.IModel;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
@@ -82,7 +81,7 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	}
 	
 	protected String removeBasePath(String fullPath) {
-		return DistributedEvlRunConfiguration.removeBasePath(basePath, fullPath);
+		return fullPath.replace(basePath, "");
 	}
 	
 	/**

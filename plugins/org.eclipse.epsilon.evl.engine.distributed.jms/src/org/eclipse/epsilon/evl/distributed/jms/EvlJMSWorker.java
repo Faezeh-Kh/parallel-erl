@@ -61,12 +61,14 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
-	String id, basePath;
+	final String basePath;
+	String id;
 	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
 
 	public EvlJMSWorker(String host, String basePath) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
+		this.basePath = basePath;
 	}
 	
 	@Override

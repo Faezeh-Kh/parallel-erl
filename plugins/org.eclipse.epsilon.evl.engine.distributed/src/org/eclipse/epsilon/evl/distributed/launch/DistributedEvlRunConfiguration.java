@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.launch;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -53,10 +54,9 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 		public D build() {
 			for (StringProperties props : modelsAndProperties.values()) {
 				props.replaceAll((k, v) -> {
-					if (v instanceof String) {
-						String s = (String) v;
-						String fp = "file://";
-						return s.replace(fp, fp + basePath);
+					// TODO better way to determine if there is a path?
+					if (v instanceof String && ((String)v).startsWith("file://")) {
+						return appendBasePath(basePath, (String) v);
 					}
 					return v;
 				});
@@ -72,11 +72,8 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 		}
 	}
 	
-	public static String removeBasePath(String basePath, String fullPath) {
-		String fp = "file://";
-		return fullPath
-			.replace(fp+basePath, "")
-			.replace(fp+"/"+basePath, "");
+	public static String appendBasePath(String basePath, String relPath) {
+		return Paths.get(basePath, URI.create(relPath).getPath()).toUri().toString();
 	}
 	
 	protected final String basePath;
@@ -111,14 +108,15 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 		Map<IModel, StringProperties> modelsAndProperties,
 		EvlModuleDistributedSlave evlModule,
 		Map<String, Object> parameters) {
-			this((Builder<? extends DistributedEvlRunConfiguration, ?>)Builder()
+			super(Builder()
 				.withBasePath(basePath)
 				.withScript(evlFile)
 				.withModels(modelsAndProperties)
 				.withModule(evlModule)
 				.withParameters(parameters)
-				//.withProfiling()
+				.withProfiling()
 			);
+			this.basePath = basePath;
 	}
 
 	/**

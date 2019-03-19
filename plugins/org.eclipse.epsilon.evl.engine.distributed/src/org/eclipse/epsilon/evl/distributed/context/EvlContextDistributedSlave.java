@@ -60,7 +60,7 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		);
 		
 		return new DistributedEvlRunConfiguration(
-			basePath,
+			basePath != null ? basePath : Objects.toString(config.get("basePath"), "/"),
 			evlScriptPath,
 			localModelsAndProperties,
 			localModule,
