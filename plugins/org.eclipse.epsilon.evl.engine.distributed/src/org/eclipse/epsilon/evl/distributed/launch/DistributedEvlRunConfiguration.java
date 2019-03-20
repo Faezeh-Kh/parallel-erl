@@ -68,7 +68,7 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 				outputFile = Paths.get(basePath, outputFile.toString());
 			}
 			
-			return super.build();
+			return super.buildReflective(null);
 		}
 	}
 	

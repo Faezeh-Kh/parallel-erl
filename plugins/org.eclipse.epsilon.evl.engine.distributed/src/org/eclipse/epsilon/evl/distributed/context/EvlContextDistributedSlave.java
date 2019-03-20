@@ -9,10 +9,9 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.context;
 
-import static org.eclipse.epsilon.eol.cli.EolConfigParser.parseModelParameters;
-import static org.eclipse.epsilon.eol.cli.EolConfigParser.parseScriptParameters;
+import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
+import static org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster.*;
 import java.io.Serializable;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
@@ -41,27 +40,36 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 	}
 	
 	public static DistributedEvlRunConfiguration parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {
-		Path evlScriptPath = Paths.get(Objects.toString(config.get("evlScript"), null));
+		String normBasePath = basePath.replace("\\", "/");
+		if (!normBasePath.endsWith("/")) normBasePath += "/";
+		String masterBasePath = Objects.toString(config.get(BASE_PATH), null);
+		String evlScriptPath = Objects.toString(config.get(EVL_SCRIPT), null);
+		if (evlScriptPath == null) throw new IllegalStateException("No script path!");
 		
-		int numModels = Integer.parseInt(Objects.toString(config.get("numberOfModels"), null));
+		evlScriptPath = evlScriptPath.replace(masterBasePath, normBasePath);
+		
+		int numModels = Integer.parseInt(Objects.toString(config.get(NUM_MODELS), null));
 		String[] modelsConfig = new String[numModels];
 		for (int i = 0; i < numModels; i++) {
-			modelsConfig[i] = Objects.toString(config.get("model"+i), null);
+			String modelConfig = Objects.toString(config.get(MODEL_PREFIX+i), null);
+			if (modelConfig != null) {
+				modelsConfig[i] = modelConfig.replace(masterBasePath, normBasePath);
+			}
 		}
 		
 		Map<IModel, StringProperties> localModelsAndProperties = parseModelParameters(modelsConfig);
 		
 		Map<String, Object> scriptVariables = parseScriptParameters(
-			Objects.toString(config.get("scriptParameters"), "").split(",")
+			Objects.toString(config.get(SCRIPT_PARAMS), "").split(",")
 		);
 		
 		EvlModuleDistributedSlave localModule = new EvlModuleDistributedSlave(
-			Integer.parseInt(Objects.toString(config.get("localParallelism"), "0"))
+			Integer.parseInt(Objects.toString(config.get(LOCAL_PARALLELISM), "0"))
 		);
 		
 		return new DistributedEvlRunConfiguration(
-			basePath != null ? basePath : Objects.toString(config.get("basePath"), "/"),
-			evlScriptPath,
+			normBasePath,
+			Paths.get(evlScriptPath),
 			localModelsAndProperties,
 			localModule,
 			scriptVariables

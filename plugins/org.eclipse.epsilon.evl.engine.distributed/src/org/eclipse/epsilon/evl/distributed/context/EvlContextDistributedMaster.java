@@ -10,6 +10,9 @@
 package org.eclipse.epsilon.evl.distributed.context;
 
 import java.io.Serializable;
+import static java.net.URLDecoder.*;
+import static java.net.URLEncoder.*;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,6 +33,17 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
  */
 public class EvlContextDistributedMaster extends EvlContextParallel {
 
+	static final String
+		BASE_PATH = "basePath",
+		BASE_PATH_SUBSTITUTE = "//BASEPATH//",
+		LOCAL_PARALLELISM = "localParallelism",
+		DISTRIBUTED_PARALLELISM = "distributedParallelism",
+		EVL_SCRIPT = "evlScript",
+		OUTPUT_DIR = "output",
+		NUM_MODELS = "numberOfModels",
+		MODEL_PREFIX = "model",
+		SCRIPT_PARAMS = "scriptParameters";
+	
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
 	protected int distributedParallelism;
@@ -65,7 +79,14 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	}
 	
 	public void setBasePath(String path) {
-		this.basePath = path;
+		if (path != null) {
+			try {
+				this.basePath = decode(java.net.URI.create(encode(path)).normalize().toString());
+			}
+			catch (IllegalArgumentException iax) {
+				this.basePath = Paths.get(path).normalize().toString();
+			}
+		}
 	}
 
 	/**
@@ -80,8 +101,33 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 			.collect(Collectors.toSet());
 	}
 	
-	protected String removeBasePath(String fullPath) {
-		return fullPath.replace(basePath, "");
+	protected String removeBasePath(Object fullPath) {
+		String fpStr = Objects.toString(fullPath);
+		try {
+			String fpNormal = fpStr
+				.replace("\\", "/")
+				.replace(basePath, BASE_PATH_SUBSTITUTE)
+				.replace(
+					java.net.URI.create(encode(basePath)).normalize().toString(), BASE_PATH_SUBSTITUTE
+				)
+				.replace(basePath.replace(" ", "%20"), BASE_PATH_SUBSTITUTE);
+			
+			/*try {
+				fpNormal = Paths.get(fpStr).normalize().toString();
+			}
+			catch (InvalidPathException ipx) {
+				try {
+					fpNormal = java.net.URI.create(fpStr).normalize().toString();
+				}
+				catch (IllegalArgumentException iax) {
+					fpNormal = decode(java.net.URI.create(encode(fpStr)).normalize().toString());
+				}
+			}*/
+			return fpNormal.replace(basePath, BASE_PATH_SUBSTITUTE);
+		}
+		catch (Exception ex) {
+			return fpStr;
+		}
 	}
 	
 	/**
@@ -94,15 +140,15 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	public HashMap<String, ? extends Serializable> getJobParameters() {
 		HashMap<String, Serializable> config = new HashMap<>();
 		
-		config.put("basePath", basePath);
-		config.put("localParallelism", numThreads);
-		config.put("distributedParallelism", distributedParallelism);
-		config.put("evlScript", removeBasePath(getModule().getFile().toPath().toString()));
-		config.put("output", outputDir);
+		config.put(BASE_PATH, BASE_PATH_SUBSTITUTE);
+		config.put(LOCAL_PARALLELISM, numThreads);
+		config.put(DISTRIBUTED_PARALLELISM, distributedParallelism);
+		config.put(EVL_SCRIPT, removeBasePath(getModule().getFile().toPath().toString()));
+		config.put(OUTPUT_DIR, outputDir);
 		
 		List<IModel> models = getModelRepository().getModels();
 		int numModels = models.size();
-		config.put("numberOfModels", numModels);
+		config.put(NUM_MODELS, numModels);
 		
 		if (modelProperties != null) {
 			assert numModels == modelProperties.size();
@@ -110,11 +156,10 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 			Iterator<StringProperties> modelPropertiesIter = modelProperties.iterator();
 			
 			for (int i = 0; i < numModels; i++) {
-				config.put("model"+i,
+				config.put(MODEL_PREFIX+i,
 					models.get(i).getClass().getName().replace("org.eclipse.epsilon.emc.", "")+"#"+
 					modelPropertiesIter.next().entrySet().stream()
-						.map(entry -> entry.getKey()+"="+entry.getValue())
-						.map(this::removeBasePath)
+						.map(entry -> entry.getKey()+"="+removeBasePath(entry.getValue()))
 						.collect(Collectors.joining(","))
 				);
 			}
@@ -126,7 +171,7 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 				.map(v -> v.getName() + "=" + Objects.toString(v.getValue()))
 				.collect(Collectors.joining(","));
 			
-			config.put("scriptParameters", variablesFlattened);
+			config.put(SCRIPT_PARAMS, variablesFlattened);
 		}
 		
 		return config;
