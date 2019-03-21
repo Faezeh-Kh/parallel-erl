@@ -68,7 +68,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		RESULTS_QUEUE_NAME = "results",
 		WORKER_ID_PREFIX = "EVL-jms-",
 		LAST_MESSAGE_PROPERTY = "lastMsg",
-		ID_PROPERTY = "wid";
+		ID_PROPERTY = "wid",
+		CONFIG_HASH = "configChecksum";
 	
 	protected final String host;
 	protected final int expectedSlaves;
@@ -97,10 +98,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			// Initial registration of workers
 			final Destination tempDest = regContext.createTemporaryQueue();
-			//final Topic configTopic = regContext.createTopic(CONFIG_TOPIC);
 			final JMSProducer regProducer = regContext.createProducer();
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 			final Serializable config = getContext().getJobParameters();
+			final int configHash = config.hashCode();
 			final AtomicInteger registeredWorkers = new AtomicInteger();
 			
 			log("Awaiting workers");
@@ -117,6 +118,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					Message configMsg = regContext.createObjectMessage(config);
 					configMsg.setJMSReplyTo(tempDest);
 					configMsg.setStringProperty(ID_PROPERTY, workerID);
+					configMsg.setIntProperty(CONFIG_HASH, configHash);
 					regProducer.send(msg.getJMSReplyTo(), configMsg);
 				}
 				catch (JMSException jmx) {
@@ -141,6 +143,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				// Triggered when a worker has completed loading the configuration
 				regContext.createConsumer(tempDest).setMessageListener(response -> {
 					try {
+						final int receivedHash = response.getIntProperty(CONFIG_HASH);
+						if (receivedHash != configHash) {
+							throw new java.lang.IllegalStateException("Received invalid configuration checksum!");
+						}
 						confirmWorker(response, resultsContext, readyWorkers);
 					}
 					catch (JMSException jmx) {
@@ -310,7 +316,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 */
 	protected void confirmWorker(final Message response, final JMSContext session, final AtomicInteger workersReady) throws JMSException {
 		String worker = response.getStringProperty(ID_PROPERTY);
-		
 		if (!slaveWorkers.containsKey(worker)) {
 			throw new JMSRuntimeException("Could not find worker with id "+worker);
 		}

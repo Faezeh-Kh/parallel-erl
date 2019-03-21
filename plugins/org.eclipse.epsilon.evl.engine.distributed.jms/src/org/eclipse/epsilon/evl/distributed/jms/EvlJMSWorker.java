@@ -111,14 +111,17 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		this.id = configMsg.getStringProperty(ID_PROPERTY);
 		log("Configuration and ID received");
 		
-		configContainer = EvlContextDistributedSlave.parseJobParameters(configMsg.getBody(Map.class), basePath);
+		Map<String, ? extends Serializable> configMap = configMsg.getBody(Map.class);
+		configContainer = EvlContextDistributedSlave.parseJobParameters(configMap, basePath);
 		configContainer.preExecute();
 		(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
 		
 		// This is to acknowledge when we have completed loading the script(s) and model(s)
 		Message configuredAckMsg = regContext.createMessage();
 		configuredAckMsg.setStringProperty(ID_PROPERTY, id);
+		configuredAckMsg.setIntProperty(CONFIG_HASH, configMap.hashCode());
 		Destination configAckDest = configMsg.getJMSReplyTo();
+		
 		return () -> regProducer.send(configAckDest, configuredAckMsg);
 	}
 	
