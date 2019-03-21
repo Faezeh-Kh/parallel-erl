@@ -74,6 +74,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected final String host;
 	protected final int expectedSlaves;
 	protected final ConcurrentMap<String, Map<String, Duration>> slaveWorkers;
+	protected final Collection<Serializable> failedJobs;
 	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
@@ -84,6 +85,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		super(expectedWorkers);
 		this.host = host;
 		slaveWorkers = new ConcurrentHashMap<>(this.expectedSlaves = expectedWorkers);
+		failedJobs = new java.util.HashSet<>();
 	}
 	
 	@Override
@@ -199,12 +201,21 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				if (msg instanceof ObjectMessage) {
 					Serializable contents = ((ObjectMessage)msg).getObject();
 					if (contents instanceof Iterable) {
-						for (SerializableEvlResultAtom sra : (Iterable<? extends SerializableEvlResultAtom>)contents) {
-							unsatisfiedConstraints.add(sra.deserializeResult(this));
+						for (Serializable obj : (Iterable<? extends Serializable>)contents) {
+							if (obj instanceof SerializableEvlResultAtom) {
+								SerializableEvlResultAtom sra = (SerializableEvlResultAtom) obj;
+								unsatisfiedConstraints.add(sra.deserializeResult(this));
+							}
 						}
 					}
 					else if (contents instanceof SerializableEvlResultAtom) {
 						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
+					}
+					else synchronized (failedJobs) {
+						// Treat anything else (e.g. SerializableEvlInputAtom, DistributedEvlBatch) as a failure
+						if (failedJobs.add(contents)) {
+							failedJobs.notify();
+						}
 					}
 				}
 				

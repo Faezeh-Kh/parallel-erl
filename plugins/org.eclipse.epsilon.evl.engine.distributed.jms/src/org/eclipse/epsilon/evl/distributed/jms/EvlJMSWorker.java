@@ -19,10 +19,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.*;
@@ -141,8 +141,18 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			resultsSender.send(resultsQueue, resultsMessage);
 		};
 		
+		BiConsumer<Message, Exception> failedProcessor = (msg, ex) -> {
+			onFail(ex, msg);
+			if (msg instanceof ObjectMessage) try {
+				resultProcessor.accept(((ObjectMessage) msg).getObject());
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+		};
+		
 		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE)).setMessageListener(
-			getJobProcessor(resultProcessor, module)
+			getJobProcessor(resultProcessor, failedProcessor, module)
 		);
 		
 		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC)).setMessageListener(msg -> {
@@ -174,12 +184,16 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		log("Finished all jobs");
 	}
 	
-	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final EvlModuleDistributedSlave module) {
+	void onFail(Exception ex, Message msg) {
+		System.err.println("Failed job '"+msg+"': "+ex);
+	}
+	
+	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor, final EvlModuleDistributedSlave module) {
 		final AtomicInteger jobsInProgress = new AtomicInteger();
+		
 		return msg -> {
+			jobsInProgress.incrementAndGet();
 			try {
-				jobsInProgress.incrementAndGet();
-				
 				if (msg instanceof ObjectMessage) {
 					final Serializable msgObj = ((ObjectMessage)msg).getObject();
 					final Object resultObj;
@@ -212,8 +226,6 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					if (resultObj instanceof Serializable) {
 						resultProcessor.accept((Serializable) resultObj);
 					}
-					
-					jobsInProgress.decrementAndGet();
 				}
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
@@ -223,21 +235,16 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					log("Received unexpected message of type "+msg.getClass().getName());
 				}
 			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
+			catch (Exception ex) {
+				failedProcessor.accept(msg, ex);
 			}
-			catch (EolRuntimeException eox) {
-				throw new RuntimeException(eox);
-			}
-			finally {
-				// Wake up the main thread once all jobs have been processed.
-				if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) synchronized (finished) {
-					finished.notify();
-				}
+			// Wake up the main thread once all jobs have been processed.
+			if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) synchronized (finished) {
+				finished.notify();
 			}
 		};
 	}
-	
+
 	@Override
 	public void close() throws Exception {
 		if (connectionFactory instanceof AutoCloseable) {
