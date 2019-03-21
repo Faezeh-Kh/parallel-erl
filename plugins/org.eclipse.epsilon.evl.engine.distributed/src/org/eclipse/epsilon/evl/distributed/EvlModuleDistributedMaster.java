@@ -9,7 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -77,6 +80,33 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			)
 			.collect(Collectors.toSet())
 		);
+	}
+	
+	/**
+	 * Processes the serialized jobs using this module.
+	 * 
+	 * @param job
+	 * @throws EolRuntimeException
+	 * @return The serialized results
+	 */
+	protected Collection<SerializableEvlResultAtom> evaluateLocal(Object job) throws EolRuntimeException {
+		if (job instanceof Iterable) {
+			return evaluateLocal(((Iterable<?>) job).iterator());
+		}
+		else if (job instanceof Iterator) {
+			Collection<SerializableEvlResultAtom> results = new ArrayList<>();
+			for (Iterator<?> it = (Iterator<?>) job; it.hasNext();) {
+				results.addAll(evaluateLocal(it.next()));
+			}
+			return results;
+		}
+		if (job instanceof SerializableEvlInputAtom) {
+			return ((SerializableEvlInputAtom) job).evaluate(this);
+		}
+		else if (job instanceof DistributedEvlBatch) {
+			return ((DistributedEvlBatch) job).evaluate(this);
+		}
+		else return Collections.emptyList();
 	}
 	
 	@Override

@@ -17,10 +17,11 @@ import java.util.stream.IntStream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
+import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
-import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
+import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * Simple over-the-wire input for telling each node the start and end indexes
@@ -93,7 +94,11 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		return list.subList(from, to);
 	}
 	
-	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, EvlContextParallel context) throws EolRuntimeException {
+	public final Collection<SerializableEvlResultAtom> evaluate(EvlModuleParallel module) throws EolRuntimeException {
+		return evaluate(ConstraintContextAtom.getContextJobs(module), module.getContext());
+	}
+	
+	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, IEvlContextParallel context) throws EolRuntimeException {
 		EolExecutorService executor = context.beginParallelTask(null);
 		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
 		

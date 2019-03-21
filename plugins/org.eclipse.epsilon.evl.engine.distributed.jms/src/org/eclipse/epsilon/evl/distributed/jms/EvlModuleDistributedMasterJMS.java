@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -27,7 +28,7 @@ import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
@@ -45,7 +46,7 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * 
  * - Jobs are sent to the workers (either as batches or individual model elements to evaluate) <br/>
  * 
- * - Workers send back results to results queue, which are then deserialized. <br/>
+ * - Workers send back results to results queue, which are then deserialized. <br/><br/>
  * 
  * Note that each worker is processed independently and asynchronously. That is, once a worker has connected,
  * it need not wait for other workers to connect or be in the same stage of registration. This module is
@@ -53,6 +54,18 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * registered. This class also tries to abstract away from the handshaking / messaging code by invoking methods
  * at key points in the back-and-forth messaging process within listeners which can be used to control the
  * execution strategy. See the {@link #checkConstraints()} method for where these "checkpoint" methods are.
+ * <br/><br/>
+ * 
+ * It is the responsibility of subclasses to handled failed jobs sent from workers. The {@link #failedJobs}
+ * collection gets appended to every time a failure message is received. This message will usually be the job that
+ * was sent to the worker. Every time a failure is added, the collection object's monitor is notified.
+ * Implementations can use this to listen for failures and take appropriate action, such as re-scheduling the jobs
+ * or processing them directly. Although this handling can happen at any stage (e.g. either during execution or once
+ * all workers have finished), the {@link #processFailedJobs(JMSContext)} method is guaranteed to be called after
+ * {@linkplain #waitForWorkersToFinishJobs(AtomicInteger, JMSContext)} so any remaining jobs will be processed
+ * if they have not been handled. This therefore requires that implementations should remove jobs if they process
+ * them during execution to avoid unnecessary duplicate processing. <br/>
+ * It should also be noted that the {@link #failedJobs} is not thread-safe, so manual synchronization is required.
  * 
  * @see EvlJMSWorker
  * @author Sina Madani
@@ -159,13 +172,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				try (JMSContext jobContext = resultsContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 					processJobs(readyWorkers, jobContext);
 					waitForWorkersToFinishJobs(workersFinished, jobContext);
+					processFailedJobs(jobContext);
 				}
 			}
 			catch (Exception ex) {
+				if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
 				if (ex instanceof JMSException) throw new JMSRuntimeException(ex.getMessage());
-				else if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
 				else throw new EolRuntimeException(ex);
 			}
+		}
+	}
+	
+	protected void processFailedJobs(JMSContext jobContext) throws EolRuntimeException {
+		for (Iterator<? extends Serializable> it = failedJobs.iterator(); it.hasNext(); it.remove()) {
+			evaluateLocal(it.next());
 		}
 	}
 	
