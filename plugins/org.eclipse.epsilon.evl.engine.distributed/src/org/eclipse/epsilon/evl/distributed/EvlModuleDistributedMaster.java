@@ -83,6 +83,33 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	}
 	
 	/**
+	 * Deserializes the object if it is a valid result type and adds it to
+	 * the unsatisfied constraints.
+	 * 
+	 * @param reponse The serializable result object.
+	 * @return Whether the object was a valid result
+	 * 
+	 * @throws EolRuntimeException
+	 */
+	protected boolean deserializeResults(Object reponse) throws EolRuntimeException {
+		if (reponse instanceof Iterable) {
+			return deserializeResults(((Iterable<?>) reponse).iterator());
+		}
+		else if (reponse instanceof Iterator) {
+			boolean result = true;
+			for (Iterator<?> contentsIter = (Iterator<?>) reponse; contentsIter.hasNext();) {
+				result = deserializeResults(contentsIter.next()) && result;
+			}
+			return result;
+		}
+		else if (reponse instanceof SerializableEvlResultAtom) {
+			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) reponse).deserializeResult(this));
+			return true;
+		}
+		else return false;
+	}
+	
+	/**
 	 * Processes the serialized jobs using this module.
 	 * 
 	 * @param job

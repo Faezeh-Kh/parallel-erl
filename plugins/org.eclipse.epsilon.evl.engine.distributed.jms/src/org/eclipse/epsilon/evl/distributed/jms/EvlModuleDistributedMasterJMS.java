@@ -28,8 +28,6 @@ import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.*;
-import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -187,8 +185,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 	
 	protected void processFailedJobs(JMSContext jobContext) throws EolRuntimeException {
-		for (Iterator<? extends Serializable> it = failedJobs.iterator(); it.hasNext(); it.remove()) {
-			evaluateLocal(it.next());
+		if (!failedJobs.isEmpty()) {
+			log("Processing "+failedJobs.size()+" failed jobs...");
+			for (Iterator<Serializable> it = failedJobs.iterator(); it.hasNext(); it.remove()) {
+				evaluateLocal(it.next());
+			}
 		}
 	}
 	
@@ -212,29 +213,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @return A callback which can handle the semantics of results processing (i.e. deserialization and
 	 * assignment) as well as co-ordination (signalling of completion etc.)
 	 */
-	@SuppressWarnings("unchecked")
 	protected MessageListener getResultsMessageListener(final AtomicInteger workersFinished) {
-		final Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
 		final AtomicInteger resultsInProgress = new AtomicInteger();
-		
 		return msg -> {
 			try {
 				resultsInProgress.incrementAndGet();
 				
 				if (msg instanceof ObjectMessage) {
 					Serializable contents = ((ObjectMessage)msg).getObject();
-					if (contents instanceof Iterable) {
-						for (Serializable obj : (Iterable<? extends Serializable>)contents) {
-							if (obj instanceof SerializableEvlResultAtom) {
-								SerializableEvlResultAtom sra = (SerializableEvlResultAtom) obj;
-								unsatisfiedConstraints.add(sra.deserializeResult(this));
-							}
-						}
-					}
-					else if (contents instanceof SerializableEvlResultAtom) {
-						unsatisfiedConstraints.add(((SerializableEvlResultAtom) contents).deserializeResult(this));
-					}
-					else synchronized (failedJobs) {
+					if (!deserializeResults(contents)) synchronized (failedJobs) {
 						// Treat anything else (e.g. SerializableEvlInputAtom, DistributedEvlBatch) as a failure
 						if (failedJobs.add(contents)) {
 							failedJobs.notify();
