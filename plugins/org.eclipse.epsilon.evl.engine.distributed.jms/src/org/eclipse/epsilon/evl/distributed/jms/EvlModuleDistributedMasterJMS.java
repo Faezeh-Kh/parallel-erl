@@ -193,10 +193,21 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
+	/**
+	 * Sends the job to the job queue.
+	 * 
+	 * @param msgBody The workload (job)
+	 * @throws JMSException
+	 */
 	protected final void sendJob(Serializable msgBody) throws JMSException {
 		jobSender.acceptThrows(msgBody);
 	}
 	
+	/**
+	 * Broadcasts end of jobs to all workers.
+	 * 
+	 * @throws JMSException
+	 */
 	protected final void signalCompletion() throws JMSException {
 		completionSender.runThrows();
 	}
@@ -219,16 +230,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			try {
 				resultsInProgress.incrementAndGet();
 				
-				if (msg instanceof ObjectMessage) {
-					Serializable contents = ((ObjectMessage)msg).getObject();
-					if (!deserializeResults(contents)) synchronized (failedJobs) {
-						// Treat anything else (e.g. SerializableEvlInputAtom, DistributedEvlBatch) as a failure
-						if (failedJobs.add(contents)) {
-							failedJobs.notify();
-						}
-					}
-				}
-				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(ID_PROPERTY);
 					if (!slaveWorkers.containsKey(workerID)) {
@@ -247,6 +248,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						}
 						synchronized (workersFinished) {
 							workersFinished.notify();
+						}
+					}
+				}
+				else if (msg instanceof ObjectMessage) {
+					Serializable contents = ((ObjectMessage)msg).getObject();
+					if (!deserializeResults(contents)) synchronized (failedJobs) {
+						// Treat anything else (e.g. SerializableEvlInputAtom, DistributedEvlBatch) as a failure
+						if (failedJobs.add(contents)) {
+							failedJobs.notify();
 						}
 					}
 				}
