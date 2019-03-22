@@ -108,21 +108,29 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		
 		// Get the configuration and our ID
 		Message configMsg = regContext.createConsumer(tempQueue).receive();
-		this.id = configMsg.getStringProperty(ID_PROPERTY);
-		log("Configuration and ID received");
-		
-		Map<String, ? extends Serializable> configMap = configMsg.getBody(Map.class);
-		configContainer = EvlContextDistributedSlave.parseJobParameters(configMap, basePath);
-		configContainer.preExecute();
-		(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
-		
-		// This is to acknowledge when we have completed loading the script(s) and model(s)
-		Message configuredAckMsg = regContext.createMessage();
-		configuredAckMsg.setStringProperty(ID_PROPERTY, id);
-		configuredAckMsg.setIntProperty(CONFIG_HASH, configMap.hashCode());
 		Destination configAckDest = configMsg.getJMSReplyTo();
+		Message configuredAckMsg = regContext.createMessage();
+		Runnable ackSender = () -> regProducer.send(configAckDest, configuredAckMsg);
 		
-		return () -> regProducer.send(configAckDest, configuredAckMsg);
+		try {
+			this.id = configMsg.getStringProperty(ID_PROPERTY);
+			log("Configuration and ID received");
+			configuredAckMsg.setStringProperty(ID_PROPERTY, id);
+			
+			Map<String, ? extends Serializable> configMap = configMsg.getBody(Map.class);
+			configContainer = EvlContextDistributedSlave.parseJobParameters(configMap, basePath);
+			configContainer.preExecute();
+			(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
+
+			// This is to acknowledge when we have completed loading the script(s) and model(s) successfully
+			configuredAckMsg.setIntProperty(CONFIG_HASH, configMap.hashCode());
+			return ackSender;
+		}
+		catch (Exception ex) {
+			// Tell the master we failed
+			ackSender.run();
+			throw ex;
+		}
 	}
 	
 	void prepareToProcessJobs(JMSContext jobContext) throws JMSException {

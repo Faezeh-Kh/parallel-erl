@@ -139,6 +139,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				catch (JMSException jmx) {
 					throw new JMSRuntimeException(jmx.getMessage());
 				}
+				catch (NumberFormatException nan) {
+					throw new java.lang.IllegalStateException("Worker registration failed!");
+				}
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
