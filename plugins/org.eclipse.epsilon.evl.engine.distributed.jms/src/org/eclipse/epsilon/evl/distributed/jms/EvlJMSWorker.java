@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.*;
@@ -39,22 +41,23 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
 public final class EvlJMSWorker implements Runnable, AutoCloseable {
 
 	public static void main(String... args) throws Exception {
-		if (args.length < 1) throw new java.lang.IllegalStateException(
-			"Must provide base path!"
+		if (args.length < 2) throw new java.lang.IllegalStateException(
+			"Must provide base path and session ID!"
 		);
-		
 		String basePath = args[0];
+		int sessionID = Integer.valueOf(args[1]);
 		
 		String host = "tcp://localhost:61616";
-		if (args.length > 1) try {
-			host = new URI(args[1]).toString();
+		if (args.length > 2) try {
+			host = new URI(args[2]).toString();
 		}
 		catch (URISyntaxException urx) {
 			System.err.println(urx);
 			System.err.println("Using default "+host);
 		}
 		
-		try (EvlJMSWorker worker = new EvlJMSWorker(host, basePath)) {
+		try (EvlJMSWorker worker = new EvlJMSWorker(host, basePath, sessionID)) {
+			System.out.println("Worker started for session "+sessionID);
 			worker.run();
 		}
 	}
@@ -62,13 +65,15 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	final String basePath;
-	String id;
+	final int sessionID;
+	String workerID;
 	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
 
-	public EvlJMSWorker(String host, String basePath) {
+	public EvlJMSWorker(String host, String basePath, int sessionID) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
 		this.basePath = basePath;
+		this.sessionID = sessionID;
 	}
 	
 	@Override
@@ -98,7 +103,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	Runnable setup(JMSContext regContext) throws Exception {
 		// Announce our presence to the master
-		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE);
+		Queue regQueue = regContext.createQueue(REGISTRATION_QUEUE+sessionID);
 		JMSProducer regProducer = regContext.createProducer();
 		regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 		Message initMsg = regContext.createMessage();
@@ -113,9 +118,9 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		Runnable ackSender = () -> regProducer.send(configAckDest, configuredAckMsg);
 		
 		try {
-			this.id = configMsg.getStringProperty(ID_PROPERTY);
+			this.workerID = configMsg.getStringProperty(WORKER_ID_PROPERTY);
 			log("Configuration and ID received");
-			configuredAckMsg.setStringProperty(ID_PROPERTY, id);
+			configuredAckMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 			
 			Map<String, ? extends Serializable> configMap = configMsg.getBody(Map.class);
 			configContainer = EvlContextDistributedSlave.parseJobParameters(configMap, basePath);
@@ -135,13 +140,13 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	void prepareToProcessJobs(JMSContext jobContext) throws JMSException {
 		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME);
+		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
 		JMSProducer resultsSender = jobContext.createProducer();
 		
 		Consumer<Serializable> resultProcessor = obj -> {
 			ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
 			try {
-				resultsMessage.setStringProperty(ID_PROPERTY, id);
+				resultsMessage.setStringProperty(WORKER_ID_PROPERTY, workerID);
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
@@ -159,11 +164,11 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			}
 		};
 		
-		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE)).setMessageListener(
+		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID)).setMessageListener(
 			getJobProcessor(resultProcessor, failedProcessor, module)
 		);
 		
-		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC)).setMessageListener(msg -> {
+		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
 			//assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
 			synchronized (finished) {
 				finished.set(true);
@@ -175,10 +180,10 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	void signalCompletion(JMSContext endContext) throws JMSException {
 		ObjectMessage finishedMsg = endContext.createObjectMessage();
-		finishedMsg.setStringProperty(ID_PROPERTY, id);
+		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
 		finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
-		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME), finishedMsg);
+		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 	}
 	
 	void awaitCompletion() {
@@ -196,6 +201,43 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		System.err.println("Failed job '"+msg+"': "+ex);
 	}
 	
+	/**
+	 * 
+	 * @param msgObj The Serializable input.
+	 * @param resultProcessor The action to perform on the result
+	 * @throws EolRuntimeException
+	 */
+	void evaluateJob(Object msgObj, Consumer<Serializable> resultProcessor) throws EolRuntimeException {
+		if (msgObj instanceof Iterable) {
+			evaluateJob(((Iterable<?>) msgObj).iterator(), resultProcessor);
+		}
+		else if (msgObj instanceof Iterator) {
+			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
+			for (Iterator<?> iter = (Iterator<?>) msgObj; iter.hasNext();) {
+				Object obj = iter.next();
+				if (obj instanceof SerializableEvlInputAtom) {
+					resultsCol.addAll(((SerializableEvlInputAtom) obj).evaluate(module));
+				}
+				else if (obj instanceof DistributedEvlBatch) {
+					resultsCol.addAll(module.evaluateBatch((DistributedEvlBatch) obj));
+				}
+			}
+			resultProcessor.accept(resultsCol);
+		}
+		if (msgObj instanceof SerializableEvlInputAtom) {
+			resultProcessor.accept((Serializable)((SerializableEvlInputAtom) msgObj).evaluate(module));
+		}
+		else if (msgObj instanceof DistributedEvlBatch) {
+			resultProcessor.accept((Serializable) module.evaluateBatch((DistributedEvlBatch) msgObj));
+		}
+		else if (msgObj instanceof java.util.stream.BaseStream) {
+			evaluateJob(((java.util.stream.BaseStream<?,?>)msgObj).iterator(), resultProcessor);
+		}
+		else {
+			log("Received unexpected object of type "+msgObj.getClass().getName());
+		}
+	}
+	
 	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor, final EvlModuleDistributedSlave module) {
 		final AtomicInteger jobsInProgress = new AtomicInteger();
 		
@@ -203,37 +245,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			jobsInProgress.incrementAndGet();
 			try {
 				if (msg instanceof ObjectMessage) {
-					final Serializable msgObj = ((ObjectMessage)msg).getObject();
-					final Object resultObj;
-					
-					if (msgObj instanceof SerializableEvlInputAtom) {
-						resultObj  = ((SerializableEvlInputAtom) msgObj).evaluate(module);
-					}
-					else if (msgObj instanceof Iterable) {
-						ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-						
-						for (Object obj : (Iterable<?>) msgObj) {
-							if (obj instanceof SerializableEvlInputAtom) {
-								resultsCol.addAll(((SerializableEvlInputAtom) obj).evaluate(module));
-							}
-							else if (obj instanceof DistributedEvlBatch) {
-								resultsCol.addAll(module.evaluateBatch((DistributedEvlBatch) obj));
-							}
-						}
-						
-						resultObj = resultsCol;
-					}
-					else if (msgObj instanceof DistributedEvlBatch) {
-						resultObj = module.evaluateBatch((DistributedEvlBatch) msgObj);
-					}
-					else {
-						resultObj = null;
-						log("Received unexpected object of type "+msgObj.getClass().getName());
-					}
-					
-					if (resultObj instanceof Serializable) {
-						resultProcessor.accept((Serializable) resultObj);
-					}
+					evaluateJob(((ObjectMessage)msg).getObject(), resultProcessor);
 				}
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
@@ -261,23 +273,23 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	}
 	
 	void log(Object message) {
-		System.out.println("["+id+"] "+LocalTime.now()+" "+message);
+		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
 	}
 	
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (!(obj instanceof EvlJMSWorker)) return false;
-		return Objects.equals(this.id, ((EvlJMSWorker)obj).id);
+		return Objects.equals(this.workerID, ((EvlJMSWorker)obj).workerID);
 	}
 	
 	@Override
 	public int hashCode() {
-		return Objects.hashCode(id);
+		return Objects.hashCode(workerID);
 	}
 	
 	@Override
 	public String toString() {
-		return getClass().getName()+"-"+id;
+		return getClass().getName()+"-"+workerID;
 	}
 }

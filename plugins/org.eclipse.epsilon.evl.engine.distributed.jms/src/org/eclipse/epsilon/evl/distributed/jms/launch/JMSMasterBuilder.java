@@ -23,7 +23,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
 public class JMSMasterBuilder<J extends JMSMasterRunner, B extends JMSMasterBuilder<J, B>> extends DistributedEvlRunConfiguration.Builder<J, B> {
 	
 	public String brokerHost = "tcp://localhost:61616";
-	public int expectedWorkers;
+	public int expectedWorkers, sessionID;
 	
 	public JMSMasterBuilder() {
 		this((Class<J>) JMSMasterRunner.class);
@@ -39,6 +39,11 @@ public class JMSMasterBuilder<J extends JMSMasterRunner, B extends JMSMasterBuil
 	
 	public B withWorkers(int expected) {
 		this.expectedWorkers = expected;
+		return (B) this;
+	}
+	
+	public B withSessionId(int sid) {
+		this.sessionID = sid;
 		return (B) this;
 	}
 }

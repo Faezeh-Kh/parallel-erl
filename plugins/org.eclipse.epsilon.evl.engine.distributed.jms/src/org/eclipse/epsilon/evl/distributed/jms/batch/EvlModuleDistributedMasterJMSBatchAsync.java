@@ -32,9 +32,9 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 
 	List<ConstraintContextAtom> jobs;
 	List<DistributedEvlBatch> batches;
-	
-	public EvlModuleDistributedMasterJMSBatchAsync(int expectedWorkers, String host) throws URISyntaxException {
-		super(expectedWorkers, host);
+
+	public EvlModuleDistributedMasterJMSBatchAsync(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+		super(expectedWorkers, host, sessionID);
 	}
 
 	@Override

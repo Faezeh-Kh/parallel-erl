@@ -91,20 +91,23 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	 * 
 	 * @throws EolRuntimeException
 	 */
-	protected boolean deserializeResults(Object reponse) throws EolRuntimeException {
-		if (reponse instanceof Iterable) {
-			return deserializeResults(((Iterable<?>) reponse).iterator());
+	protected boolean deserializeResults(Object response) throws EolRuntimeException {
+		if (response instanceof Iterable) {
+			return deserializeResults(((Iterable<?>) response).iterator());
 		}
-		else if (reponse instanceof Iterator) {
+		else if (response instanceof Iterator) {
 			boolean result = true;
-			for (Iterator<?> contentsIter = (Iterator<?>) reponse; contentsIter.hasNext();) {
+			for (Iterator<?> contentsIter = (Iterator<?>) response; contentsIter.hasNext();) {
 				result = deserializeResults(contentsIter.next()) && result;
 			}
 			return result;
 		}
-		else if (reponse instanceof SerializableEvlResultAtom) {
-			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) reponse).deserializeResult(this));
+		else if (response instanceof SerializableEvlResultAtom) {
+			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeResult(this));
 			return true;
+		}
+		else if (response instanceof java.util.stream.BaseStream<?,?>) {
+			return deserializeResults(((java.util.stream.BaseStream<?,?>) response).iterator());
 		}
 		else return false;
 	}

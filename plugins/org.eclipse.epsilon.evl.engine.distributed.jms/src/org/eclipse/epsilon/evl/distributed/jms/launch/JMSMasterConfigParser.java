@@ -32,7 +32,8 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		brokerHostOpt = "broker",
 		basePathOpt = "basePath",
 		expectedWorkersOpt = "workers",
-		masterModuleOpt = "master";
+		masterModuleOpt = "master",
+		sessionIdOpt = "session";
 	
 	@SuppressWarnings("unchecked")
 	public JMSMasterConfigParser() {
@@ -47,23 +48,24 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 			.desc("The module to use (must be subclass of "+EvlModuleDistributedMasterJMS.class.getSimpleName()+")")
 			.hasArg()
 			.build()
-		);
-		
-		options.addOption(Option.builder()
+		).addOption(Option.builder()
 			.longOpt(expectedWorkersOpt)
 			.desc("The expected number of slave workers")
 			.hasArg()
 			.build()
-		);
-		options.addOption(Option.builder()
+		).addOption(Option.builder()
 			.longOpt(brokerHostOpt)
 			.desc("Address of the JMS broker host")
 			.hasArg()
 			.build()
-		);
-		options.addOption(Option.builder()
+		).addOption(Option.builder()
 			.longOpt(basePathOpt)
 			.desc("Base directory to start looking for resources from")
+			.hasArg()
+			.build()
+		).addOption(Option.builder()
+			.longOpt(sessionIdOpt)
+			.desc("Identifier for the execution session")
 			.hasArg()
 			.build()
 		);
@@ -74,6 +76,7 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		super.parseArgs(args);
 		builder.brokerHost = cmdLine.getOptionValue(brokerHostOpt);
 		builder.basePath = cmdLine.getOptionValue(basePathOpt);
+		builder.sessionID = Integer.valueOf(cmdLine.getOptionValue(sessionIdOpt));
 		if (cmdLine.hasOption(expectedWorkersOpt)) {
 			builder.expectedWorkers = Integer.parseInt(cmdLine.getOptionValue(expectedWorkersOpt));
 		}
@@ -83,11 +86,11 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 			String pkg = getClass().getPackage().getName();
 			pkg = pkg.substring(0, pkg.lastIndexOf('.')+1);
 			builder.module = (EvlModuleDistributedMasterJMS) Class.forName(pkg + masterModule)
-				.getConstructor(int.class, String.class)
-				.newInstance(builder.expectedWorkers, builder.brokerHost);
+				.getConstructor(int.class, String.class, int.class)
+				.newInstance(builder.expectedWorkers, builder.brokerHost, builder.sessionID);
 		}
 		else {
-			builder.module = new EvlModuleDistributedMasterJMSAtomicSynch(builder.expectedWorkers, builder.brokerHost);
+			builder.module = new EvlModuleDistributedMasterJMSAtomicSynch(builder.expectedWorkers, builder.brokerHost, builder.sessionID);
 		}
 	}
 

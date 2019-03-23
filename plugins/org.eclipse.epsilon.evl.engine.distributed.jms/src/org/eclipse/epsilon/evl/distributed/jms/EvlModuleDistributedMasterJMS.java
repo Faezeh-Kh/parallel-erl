@@ -33,7 +33,7 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
  * 
  * - Master is invoked in usual way, given the usual data (script, models etc.)
- *  + URI of the broker + expected number of workers <br/>
+ *  + URI of the broker + expected number of workers + session ID <br/>
  *  
  * - Master waits on a registration queue for workers to confirm presence <br/>
  * 
@@ -45,6 +45,10 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
  * - Jobs are sent to the workers (either as batches or individual model elements to evaluate) <br/>
  * 
  * - Workers send back results to results queue, which are then deserialized. <br/><br/>
+ * 
+ * The purpose of the {@linkplain #sessionID} is to prevent unauthorized workers from connecting, or messages being
+ * received from different sessions. Every time a worker registers, they must provide the matching ID otherwise the
+ * connection will be rejected.<br/>
  * 
  * Note that each worker is processed independently and asynchronously. That is, once a worker has connected,
  * it need not wait for other workers to connect or be in the same stage of registration. This module is
@@ -79,10 +83,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		RESULTS_QUEUE_NAME = "results",
 		WORKER_ID_PREFIX = "EVL-jms-",
 		LAST_MESSAGE_PROPERTY = "lastMsg",
-		ID_PROPERTY = "wid",
+		WORKER_ID_PROPERTY = "workerID",
 		CONFIG_HASH = "configChecksum";
 	
 	protected final String host;
+	protected final int sessionID;
 	protected final int expectedSlaves;
 	protected final ConcurrentMap<String, Map<String, Duration>> slaveWorkers;
 	protected final Collection<Serializable> failedJobs;
@@ -92,9 +97,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	private CheckedConsumer<Serializable, JMSException> jobSender;
 	private CheckedRunnable<JMSException> completionSender;
 	
-	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers);
 		this.host = host;
+		this.sessionID = sessionID;
 		slaveWorkers = new ConcurrentHashMap<>(this.expectedSlaves = expectedWorkers);
 		failedJobs = new java.util.HashSet<>();
 	}
@@ -119,9 +125,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			
 			log("Awaiting workers");
 			// Triggered when a worker announces itself to the registration queue
-			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE)).setMessageListener(msg -> {
+			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE+sessionID)).setMessageListener(msg -> {
 				// For security / load purposes, stop additional workers from being picked up.
-				if (refuseAdditionalWorkers && registeredWorkers.get() >= expectedSlaves) return;
+				if (refuseAdditionalWorkers && registeredWorkers.get() >= expectedSlaves) {
+					return;
+				}
 				try {
 					// Assign worker ID
 					int currentWorkers = registeredWorkers.incrementAndGet();
@@ -130,7 +138,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					// Tell the worker what their ID is along with the configuration parameters
 					Message configMsg = regContext.createObjectMessage(config);
 					configMsg.setJMSReplyTo(tempDest);
-					configMsg.setStringProperty(ID_PROPERTY, workerID);
+					configMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 					configMsg.setIntProperty(CONFIG_HASH, configHash);
 					regProducer.send(msg.getJMSReplyTo(), configMsg);
 				}
@@ -144,15 +152,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				final JMSProducer jobsProducer = resultsContext.createProducer();
-				final Queue jobsQueue = resultsContext.createQueue(JOBS_QUEUE);
+				final Queue jobsQueue = resultsContext.createQueue(JOBS_QUEUE+sessionID);
 				jobSender = obj -> jobsProducer.send(jobsQueue, obj);
 				
-				final Topic completionTopic = resultsContext.createTopic(END_JOBS_TOPIC);
+				final Topic completionTopic = resultsContext.createTopic(END_JOBS_TOPIC+sessionID);
 				completionSender = () -> jobsProducer.send(completionTopic, resultsContext.createMessage());
 				
 				final AtomicInteger workersFinished = new AtomicInteger();
 				
-				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME))
+				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME+sessionID))
 					.setMessageListener(getResultsMessageListener(workersFinished));
 				
 				final AtomicInteger readyWorkers = new AtomicInteger();
@@ -231,7 +239,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				resultsInProgress.incrementAndGet();
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
-					String workerID = msg.getStringProperty(ID_PROPERTY);
+					String workerID = msg.getStringProperty(WORKER_ID_PROPERTY);
 					if (!slaveWorkers.containsKey(workerID)) {
 						throw new java.lang.IllegalStateException("Could not find worker with ID "+workerID);
 					}
@@ -346,7 +354,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @throws JMSException 
 	 */
 	protected void confirmWorker(final Message response, final JMSContext session, final AtomicInteger workersReady) throws JMSException {
-		String worker = response.getStringProperty(ID_PROPERTY);
+		String worker = response.getStringProperty(WORKER_ID_PROPERTY);
 		if (!slaveWorkers.containsKey(worker)) {
 			throw new JMSRuntimeException("Could not find worker with id "+worker);
 		}
