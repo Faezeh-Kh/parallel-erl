@@ -31,12 +31,8 @@ public class EvlModuleDistributedMasterJMSBatchSynch extends EvlModuleDistribute
 	}
 	
 	@Override
-	protected void processJobs(AtomicInteger readyWorkers, JMSContext jobContext) throws Exception {
-		// Await workers
-		while (readyWorkers.get() < expectedSlaves) synchronized (readyWorkers) {
-			readyWorkers.wait();
-		}
-		log("All workers connected");
+	protected void processJobs(AtomicInteger workersReady, JMSContext jobContext) throws Exception {
+		waitForWorkersToConnect(workersReady);
 		
 		final EvlContextDistributedMaster evlContext = getContext();
 		final int parallelism = evlContext.getDistributedParallelism()+1;

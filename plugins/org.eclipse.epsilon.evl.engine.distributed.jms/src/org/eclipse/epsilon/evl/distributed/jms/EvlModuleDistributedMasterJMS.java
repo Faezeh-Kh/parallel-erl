@@ -366,6 +366,21 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
+	/**
+	 * Blocks until all expected workers have connected.
+	 * 
+	 * @param workersReady The number of currently connected workers.
+	 */
+	protected void waitForWorkersToConnect(AtomicInteger workersReady) {
+		while (workersReady.get() < expectedSlaves) synchronized (workersReady) {
+			try {
+				workersReady.wait();
+			}
+			catch (InterruptedException ie) {}
+		}
+		log("All workers connected");
+	}
+	
 	@Override
 	protected void postExecution() throws EolRuntimeException {
 		// Merge the workers' execution times with this one
