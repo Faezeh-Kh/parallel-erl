@@ -32,7 +32,19 @@ public abstract class SerializableEvlAtom implements java.io.Serializable, Clone
 	public String modelElementID, modelName, contextName;
 
 	@Override
-	protected abstract SerializableEvlAtom clone();
+	protected SerializableEvlAtom clone() {
+		SerializableEvlAtom clone;
+		try {
+			clone = (SerializableEvlAtom) super.clone();
+		}
+		catch (CloneNotSupportedException cnsx) {
+			throw new UnsupportedOperationException(cnsx);
+		}
+		clone.modelElementID = ""+this.modelElementID;
+		clone.modelName = ""+this.modelName;
+		clone.contextName = ""+this.contextName;
+		return clone;
+	}
 	
 	@Override
 	public int hashCode() {

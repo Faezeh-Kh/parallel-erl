@@ -10,6 +10,7 @@
 package org.eclipse.epsilon.evl.distributed.context;
 
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import static java.net.URLDecoder.*;
 import static java.net.URLEncoder.*;
 import java.nio.file.Paths;
@@ -34,6 +35,7 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 public class EvlContextDistributedMaster extends EvlContextParallel {
 
 	static final String
+		ENCODING = java.nio.charset.StandardCharsets.UTF_8.toString(),
 		BASE_PATH = "basePath",
 		BASE_PATH_SUBSTITUTE = "//BASEPATH//",
 		LOCAL_PARALLELISM = "localParallelism",
@@ -81,9 +83,12 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	public void setBasePath(String path) {
 		if (path != null) {
 			try {
-				this.basePath = decode(java.net.URI.create(encode(path)).normalize().toString());
+				this.basePath = decode(
+					java.net.URI.create(encode(path, ENCODING)).normalize().toString(),
+					ENCODING
+				);
 			}
-			catch (IllegalArgumentException iax) {
+			catch (IllegalArgumentException | UnsupportedEncodingException iax) {
 				this.basePath = Paths.get(path).normalize().toString();
 			}
 		}
@@ -108,21 +113,11 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 				.replace("\\", "/")
 				.replace(basePath, BASE_PATH_SUBSTITUTE)
 				.replace(
-					java.net.URI.create(encode(basePath)).normalize().toString(), BASE_PATH_SUBSTITUTE
+					java.net.URI.create(encode(basePath, ENCODING))
+					.normalize().toString(), BASE_PATH_SUBSTITUTE
 				)
 				.replace(basePath.replace(" ", "%20"), BASE_PATH_SUBSTITUTE);
 			
-			/*try {
-				fpNormal = Paths.get(fpStr).normalize().toString();
-			}
-			catch (InvalidPathException ipx) {
-				try {
-					fpNormal = java.net.URI.create(fpStr).normalize().toString();
-				}
-				catch (IllegalArgumentException iax) {
-					fpNormal = decode(java.net.URI.create(encode(fpStr)).normalize().toString());
-				}
-			}*/
 			return fpNormal.replace(basePath, BASE_PATH_SUBSTITUTE);
 		}
 		catch (Exception ex) {

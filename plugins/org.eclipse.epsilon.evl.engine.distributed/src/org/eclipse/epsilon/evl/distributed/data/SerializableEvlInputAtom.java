@@ -34,11 +34,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
 	@Override
 	protected SerializableEvlInputAtom clone() {
-		SerializableEvlInputAtom clone = new SerializableEvlInputAtom();
-		clone.modelElementID = ""+this.modelElementID;
-		clone.modelName = ""+this.modelName;
-		clone.contextName = ""+this.contextName;
-		return clone;
+		return (SerializableEvlInputAtom) super.clone();
 	}
 	
 	/**

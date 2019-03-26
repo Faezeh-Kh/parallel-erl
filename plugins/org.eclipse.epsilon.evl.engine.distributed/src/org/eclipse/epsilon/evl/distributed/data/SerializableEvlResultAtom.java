@@ -34,12 +34,9 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 	
 	@Override
 	protected SerializableEvlResultAtom clone() {
-		SerializableEvlResultAtom clone = new SerializableEvlResultAtom();
+		SerializableEvlResultAtom clone = (SerializableEvlResultAtom) super.clone();
 		clone.constraintName = ""+this.constraintName;
 		clone.message = ""+this.message;
-		clone.modelElementID = ""+this.modelElementID;
-		clone.modelName = ""+this.modelName;
-		clone.contextName = ""+this.contextName;
 		return clone;
 	}
 	
