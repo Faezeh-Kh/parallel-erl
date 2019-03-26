@@ -13,8 +13,10 @@ import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
 import static org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster.*;
 import java.io.Serializable;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
@@ -45,19 +47,23 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 		String masterBasePath = Objects.toString(config.get(BASE_PATH), null);
 		String evlScriptPath = Objects.toString(config.get(EVL_SCRIPT), null);
 		if (evlScriptPath == null) throw new IllegalStateException("No script path!");
-		
 		evlScriptPath = evlScriptPath.replace(masterBasePath, normBasePath);
 		
-		int numModels = Integer.parseInt(Objects.toString(config.get(NUM_MODELS), null));
-		String[] modelsConfig = new String[numModels];
-		for (int i = 0; i < numModels; i++) {
-			String modelConfig = Objects.toString(config.get(MODEL_PREFIX+i), null);
-			if (modelConfig != null) {
-				modelsConfig[i] = modelConfig.replace(masterBasePath, normBasePath);
-			}
+		Map<IModel, StringProperties> localModelsAndProperties;
+		if (config.containsKey(IGNORE_MODELS)) {
+			localModelsAndProperties = Collections.emptyMap();
 		}
-		
-		Map<IModel, StringProperties> localModelsAndProperties = parseModelParameters(modelsConfig);
+		else {
+			int numModels = Integer.parseInt(Objects.toString(config.get(NUM_MODELS), "0"));
+			String[] modelsConfig = new String[numModels];
+			for (int i = 0; i < numModels; i++) {
+				String modelConfig = Objects.toString(config.get(MODEL_PREFIX+i), null);
+				if (modelConfig != null) {
+					modelsConfig[i] = modelConfig.replace(masterBasePath, normBasePath);
+				}
+			}
+			localModelsAndProperties = parseModelParameters(modelsConfig);
+		}
 		
 		Map<String, Object> scriptVariables = parseScriptParameters(
 			Objects.toString(config.get(SCRIPT_PARAMS), "").split(",")
@@ -79,5 +85,12 @@ public class EvlContextDistributedSlave extends EvlContextParallel {
 	@Override
 	public EvlModuleDistributedSlave getModule() {
 		return (EvlModuleDistributedSlave) super.getModule();
+	}
+	
+	@Override
+	public void setModule(IModule module) {
+		if (module instanceof EvlModuleDistributedSlave) {
+			super.setModule(module);
+		}
 	}
 }

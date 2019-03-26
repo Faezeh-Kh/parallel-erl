@@ -9,20 +9,30 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.eclipse.epsilon.eol.dom.ExpressionStatement;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.context.FrameStack;
+import org.eclipse.epsilon.eol.execute.context.FrameType;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
+import org.eclipse.epsilon.eol.execute.context.Variable;
 import org.eclipse.epsilon.eol.function.CheckedEolFunction;
+import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.eol.types.EolModelElementType;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
+import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 
 /**
  * Base implementation of EVL with distributed execution semantics.
@@ -55,6 +65,36 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	
 	@Override
 	protected abstract void checkConstraints() throws EolRuntimeException;
+	
+	protected List<SerializableEvlInputParametersAtom> getStandaloneComputations() throws EolRuntimeException {
+		IEvlContext context = getContext();
+		FrameStack frameStack = context.getFrameStack();
+		ExpressionStatement entryPoint = new ExpressionStatement();
+		ArrayList<SerializableEvlInputParametersAtom> parameters = new ArrayList<>();
+		
+		for (ConstraintContext constraintContext : constraintContexts) {
+			EolModelElementType modelElementType = constraintContext.getType(context);
+			IModel model = modelElementType.getModel();
+			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());
+			
+			for (Object modelElement : allOfKind) {
+				HashMap<String, Serializable> extras = new HashMap<>();
+				frameStack.enterLocal(FrameType.UNPROTECTED, entryPoint,
+					Variable.createReadOnlyVariable("extras", extras)
+				);
+				
+				if (constraintContext.shouldBeChecked(modelElement, context)) {
+					SerializableEvlInputParametersAtom sipa = new SerializableEvlInputParametersAtom();
+					sipa.modelElementID = model.getElementId(modelElement);
+					sipa.modelName = model.getName();
+					sipa.contextName = constraintContext.getTypeName();
+					sipa.variables = extras;
+				}
+				frameStack.leaveLocal(entryPoint, true);
+			}
+		}
+		return parameters;
+	}
 	
 	protected List<SerializableEvlInputAtom> createJobs(boolean shuffle) throws EolRuntimeException {
 		return SerializableEvlInputAtom.createJobs(getConstraintContexts(), getContext(), shuffle);
