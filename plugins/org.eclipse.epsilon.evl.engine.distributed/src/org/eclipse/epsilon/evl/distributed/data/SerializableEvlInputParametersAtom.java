@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import org.eclipse.epsilon.eol.dom.ExpressionStatement;
@@ -23,6 +24,8 @@ import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
+import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException;
+
 
 /**
  * A job which doesn't require model elements for evaluation, only variables as specified
@@ -33,11 +36,36 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom {
 
-	private static final long serialVersionUID = 5456627367856865079L;
+	private static final long serialVersionUID = 4966814112518266311L;
 	
 	public HashMap<String, Serializable> variables;
 	public String constraintName;
 
+	/**
+	 * Gets all constraints for the ConstraintContext matching the context name in this
+	 * atom only if {@linkplain #constraintName} is undefined, otherwise it finds the
+	 * Constraint based on the constraint name from the ConstraintContext and wraps it
+	 * in a singleton collection.
+	 * 
+	 * @param module
+	 * @return The constraints for the constraint context, or a singleton collection
+	 * if {@link #constraintName} is not empty.
+	 * @throws EvlConstraintNotFoundException If the constraint could not be found.
+	 */
+	protected Collection<Constraint> getConstraintsToCheck(IEvlModule module) throws EvlConstraintNotFoundException {
+		ConstraintContext constraintContext = module.getConstraintContext(contextName);
+		Collection<Constraint> constraintsToCheck =  constraintContext.getConstraints();
+		if (constraintName != null && !constraintName.isEmpty()) {
+			constraintsToCheck = Collections.singleton(constraintsToCheck
+				.stream()
+				.filter(c -> c.getName().equals(constraintName))
+				.findAny()
+				.orElseThrow(() -> new EvlConstraintNotFoundException(constraintName, constraintContext))
+			);
+		}
+		return constraintsToCheck;
+	}
+	
 	/**
 	 * Executes the check block of all constraints if {@link #constraintName} is <code>null</code> or empty,
 	 * otherwise only the specified constraint. Uses the variables in {@link #variables} instead of trying
@@ -48,9 +76,9 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 		IEvlContext context = module.getContext();
 		FrameStack frameStack = context.getFrameStack();
 		ExpressionStatement entryPoint = new ExpressionStatement();
-		ConstraintContext constraintContext = module.getConstraintContext(contextName);
-		Collection<Constraint> constraintsToCheck = constraintContext.getConstraints();
+		Collection<Constraint> constraintsToCheck =  getConstraintsToCheck(module);
 		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
+		
 		Variable[] variablesArr = variables.entrySet().stream()
 			.map(Variable::createReadOnlyVariable)
 			.toArray(Variable[]::new);

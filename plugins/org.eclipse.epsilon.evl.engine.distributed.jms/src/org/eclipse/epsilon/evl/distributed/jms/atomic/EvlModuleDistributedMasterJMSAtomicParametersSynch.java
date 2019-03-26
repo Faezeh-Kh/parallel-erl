@@ -46,6 +46,15 @@ public class EvlModuleDistributedMasterJMSAtomicParametersSynch extends EvlModul
 		for (SerializableEvlInputParametersAtom job : getStandaloneComputations()) {
 			sendJob(job);
 		}
+		
+		waitForWorkersToConnect(workersReady);
+		
+		for (SerializableEvlInputParametersAtom job : getStandaloneComputations()) {
+			sendJob(job);
+		}
+		
+		signalCompletion();
+		log("Finished sending jobs to workers");
 	}
 
 }
