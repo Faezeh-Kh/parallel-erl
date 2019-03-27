@@ -20,6 +20,8 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.FrameStack;
 import org.eclipse.epsilon.eol.execute.context.FrameType;
 import org.eclipse.epsilon.eol.execute.context.Variable;
+import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.eol.types.EolModelElementType;
 import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
@@ -35,8 +37,8 @@ import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException
  * @since 1.6
  */
 public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom {
-
-	private static final long serialVersionUID = 4966814112518266311L;
+	
+	private static final long serialVersionUID = 8252127227534852303L;
 	
 	public HashMap<String, Serializable> variables;
 	public String constraintName;
@@ -66,6 +68,48 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 		return constraintsToCheck;
 	}
 	
+	protected Object createSelfFromVariables() {
+		// TODO: implement
+		return variables;
+	}
+	
+	/**
+	 * 
+	 * @param module
+	 * @return A Serializable List of jobs with parameters.
+	 * @throws EolRuntimeException
+	 */
+	public static ArrayList<SerializableEvlInputParametersAtom> createJobs(IEvlModule module) throws EolRuntimeException {
+		IEvlContext context = module.getContext();
+		FrameStack frameStack = context.getFrameStack();
+		ExpressionStatement entryPoint = new ExpressionStatement();
+		ArrayList<SerializableEvlInputParametersAtom> parameters = new ArrayList<>();
+		
+		for (ConstraintContext constraintContext : module.getConstraintContexts()) {
+			EolModelElementType modelElementType = constraintContext.getType(context);
+			IModel model = modelElementType.getModel();
+			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());
+			
+			for (Object modelElement : allOfKind) {
+				HashMap<String, Serializable> extras = new HashMap<>();
+				frameStack.enterLocal(FrameType.UNPROTECTED, entryPoint,
+					Variable.createReadOnlyVariable("extras", extras)
+				);
+				
+				if (constraintContext.shouldBeChecked(modelElement, context)) {
+					SerializableEvlInputParametersAtom sipa = new SerializableEvlInputParametersAtom();
+					sipa.modelElementID = model.getElementId(modelElement);
+					sipa.modelName = model.getName();
+					sipa.contextName = constraintContext.getTypeName();
+					sipa.variables = extras;
+					parameters.add(sipa);
+				}
+				frameStack.leaveLocal(entryPoint, true);
+			}
+		}
+		return parameters;
+	}
+	
 	/**
 	 * Executes the check block of all constraints if {@link #constraintName} is <code>null</code> or empty,
 	 * otherwise only the specified constraint. Uses the variables in {@link #variables} instead of trying
@@ -78,7 +122,7 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 		ExpressionStatement entryPoint = new ExpressionStatement();
 		Collection<Constraint> constraintsToCheck =  getConstraintsToCheck(module);
 		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
-		
+		Object self = createSelfFromVariables();
 		Variable[] variablesArr = variables.entrySet().stream()
 			.map(Variable::createReadOnlyVariable)
 			.toArray(Variable[]::new);
@@ -87,7 +131,7 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 			frameStack.enterLocal(FrameType.UNPROTECTED, entryPoint, variablesArr);
 			
 			serializeUnsatisfiedConstraintIfPresent(
-				constraint.execute(variables, context)
+				constraint.execute(self, context)
 			)
 			.ifPresent(unsatisfied::add);
 			

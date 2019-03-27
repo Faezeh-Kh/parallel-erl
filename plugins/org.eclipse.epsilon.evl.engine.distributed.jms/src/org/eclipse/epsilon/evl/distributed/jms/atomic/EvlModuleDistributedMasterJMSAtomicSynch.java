@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.distributed.jms.atomic;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
 
@@ -32,11 +31,8 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		final EvlContextDistributedMaster evlContext = getContext();
-		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(
-			getConstraintContexts(), evlContext, false
-		);
-		final int parallelism = evlContext.getDistributedParallelism()+1;
+		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(this, false);
+		final int parallelism = getContext().getDistributedParallelism()+1;
 		final int selfBatch = jobs.size() / parallelism;
 		
 		assert slaveWorkers.size() == expectedSlaves;

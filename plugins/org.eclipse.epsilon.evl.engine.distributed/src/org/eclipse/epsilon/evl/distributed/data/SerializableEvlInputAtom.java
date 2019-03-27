@@ -31,7 +31,7 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = 4132510437749978354L;
+	private static final long serialVersionUID = -3214236078336249582L;
 
 	@Override
 	protected SerializableEvlInputAtom clone() {
@@ -94,16 +94,16 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	 * (shuffled) to ensure a balanced workload. Subclasses may override this method to
 	 * define an optimal split based on static analysis.
 	 * 
-	 * @param constraintContexts
-	 * @param context
+	 * @param module
 	 * @param shuffle Whether to randomise the list order.
 	 * @return The data to be distributed.
 	 * @throws EolRuntimeException
 	 */
-	public static ArrayList<SerializableEvlInputAtom> createJobs(Iterable<ConstraintContext> constraintContexts, IEvlContext context, boolean shuffle) throws EolRuntimeException {
+	public static ArrayList<SerializableEvlInputAtom> createJobs(IEvlModule module, boolean shuffle) throws EolRuntimeException {
+		IEvlContext context = module.getContext();
 		ArrayList<SerializableEvlInputAtom> problems = new ArrayList<>();
 		
-		for (ConstraintContext constraintContext : constraintContexts) {
+		for (ConstraintContext constraintContext : module.getConstraintContexts()) {
 			EolModelElementType modelElementType = constraintContext.getType(context);
 			IModel model = modelElementType.getModel();
 			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());

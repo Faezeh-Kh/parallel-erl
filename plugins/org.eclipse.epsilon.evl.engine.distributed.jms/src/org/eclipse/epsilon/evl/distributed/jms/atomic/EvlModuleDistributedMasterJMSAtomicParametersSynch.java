@@ -43,11 +43,9 @@ public class EvlModuleDistributedMasterJMSAtomicParametersSynch extends EvlModul
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
-		
-		for (SerializableEvlInputParametersAtom job : getStandaloneComputations()) {
+		for (SerializableEvlInputParametersAtom job : SerializableEvlInputParametersAtom.createJobs(this)) {
 			sendJob(job);
 		}
-		
 		signalCompletion();
 		log("Finished sending jobs to workers");
 	}
