@@ -151,16 +151,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				final JMSProducer jobsProducer = resultsContext.createProducer();
-				final Queue jobsQueue = resultsContext.createQueue(JOBS_QUEUE+sessionID);
-				jobSender = obj -> jobsProducer.send(jobsQueue, obj);
-				
-				final Topic completionTopic = resultsContext.createTopic(END_JOBS_TOPIC+sessionID);
-				completionSender = () -> jobsProducer.send(completionTopic, resultsContext.createMessage());
-				
 				final AtomicInteger workersFinished = new AtomicInteger();
 				
-				resultsContext.createConsumer(resultsContext.createQueue(RESULTS_QUEUE_NAME+sessionID))
+				resultsContext.createConsumer(createResultsQueue(resultsContext))
 					.setMessageListener(getResultsMessageListener(workersFinished));
 				
 				final AtomicInteger readyWorkers = new AtomicInteger();
@@ -179,9 +172,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				});
 				
 				try (JMSContext jobContext = resultsContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					processJobs(readyWorkers, jobContext);
-					waitForWorkersToFinishJobs(workersFinished, jobContext);
-					processFailedJobs(jobContext);
+					final JMSProducer jobsProducer = jobContext.createProducer();
+					final Queue jobsQueue = createJobQueue(jobContext);
+					jobSender = obj -> jobsProducer.send(jobsQueue, obj);
+					final Topic completionTopic = createCompletionTopic(jobContext);
+					completionSender = () -> jobsProducer.send(completionTopic, jobContext.createMessage());
+					
+					processJobs(readyWorkers);
+					waitForWorkersToFinishJobs(workersFinished);
+					processFailedJobs();
 				}
 			}
 			catch (Exception ex) {
@@ -192,13 +191,51 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 	}
 	
-	protected void processFailedJobs(JMSContext jobContext) throws EolRuntimeException {
+	/**
+	 * Always called after execution, to finish unprocessed jobs. Implementations may override this
+	 * method to handle the processing differently, e.g. to re-distributed failed jobs. Subclasses
+	 * are free to call this method at any time prior to completion to avoid waiting
+	 * 
+	 * @see #failedJobs
+	 * @throws EolRuntimeException
+	 */
+	protected void processFailedJobs() throws EolRuntimeException {
 		if (!failedJobs.isEmpty()) {
 			log("Processing "+failedJobs.size()+" failed jobs...");
 			for (Iterator<Serializable> it = failedJobs.iterator(); it.hasNext(); it.remove()) {
 				evaluateLocal(it.next());
 			}
 		}
+	}
+	
+	/**
+	 * 
+	 * @param resultsContext The context to use for creating the Destination.
+	 * @return The Destination used to listen for results in {@link #getResultsMessageListener(AtomicInteger)}.
+	 * @throws JMSException
+	 */
+	protected Queue createResultsQueue(JMSContext resultsContext) throws JMSException {
+		return resultsContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+	}
+	
+	/**
+	 * 
+	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
+	 * @return The Destination used to signal completion when {@link #signalCompletion()} is called.
+	 * @throws JMSException
+	 */
+	protected Topic createCompletionTopic(JMSContext jobContext) throws JMSException {
+		return jobContext.createTopic(END_JOBS_TOPIC+sessionID);
+	}
+	
+	/**
+	 * 
+	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
+	 * @return The Destination for sending jobs to when {@link #sendJob(Serializable)} is called.
+	 * @throws JMSException
+	 */
+	protected Queue createJobQueue(JMSContext jobContext) throws JMSException {
+		return jobContext.createQueue(JOBS_QUEUE+sessionID);
 	}
 	
 	/**
@@ -290,10 +327,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * 
 	 * @param readyWorkers  Convenience handle which may be used for synchronization, e.g.
 	 * to wait on the workers to be ready.
-	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
 	 * @throws Exception
 	 */
-	abstract protected void processJobs(final AtomicInteger workersReady, final JMSContext jobContext) throws Exception;
+	abstract protected void processJobs(final AtomicInteger workersReady) throws Exception;
 
 	/**
 	 * Called when a worker has registered.
@@ -329,9 +365,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * 
 	 * @param workersFinished The number of workers that have signalled completion status. The value
 	 * should not be mutated by this method, and only used for synchronising on the condition.
-	 * @param jobContext The inner-most JMSContext from {@linkplain #checkConstraints()}.
 	 */
-	protected void waitForWorkersToFinishJobs(AtomicInteger workersFinished, JMSContext jobContext) {
+	protected void waitForWorkersToFinishJobs(AtomicInteger workersFinished) {
 		log("Awaiting workers to signal completion...");
 		while (workersFinished.get() < expectedSlaves) synchronized (workersFinished) {
 			try {
