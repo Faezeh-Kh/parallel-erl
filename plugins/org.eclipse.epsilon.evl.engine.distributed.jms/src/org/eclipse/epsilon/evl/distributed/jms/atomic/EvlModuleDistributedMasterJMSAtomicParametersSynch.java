@@ -13,7 +13,6 @@ import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.jms.JMSContext;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputParametersAtom;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
@@ -42,11 +41,7 @@ public class EvlModuleDistributedMasterJMSAtomicParametersSynch extends EvlModul
 	}
 	
 	@Override
-	protected void processJobs(AtomicInteger workersReady, JMSContext jobContext) throws Exception {
-		for (SerializableEvlInputParametersAtom job : getStandaloneComputations()) {
-			sendJob(job);
-		}
-		
+	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
 		for (SerializableEvlInputParametersAtom job : getStandaloneComputations()) {

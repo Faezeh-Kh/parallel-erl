@@ -57,7 +57,7 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	}
 	
 	@Override
-	protected void processJobs(AtomicInteger workersReady, JMSContext jobContext) throws Exception {
+	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		EvlContextDistributedMaster evlContext = getContext();
 		log("Began processing own jobs");
 		for (ConstraintContextAtom cca : batches.get(0).split(jobs)) {
