@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -55,10 +54,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	
 	@Override
 	protected abstract void checkConstraints() throws EolRuntimeException;
-	
-	protected List<SerializableEvlInputAtom> createJobs(boolean shuffle) throws EolRuntimeException {
-		return SerializableEvlInputAtom.createJobs(getConstraintContexts(), getContext(), shuffle);
-	}
 	
 	protected void addToResults(Iterable<SerializableEvlResultAtom> serializedResults) throws EolRuntimeException {
 		Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();

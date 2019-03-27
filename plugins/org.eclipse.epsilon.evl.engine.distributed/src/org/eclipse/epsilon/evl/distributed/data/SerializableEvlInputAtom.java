@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
@@ -30,7 +31,7 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = 3111006509411036347L;
+	private static final long serialVersionUID = -3214236078336249582L;
 
 	@Override
 	protected SerializableEvlInputAtom clone() {
@@ -59,7 +60,6 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 		}
 		
 		ConstraintContext constraintContext = module.getConstraintContext(contextName);
-		
 		if (!constraintContext.shouldBeChecked(modelElement, context)) {
 			return Collections.emptyList();
 		}
@@ -68,20 +68,25 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
 		
 		for (Constraint constraint : constraintsToCheck) {
-			constraint.execute(modelElement, context)
-				.map(unsatisfiedConstraint -> {
-					SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
-					outputAtom.contextName = this.contextName;
-					outputAtom.modelName = this.modelName;
-					outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
-					outputAtom.modelElementID = this.modelElementID;
-					outputAtom.message = unsatisfiedConstraint.getMessage();
-					return outputAtom;
-				})
-				.ifPresent(unsatisfied::add);
+			serializeUnsatisfiedConstraintIfPresent(
+				constraint.execute(modelElement, context)
+			)
+			.ifPresent(unsatisfied::add);
 		}
 		
 		return unsatisfied;
+	}
+	
+	protected Optional<SerializableEvlResultAtom> serializeUnsatisfiedConstraintIfPresent(Optional<UnsatisfiedConstraint> result) {
+		return result.map(unsatisfiedConstraint -> {
+			SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
+			outputAtom.contextName = this.contextName;
+			outputAtom.modelName = this.modelName;
+			outputAtom.constraintName = unsatisfiedConstraint.getConstraint().getName();
+			outputAtom.modelElementID = this.modelElementID;
+			outputAtom.message = unsatisfiedConstraint.getMessage();
+			return outputAtom;
+		});
 	}
 	
 	/**
@@ -89,16 +94,16 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	 * (shuffled) to ensure a balanced workload. Subclasses may override this method to
 	 * define an optimal split based on static analysis.
 	 * 
-	 * @param constraintContexts
-	 * @param context
+	 * @param module
 	 * @param shuffle Whether to randomise the list order.
 	 * @return The data to be distributed.
 	 * @throws EolRuntimeException
 	 */
-	public static ArrayList<SerializableEvlInputAtom> createJobs(Iterable<ConstraintContext> constraintContexts, IEvlContext context, boolean shuffle) throws EolRuntimeException {
+	public static ArrayList<SerializableEvlInputAtom> createJobs(IEvlModule module, boolean shuffle) throws EolRuntimeException {
+		IEvlContext context = module.getContext();
 		ArrayList<SerializableEvlInputAtom> problems = new ArrayList<>();
 		
-		for (ConstraintContext constraintContext : constraintContexts) {
+		for (ConstraintContext constraintContext : module.getConstraintContexts()) {
 			EolModelElementType modelElementType = constraintContext.getType(context);
 			IModel model = modelElementType.getModel();
 			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());

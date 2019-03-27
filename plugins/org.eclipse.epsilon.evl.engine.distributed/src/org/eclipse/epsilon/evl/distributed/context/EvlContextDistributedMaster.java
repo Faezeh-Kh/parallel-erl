@@ -34,7 +34,7 @@ import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
  */
 public class EvlContextDistributedMaster extends EvlContextParallel {
 
-	static final String
+	protected static final String
 		ENCODING = java.nio.charset.StandardCharsets.UTF_8.toString(),
 		BASE_PATH = "basePath",
 		BASE_PATH_SUBSTITUTE = "//BASEPATH//",
@@ -44,7 +44,8 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 		OUTPUT_DIR = "output",
 		NUM_MODELS = "numberOfModels",
 		MODEL_PREFIX = "model",
-		SCRIPT_PARAMS = "scriptParameters";
+		SCRIPT_PARAMS = "scriptParameters",
+		IGNORE_MODELS = "noModelLoading";
 	
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
@@ -132,7 +133,7 @@ public class EvlContextDistributedMaster extends EvlContextParallel {
 	 * 
 	 * @return The configuration properties.
 	 */
-	public HashMap<String, ? extends Serializable> getJobParameters() {
+	public HashMap<String, Serializable> getJobParameters() {
 		HashMap<String, Serializable> config = new HashMap<>();
 		
 		config.put(BASE_PATH, BASE_PATH_SUBSTITUTE);
