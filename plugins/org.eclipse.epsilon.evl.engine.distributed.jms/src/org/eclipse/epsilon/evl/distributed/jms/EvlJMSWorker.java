@@ -81,18 +81,20 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			Runnable ackSender = setup(regContext);
 			
-			try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				prepareToProcessJobs(jobContext);
-				
-				// Tell the master we're setup and ready to work. We need to send the message here
-				// because if the master is fast we may receive jobs before we have even created the listener!
-				ackSender.run();
-				
-				awaitCompletion();
-		
-				// Tell the master we've finished
-				try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					signalCompletion(endContext);
+			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					prepareToProcessJobs(jobContext, resultContext);
+					
+					// Tell the master we're setup and ready to work. We need to send the message here
+					// because if the master is fast we may receive jobs before we have even created the listener!
+					ackSender.run();
+					
+					awaitCompletion();
+			
+					// Tell the master we've finished
+					try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+						signalCompletion(endContext);
+					}
 				}
 			}
 		}
@@ -138,13 +140,13 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	void prepareToProcessJobs(JMSContext jobContext) throws JMSException {
+	void prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
 		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Queue resultsQueue = jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
-		JMSProducer resultsSender = jobContext.createProducer();
+		Queue resultsQueue = resultContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+		JMSProducer resultsSender = resultContext.createProducer();
 		
 		Consumer<Serializable> resultProcessor = obj -> {
-			ObjectMessage resultsMessage = jobContext.createObjectMessage(obj);
+			ObjectMessage resultsMessage = resultContext.createObjectMessage(obj);
 			try {
 				resultsMessage.setStringProperty(WORKER_ID_PROPERTY, workerID);
 			}
@@ -280,16 +282,19 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
 		if (!(obj instanceof EvlJMSWorker)) return false;
-		return Objects.equals(this.workerID, ((EvlJMSWorker)obj).workerID);
+		EvlJMSWorker other = (EvlJMSWorker) obj;
+		return
+			Objects.equals(this.workerID, other.workerID) &&
+			Objects.equals(this.sessionID, other.sessionID);
 	}
 	
 	@Override
 	public int hashCode() {
-		return Objects.hashCode(workerID);
+		return Objects.hash(workerID, sessionID);
 	}
 	
 	@Override
 	public String toString() {
-		return getClass().getName()+"-"+workerID;
+		return getClass().getName()+"-"+workerID+" (session "+sessionID+")";
 	}
 }
