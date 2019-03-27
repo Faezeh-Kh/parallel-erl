@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.distributed.jms.atomic;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.jms.JMSContext;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
@@ -30,7 +29,7 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 	}
 
 	@Override
-	protected void processJobs(AtomicInteger workersReady, JMSContext jobContext) throws Exception {
+	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
 		final EvlContextDistributedMaster evlContext = getContext();
