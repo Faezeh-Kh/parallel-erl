@@ -70,6 +70,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	String workerID;
 	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
+	volatile Serializable stopBody;
 
 	public EvlJMSWorker(String host, String basePath, int sessionID) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -166,8 +167,12 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			}
 		};
 		
+		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID)).setMessageListener(
+			getTerminalProcessor(failedProcessor)
+		);
+		
 		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID)).setMessageListener(
-			getJobProcessor(resultProcessor, failedProcessor, module)
+			getJobProcessor(resultProcessor, failedProcessor)
 		);
 		
 		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
@@ -200,7 +205,13 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			}
 			catch (InterruptedException ie) {}
 		}
-		log("Finished all jobs");
+		if (stopBody == null) {
+			log("Finished all jobs");
+		}
+		else {
+			// Exception!
+			log(stopBody);
+		}
 	}
 	
 	void onFail(Exception ex, Message msg) {
@@ -244,10 +255,11 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor, final EvlModuleDistributedSlave module) {
+	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor) {
 		final AtomicInteger jobsInProgress = new AtomicInteger();
 		
 		return msg -> {
+			if (stopBody != null) return;
 			jobsInProgress.incrementAndGet();
 			try {
 				if (msg instanceof ObjectMessage) {
@@ -271,15 +283,31 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		};
 	}
 
+	MessageListener getTerminalProcessor(final BiConsumer<Message, Exception> failedProcessor) {
+		return msg -> {
+			log("Stopping execution!");
+			synchronized (finished) {
+				try {
+					stopBody = msg.getBody(Serializable.class);
+				}
+				catch (JMSException ex) {
+					stopBody = ex;
+				}
+				finished.set(true);
+				finished.notify();
+			}
+		};
+	}
+	
+	void log(Object message) {
+		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
+	}
+	
 	@Override
 	public void close() throws Exception {
 		if (connectionFactory instanceof AutoCloseable) {
 			((AutoCloseable) connectionFactory).close();
 		}
-	}
-	
-	void log(Object message) {
-		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
 	}
 	
 	@Override

@@ -79,6 +79,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		JOBS_QUEUE = "worker-jobs",
 		CONFIG_TOPIC = "configuration",
 		END_JOBS_TOPIC = "no-more-jobs",
+		STOP_TOPIC = "short-circuit",
 		REGISTRATION_QUEUE = "registration",
 		RESULTS_QUEUE_NAME = "results",
 		WORKER_ID_PREFIX = "EVL-jms-",
@@ -94,7 +95,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
-	private CheckedConsumer<Serializable, JMSException> jobSender;
+	private CheckedConsumer<Serializable, JMSException> jobSender, stopper;
 	private CheckedRunnable<JMSException> completionSender;
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
@@ -151,7 +152,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				final Topic stopJobsTopic = createShortCircuitTopic(resultsContext);
 				final AtomicInteger workersFinished = new AtomicInteger();
+				stopper = payload -> {
+					resultsContext.createProducer().send(stopJobsTopic, payload);
+				};
 				
 				resultsContext.createConsumer(createResultsQueue(resultsContext))
 					.setMessageListener(getResultsMessageListener(workersFinished));
@@ -175,7 +180,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					final JMSProducer jobsProducer = jobContext.createProducer();
 					final Queue jobsQueue = createJobQueue(jobContext);
 					jobSender = obj -> jobsProducer.send(jobsQueue, obj);
-					final Topic completionTopic = createCompletionTopic(jobContext);
+					final Topic completionTopic = createEndOfJobsTopic(jobContext);
 					completionSender = () -> jobsProducer.send(completionTopic, jobContext.createMessage());
 					
 					processJobs(readyWorkers);
@@ -185,6 +190,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			}
 		}
 		catch (Exception ex) {
+			try {
+				stopAllWorkers(ex.getMessage());
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(
+					"Couldn't stop workers! "+jmx.getMessage()+" (underlying: "+ex.getMessage()+")"
+				);
+			}
+			if (ex instanceof RuntimeException) throw (RuntimeException) ex;
 			if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
 			if (ex instanceof JMSException) throw new JMSRuntimeException(ex.getMessage());
 			else throw new EolRuntimeException(ex);
@@ -220,33 +234,43 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	/**
 	 * 
-	 * @param resultsContext The context to use for creating the Destination.
+	 * @param session The context to use for creating the Destination.
 	 * @return The Destination used to listen for results in {@link #getResultsMessageListener(AtomicInteger)}.
 	 * @throws JMSException
 	 */
-	protected Queue createResultsQueue(JMSContext resultsContext) throws JMSException {
-		return resultsContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+	protected Queue createResultsQueue(JMSContext session) throws JMSException {
+		return session.createQueue(RESULTS_QUEUE_NAME+sessionID);
 	}
 	
 	/**
 	 * 
-	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
+	 * @param session The inner-most JMSContext  from {@linkplain #checkConstraints()}.
 	 * @return The Destination used to signal completion to workers when
 	 * {@linkplain #signalCompletion()} is called.
 	 * @throws JMSException
 	 */
-	protected Topic createCompletionTopic(JMSContext jobContext) throws JMSException {
-		return jobContext.createTopic(END_JOBS_TOPIC+sessionID);
+	protected Topic createEndOfJobsTopic(JMSContext session) throws JMSException {
+		return session.createTopic(END_JOBS_TOPIC+sessionID);
 	}
 	
 	/**
 	 * 
-	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
+	 * @param session The inner-most JMSContext  from {@linkplain #checkConstraints()}.
 	 * @return The Destination for sending jobs to when {@link #sendJob(Serializable)} is called.
 	 * @throws JMSException
 	 */
-	protected Queue createJobQueue(JMSContext jobContext) throws JMSException {
-		return jobContext.createQueue(JOBS_QUEUE+sessionID);
+	protected Queue createJobQueue(JMSContext session) throws JMSException {
+		return session.createQueue(JOBS_QUEUE+sessionID);
+	}
+	
+	/**
+	 * 
+	 * @param session
+	 * @return The Destination for broadcasting that all workers should stop.
+	 * @throws JMSException
+	 */
+	protected Topic createShortCircuitTopic(JMSContext session) throws JMSException {
+		return session.createTopic(STOP_TOPIC+sessionID);
 	}
 	
 	/**
@@ -268,6 +292,16 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		completionSender.runThrows();
 	}
 
+	/**
+	 * Broadcasts to all workers to stop executing.
+	 * 
+	 * @param reason The message body to send to workers.
+	 * @throws JMSException
+	 */
+	protected final void stopAllWorkers(Serializable reason) throws JMSException {
+		stopper.accept(reason);
+	}
+	
 	/**
 	 * Main results processing listener. Implementations are expected to handle both results processing and
 	 * signalling of terminal waiting condition once all workers have indicated all results have been
@@ -317,11 +351,15 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					}
 				}
 			}
-			catch (EolRuntimeException eox) {
-				throw new RuntimeException(eox);
-			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			catch (EolRuntimeException ex) {
+				try {
+					stopAllWorkers(ex.getMessage());
+				}
+				catch (JMSException nested) {}
+				throw new RuntimeException(ex.getMessage());
 			}
 			finally {
 				if (resultsInProgress.decrementAndGet() <= 1) synchronized (resultsInProgress) {
