@@ -1,0 +1,56 @@
+context Movie {
+	guard {
+		extras.put("titleStr", self.`title`);
+		extras.put("rating", self.rating);
+		extras.put("year", self.year);
+		extras.put("type", self.type.literal);
+		extras.put("numPersons", self.persons.size());
+		return true;
+	}
+	
+	constraint someCode {
+		guard: rating > 5 or true
+		check {
+			return false;
+		}
+	}
+	constraint isValidYear {
+		check {
+			switch (type) {
+				case "TV": return year > 1920;
+				case "VIDEOGAME": return year > 1970;
+				default: return year > 1850;
+			}
+		}
+	}
+	constraint isValidRating {
+		check: rating >= 0 and rating <= 10
+	}
+	@lazy
+	constraint isValidTitle {
+		check: titleStr.length() > 0
+	}
+	critique hasPeople {
+		check: numPersons > 0
+	}
+}
+
+context Person {
+	guard {
+		extras.put("name", self.name);
+		extras.put("numMovies", self.movies.size());
+		return true;
+	}
+	constraint fail {
+		check: false
+	}
+	/*constraint isValidName {
+		check:
+			self.name.length() > 3 and
+			self.name.contains(" ") and
+			self.name.substring(0,1).matches("[A-Z]")
+	}*/
+	constraint hasMovies {
+		check: numMovies > 0
+	}
+}

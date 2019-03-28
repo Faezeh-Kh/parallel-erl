@@ -1,5 +1,5 @@
 /*********************************************************************
- * Copyright (c) 2018-2019 The University of York.
+ * Copyright (c) 2018 The University of York.
  *
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -38,7 +38,13 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	
 	@Override
 	protected DistributedEvlBatch clone() {
-		DistributedEvlBatch clone = new DistributedEvlBatch();
+		DistributedEvlBatch clone;
+		try {
+			clone = (DistributedEvlBatch) super.clone();
+		}
+		catch (CloneNotSupportedException cnsx) {
+			throw new UnsupportedOperationException(cnsx);
+		}
 		clone.from = this.from;
 		clone.to = this.to;
 		return clone;

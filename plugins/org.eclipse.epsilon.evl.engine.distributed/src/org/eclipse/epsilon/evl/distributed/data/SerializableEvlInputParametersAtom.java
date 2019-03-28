@@ -156,6 +156,7 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 	
 	@Override
 	public boolean equals(Object obj) {
+		if (this == obj) return true;
 		if (!super.equals(obj)) return false;
 		SerializableEvlInputParametersAtom other = (SerializableEvlInputParametersAtom) obj;
 		return

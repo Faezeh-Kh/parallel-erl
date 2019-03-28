@@ -50,7 +50,6 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	protected void confirmWorker(Message confirmation, JMSContext session, AtomicInteger workersReady) throws JMSException {
 		int batchNum = workersReady.incrementAndGet();
 		sendJob(batches.get(batchNum));
-		
 		if (batchNum >= expectedSlaves) {
 			signalCompletion();
 		}

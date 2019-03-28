@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -130,6 +131,9 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 		}
 		else if (job instanceof DistributedEvlBatch) {
 			return ((DistributedEvlBatch) job).evaluate(this);
+		}
+		else if (job instanceof BaseStream<?,?>) {
+			return evaluateLocal(((BaseStream<?,?>) job).iterator());
 		}
 		else return Collections.emptyList();
 	}

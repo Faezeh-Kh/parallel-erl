@@ -125,7 +125,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			
 			log("Awaiting workers");
 			// Triggered when a worker announces itself to the registration queue
-			regContext.createConsumer(regContext.createQueue(REGISTRATION_QUEUE+sessionID)).setMessageListener(msg -> {
+			regContext.createConsumer(createRegistrationQueue(regContext)).setMessageListener(msg -> {
 				// For security / load purposes, stop additional workers from being picked up.
 				if (refuseAdditionalWorkers && registeredWorkers.get() >= expectedSlaves) {
 					return;
@@ -183,11 +183,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					processFailedJobs();
 				}
 			}
-			catch (Exception ex) {
-				if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
-				if (ex instanceof JMSException) throw new JMSRuntimeException(ex.getMessage());
-				else throw new EolRuntimeException(ex);
-			}
+		}
+		catch (Exception ex) {
+			if (ex instanceof EolRuntimeException) throw (EolRuntimeException) ex;
+			if (ex instanceof JMSException) throw new JMSRuntimeException(ex.getMessage());
+			else throw new EolRuntimeException(ex);
 		}
 	}
 	
@@ -210,6 +210,16 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	/**
 	 * 
+	 * @param regContext The context to use for creating the Destination.
+	 * @return The Destination used to listen for participating workers.
+	 * @throws JMSException
+	 */
+	protected Queue createRegistrationQueue(JMSContext regContext) throws JMSException {
+		return regContext.createQueue(REGISTRATION_QUEUE+sessionID);
+	}
+	
+	/**
+	 * 
 	 * @param resultsContext The context to use for creating the Destination.
 	 * @return The Destination used to listen for results in {@link #getResultsMessageListener(AtomicInteger)}.
 	 * @throws JMSException
@@ -221,7 +231,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	/**
 	 * 
 	 * @param jobContext The inner-most JMSContext  from {@linkplain #checkConstraints()}.
-	 * @return The Destination used to signal completion when {@link #signalCompletion()} is called.
+	 * @return The Destination used to signal completion to workers when
+	 * {@linkplain #signalCompletion()} is called.
 	 * @throws JMSException
 	 */
 	protected Topic createCompletionTopic(JMSContext jobContext) throws JMSException {

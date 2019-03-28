@@ -24,6 +24,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
+import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -83,7 +84,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					prepareToProcessJobs(jobContext, resultContext);
+					CheckedRunnable<?> completionSignaller = prepareToProcessJobs(jobContext, resultContext);
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
@@ -92,9 +93,8 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					awaitCompletion();
 			
 					// Tell the master we've finished
-					try (JMSContext endContext = jobContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-						signalCompletion(endContext);
-					}
+					completionSignaller.runThrows();
+					onCompletion();
 				}
 			}
 		}
@@ -140,10 +140,10 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	void prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
+	CheckedRunnable<JMSException> prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
 		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Queue resultsQueue = resultContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
-		JMSProducer resultsSender = resultContext.createProducer();
+		Queue resultQueue = resultContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+		JMSProducer resultSender = resultContext.createProducer();
 		
 		Consumer<Serializable> resultProcessor = obj -> {
 			ObjectMessage resultsMessage = resultContext.createObjectMessage(obj);
@@ -153,7 +153,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
 			}
-			resultsSender.send(resultsQueue, resultsMessage);
+			resultSender.send(resultQueue, resultsMessage);
 		};
 		
 		BiConsumer<Message, Exception> failedProcessor = (msg, ex) -> {
@@ -178,14 +178,18 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			}
 			log("Acknowledged end of jobs");
 		});
+		
+		return () -> {
+			ObjectMessage finishedMsg = resultContext.createObjectMessage();
+			finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
+			finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+			finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
+			resultSender.send(resultQueue, finishedMsg);
+		};
 	}
 	
-	void signalCompletion(JMSContext endContext) throws JMSException {
-		ObjectMessage finishedMsg = endContext.createObjectMessage();
-		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
-		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-		finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
-		endContext.createProducer().send(endContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
+	void onCompletion() throws Exception {
+		log("Signalled completion");
 	}
 	
 	void awaitCompletion() {

@@ -83,7 +83,7 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		String masterModule = cmdLine.getOptionValue(masterModuleOpt);
 		
 		if (masterModule != null && !masterModule.trim().isEmpty()) {
-			String pkg = getClass().getPackage().getName();
+			String pkg = JMSMasterConfigParser.class.getPackage().getName();
 			pkg = pkg.substring(0, pkg.lastIndexOf('.')+1);
 			builder.module = (EvlModuleDistributedMasterJMS) Class.forName(pkg + masterModule)
 				.getConstructor(int.class, String.class, int.class)
