@@ -95,7 +95,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
-	private CheckedConsumer<Serializable, JMSException> jobSender, stopper;
+	private CheckedConsumer<Serializable, JMSException> jobSender;
 	private CheckedRunnable<JMSException> completionSender;
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
@@ -152,11 +152,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			});
 			
 			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				final Topic stopJobsTopic = createShortCircuitTopic(resultsContext);
 				final AtomicInteger workersFinished = new AtomicInteger();
-				stopper = payload -> {
-					resultsContext.createProducer().send(stopJobsTopic, payload);
-				};
 				
 				resultsContext.createConsumer(createResultsQueue(resultsContext))
 					.setMessageListener(getResultsMessageListener(workersFinished));
@@ -191,7 +187,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		}
 		catch (Exception ex) {
 			try {
-				stopAllWorkers(ex.getMessage());
+				stopAllWorkers(ex);
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(
@@ -298,8 +294,13 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * @param reason The message body to send to workers.
 	 * @throws JMSException
 	 */
-	protected final void stopAllWorkers(Serializable reason) throws JMSException {
-		stopper.accept(reason);
+	protected void stopAllWorkers(Exception exception) throws JMSException {
+		try (JMSContext session = connectionFactory.createContext()) {
+			session.createProducer().send(
+				createShortCircuitTopic(session),
+				exception.getMessage()
+			);
+		}
 	}
 	
 	/**
@@ -356,7 +357,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			}
 			catch (EolRuntimeException ex) {
 				try {
-					stopAllWorkers(ex.getMessage());
+					stopAllWorkers(ex);
 				}
 				catch (JMSException nested) {}
 				throw new RuntimeException(ex.getMessage());
