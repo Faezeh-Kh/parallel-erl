@@ -26,10 +26,8 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
  * Base implementation of EVL with distributed execution semantics.
- * Splitting is supported at the element-level granularity. This class
- * can partition the data through the {@link #createJobs()} method, which can be
- * used as input to the distribution framework. The {@link #checkConstraints()} method
- * initiates the distributed processing; which in turn should spawn instances of
+ * Splitting is supported at the element-level granularity. The {@link #checkConstraints()}
+ * method initiates the distributed processing; which in turn should spawn instances of
  * {@link EvlModuleDistributedSlave}. If a data sink is used (i.e.the results can be
  * acquired by this module as they appear), the 
  * {@link SerializableEvlResultAtom#deserializeResult(org.eclipse.epsilon.evl.IEvlModule)} 

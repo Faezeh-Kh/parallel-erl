@@ -362,9 +362,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				throw new RuntimeException(ex.getMessage());
 			}
 			finally {
-				if (resultsInProgress.decrementAndGet() <= 1) synchronized (resultsInProgress) {
-					resultsInProgress.notify();
-				}
+				if (resultsInProgress.decrementAndGet() <= 1 &&
+					workersFinished.get() >= expectedSlaves)
+						synchronized (resultsInProgress) {
+							resultsInProgress.notify();
+						}
 			}
 		};
 	}

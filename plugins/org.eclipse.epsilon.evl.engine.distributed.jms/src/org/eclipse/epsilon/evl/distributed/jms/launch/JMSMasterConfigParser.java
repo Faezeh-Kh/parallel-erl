@@ -72,7 +72,7 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 	}
 
 	@Override
-	protected void parseArgs(String[] args) throws Exception {
+	public void parseArgs(String[] args) throws Exception {
 		super.parseArgs(args);
 		builder.brokerHost = cmdLine.getOptionValue(brokerHostOpt);
 		builder.basePath = cmdLine.getOptionValue(basePathOpt);

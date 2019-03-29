@@ -28,7 +28,6 @@ import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException;
 
-
 /**
  * A job which doesn't require model elements for evaluation, only variables as specified
  * in {@link #variables}.

@@ -63,6 +63,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
+	final AtomicInteger jobsInProgress = new AtomicInteger(0);
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	final String basePath;
@@ -176,9 +177,8 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		);
 		
 		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
-			//assert msg.getBooleanProperty(LAST_MESSAGE_PROPERTY);
-			synchronized (finished) {
-				finished.set(true);
+			finished.set(true);
+			if (jobsInProgress.get() <= 0) synchronized (finished) {
 				finished.notify();
 			}
 			log("Acknowledged end of jobs");
@@ -199,7 +199,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (!finished.get()) synchronized (finished) {
+		while (!finished.get() && jobsInProgress.get() > 0) synchronized (finished) {
 			try {
 				finished.wait();
 			}
@@ -256,8 +256,6 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	}
 	
 	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor) {
-		final AtomicInteger jobsInProgress = new AtomicInteger();
-		
 		return msg -> {
 			if (stopBody != null) return;
 			jobsInProgress.incrementAndGet();
