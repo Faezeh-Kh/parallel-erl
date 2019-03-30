@@ -84,6 +84,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		RESULTS_QUEUE_NAME = "results",
 		WORKER_ID_PREFIX = "EVL-jms-",
 		LAST_MESSAGE_PROPERTY = "lastMsg",
+		EXCEPTION_PROPERTY = "exception",
 		WORKER_ID_PROPERTY = "workerID",
 		CONFIG_HASH = "configChecksum";
 	
@@ -165,7 +166,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						if (receivedHash != configHash) {
 							throw new java.lang.IllegalStateException("Received invalid configuration checksum!");
 						}
-						confirmWorker(response, resultsContext, readyWorkers);
+						confirmWorker(response, readyWorkers);
 					}
 					catch (JMSException jmx) {
 						throw new JMSRuntimeException(jmx.getMessage());
@@ -434,13 +435,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * additional tasks, but should always call {@link WorkerView#confirm(JMSContext)}.
 	 * 
 	 * @param worker The worker that has been configured.
-	 * @param session The context in which the listener was invoked.
 	 * @param workerReady The number of workers that have currently been configured, excluding this one.
 	 * Implementations are expected to increment this number and can use the object's lock to signal
 	 * when all workers are connected by comparing this number to {@linkplain #expectedSlaves}.
 	 * @throws JMSException 
 	 */
-	protected void confirmWorker(final Message response, final JMSContext session, final AtomicInteger workersReady) throws JMSException {
+	protected void confirmWorker(final Message response, final AtomicInteger workersReady) throws JMSException {
 		String worker = response.getStringProperty(WORKER_ID_PROPERTY);
 		if (!slaveWorkers.containsKey(worker)) {
 			throw new JMSRuntimeException("Could not find worker with id "+worker);

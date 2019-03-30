@@ -18,10 +18,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedRunnable;
@@ -63,7 +61,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	final AtomicInteger jobsInProgress = new AtomicInteger(0);
+	final java.util.concurrent.BlockingQueue<Serializable> jobsInProgress = new LinkedBlockingQueue<>();
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	final String basePath;
@@ -143,53 +141,35 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	}
 	
 	CheckedRunnable<JMSException> prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
-		// Job processing, requires destinations for inputs (jobs) and outputs (results)
-		Queue resultQueue = resultContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
-		JMSProducer resultSender = resultContext.createProducer();
 		
-		Consumer<Serializable> resultProcessor = obj -> {
-			ObjectMessage resultsMessage = resultContext.createObjectMessage(obj);
-			try {
-				resultsMessage.setStringProperty(WORKER_ID_PROPERTY, workerID);
-			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			}
-			resultSender.send(resultQueue, resultsMessage);
-		};
-		
-		BiConsumer<Message, Exception> failedProcessor = (msg, ex) -> {
-			onFail(ex, msg);
-			if (msg instanceof ObjectMessage) try {
-				resultProcessor.accept(((ObjectMessage) msg).getObject());
-			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			}
-		};
-		
-		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID)).setMessageListener(
-			getTerminalProcessor(failedProcessor)
+		Thread resultsProcessor = new Thread(
+			getJopProcessor(resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE))
 		);
+		resultsProcessor.setName("job-processor");
 		
-		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID)).setMessageListener(
-			getJobProcessor(resultProcessor, failedProcessor)
-		);
+		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID))
+			.setMessageListener(getTerminalProcessor());
+		
+		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID))
+			.setMessageListener(getJobProcessor());
 		
 		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
 			finished.set(true);
-			if (jobsInProgress.get() <= 0) synchronized (finished) {
+			if (jobsInProgress.isEmpty()) synchronized (finished) {
 				finished.notify();
 			}
 			log("Acknowledged end of jobs");
 		});
 		
+		resultsProcessor.start();
+		
 		return () -> {
-			ObjectMessage finishedMsg = resultContext.createObjectMessage();
+			resultsProcessor.interrupt();
+			ObjectMessage finishedMsg = jobContext.createObjectMessage();
 			finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 			finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
 			finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
-			resultSender.send(resultQueue, finishedMsg);
+			jobContext.createProducer().send(jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 		};
 	}
 	
@@ -199,7 +179,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (!finished.get() && jobsInProgress.get() > 0) synchronized (finished) {
+		while (!finished.get()) synchronized (finished) {
 			try {
 				finished.wait();
 			}
@@ -218,15 +198,47 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		System.err.println("Failed job '"+msg+"': "+ex);
 	}
 	
-	/**
-	 * 
-	 * @param msgObj The Serializable input.
-	 * @param resultProcessor The action to perform on the result
-	 * @throws EolRuntimeException
-	 */
-	void evaluateJob(Object msgObj, Consumer<Serializable> resultProcessor) throws EolRuntimeException {
+	Runnable getJopProcessor(JMSContext replyContext) {
+		return () -> {
+			JMSProducer resultSender = replyContext.createProducer();
+			Queue resultQueue = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+			
+			while (stopBody == null && (!jobsInProgress.isEmpty() || !finished.get())) try {
+				Serializable currentJob = null;
+				try {
+					currentJob = jobsInProgress.take();
+				}
+				catch (InterruptedException ie) {
+					if (stopBody != null) break;
+				}
+				
+				ObjectMessage resultsMsg = null;
+				try {
+					Serializable resultObj = evaluateJob(currentJob);
+					resultsMsg = replyContext.createObjectMessage(resultObj);
+				}
+				catch (EolRuntimeException eox) {
+					resultsMsg = replyContext.createObjectMessage(currentJob);
+					resultsMsg.setObjectProperty(EXCEPTION_PROPERTY, eox);
+				}
+				
+				resultsMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
+				resultSender.send(resultQueue, resultsMsg);
+			}
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
+			}
+			
+			replyContext.close();
+			if (finished.get()) synchronized (finished) {
+				finished.notify();
+			}
+		};
+	}
+
+	Serializable evaluateJob(Object msgObj) throws EolRuntimeException {
 		if (msgObj instanceof Iterable) {
-			evaluateJob(((Iterable<?>) msgObj).iterator(), resultProcessor);
+			return evaluateJob(((Iterable<?>) msgObj).iterator());
 		}
 		else if (msgObj instanceof Iterator) {
 			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
@@ -239,29 +251,28 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					resultsCol.addAll(module.evaluateBatch((DistributedEvlBatch) obj));
 				}
 			}
-			resultProcessor.accept(resultsCol);
+			return resultsCol;
 		}
 		if (msgObj instanceof SerializableEvlInputAtom) {
-			resultProcessor.accept((Serializable)((SerializableEvlInputAtom) msgObj).evaluate(module));
+			return (Serializable)((SerializableEvlInputAtom) msgObj).evaluate(module);
 		}
 		else if (msgObj instanceof DistributedEvlBatch) {
-			resultProcessor.accept((Serializable) module.evaluateBatch((DistributedEvlBatch) msgObj));
+			return (Serializable) module.evaluateBatch((DistributedEvlBatch) msgObj);
 		}
 		else if (msgObj instanceof java.util.stream.BaseStream) {
-			evaluateJob(((java.util.stream.BaseStream<?,?>)msgObj).iterator(), resultProcessor);
+			return evaluateJob(((java.util.stream.BaseStream<?,?>)msgObj).iterator());
 		}
 		else {
-			log("Received unexpected object of type "+msgObj.getClass().getName());
+			throw new IllegalArgumentException("Received unexpected object of type "+msgObj.getClass().getName());
 		}
 	}
 	
-	MessageListener getJobProcessor(final Consumer<Serializable> resultProcessor, final BiConsumer<Message, Exception> failedProcessor) {
+	MessageListener getJobProcessor() {
 		return msg -> {
 			if (stopBody != null) return;
-			jobsInProgress.incrementAndGet();
 			try {
-				if (msg instanceof ObjectMessage) {
-					evaluateJob(((ObjectMessage)msg).getObject(), resultProcessor);
+				if (msg instanceof ObjectMessage)  {
+					jobsInProgress.add(((ObjectMessage)msg).getObject());
 				}
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
@@ -271,17 +282,17 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					log("Received unexpected message of type "+msg.getClass().getName());
 				}
 			}
-			catch (Exception ex) {
-				failedProcessor.accept(msg, ex);
+			catch (JMSException jmx) {
+				throw new JMSRuntimeException(jmx.getMessage());
 			}
 			// Wake up the main thread once all jobs have been processed.
-			if (jobsInProgress.decrementAndGet() <= 0 && finished.get()) synchronized (finished) {
+			if (finished.get() && jobsInProgress.isEmpty()) synchronized (finished) {
 				finished.notify();
 			}
 		};
 	}
 
-	MessageListener getTerminalProcessor(final BiConsumer<Message, Exception> failedProcessor) {
+	MessageListener getTerminalProcessor() {
 		return msg -> {
 			log("Stopping execution!");
 			synchronized (finished) {

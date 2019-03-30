@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.distributed.jms.batch;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.jms.JMSContext;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -47,7 +46,7 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	}
 	
 	@Override
-	protected void confirmWorker(Message confirmation, JMSContext session, AtomicInteger workersReady) throws JMSException {
+	protected void confirmWorker(Message confirmation, AtomicInteger workersReady) throws JMSException {
 		int batchNum = workersReady.incrementAndGet();
 		sendJob(batches.get(batchNum));
 		if (batchNum >= expectedSlaves) {
