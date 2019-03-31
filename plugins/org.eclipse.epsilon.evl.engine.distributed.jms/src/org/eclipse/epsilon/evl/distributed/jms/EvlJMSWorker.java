@@ -85,17 +85,22 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+					Thread jobThread = prepareToProcessJobs(jobContext, resultContext);
 					// Start the job processing loop
-					prepareToProcessJobs(jobContext, resultContext).start();
+					jobThread.start();
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
 					ackSender.run();
 					
+					// Park main thread
 					awaitCompletion();
-			
+					
+					// Destroy job processor
+					jobThread.interrupt();
+					
 					// Tell the master we've finished
-					onCompletion(jobContext);
+					onCompletion(resultContext);
 				}
 			}
 		}
@@ -146,6 +151,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			getJopProcessor(resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE))
 		);
 		resultsProcessor.setName("job-processor");
+		resultsProcessor.setDaemon(false);
 		
 		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID))
 			.setMessageListener(getTerminationListener());
@@ -164,15 +170,15 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		return resultsProcessor;
 	}
 	
-	void onCompletion(JMSContext jobContext) throws Exception {
-		ObjectMessage finishedMsg = jobContext.createObjectMessage();
+	void onCompletion(JMSContext session) throws Exception {
+		ObjectMessage finishedMsg = session.createObjectMessage();
 		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
 		finishedMsg.setObject(configContainer.getSerializableRuleExecutionTimes());
 		if (stopBody instanceof Serializable) {
 			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
 		}
-		jobContext.createProducer().send(jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
+		session.createProducer().send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 		log("Signalled completion");
 	}
 	
@@ -213,7 +219,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					jobIsInProgress = true;
 				}
 				catch (InterruptedException ie) {
-					if (stopBody != null) break;
+					break;
 				}
 				
 				ObjectMessage resultsMsg = null;
