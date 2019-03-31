@@ -19,12 +19,15 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
 public class JMSMasterRunner extends DistributedEvlRunConfiguration {
 	
 	protected final String brokerHost;
-	protected final int expectedWorkers, sessionID;
+	protected final int expectedWorkers, sessionID, bpw;
+	protected final boolean async;
 
 	public JMSMasterRunner(JMSMasterBuilder<? extends JMSMasterRunner, ?> builder) {
 		super(builder);
 		this.brokerHost = builder.brokerHost;
 		this.expectedWorkers = builder.expectedWorkers;
 		this.sessionID = builder.sessionID;
+		this.bpw = builder.bpw;
+		this.async = builder.async;
 	}
 }

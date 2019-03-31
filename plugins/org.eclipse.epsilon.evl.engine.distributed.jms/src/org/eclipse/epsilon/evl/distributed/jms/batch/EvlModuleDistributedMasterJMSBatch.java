@@ -18,15 +18,21 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
- * Waits for all workers to be configured before processing.
+ * Batch-based approach
  * 
+ * @see DistributedEvlBatch
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSBatchSynch extends EvlModuleDistributedMasterJMS {
+public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMasterJMS {
 	
-	public EvlModuleDistributedMasterJMSBatchSynch(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	// TODO: use bpw field for splitting jobs
+	
+	protected final int batchesPerWorker;
+	
+	public EvlModuleDistributedMasterJMSBatch(int expectedWorkers, int bpw, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
+		this.batchesPerWorker = bpw > 0 ? bpw : 1;
 	}
 	
 	@Override

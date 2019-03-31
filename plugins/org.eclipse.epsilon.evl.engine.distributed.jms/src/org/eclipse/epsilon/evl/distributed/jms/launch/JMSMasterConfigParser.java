@@ -11,8 +11,9 @@ package org.eclipse.epsilon.evl.distributed.jms.launch;
 
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
-import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
-import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleDistributedMasterJMSAtomicSynch;
+import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleDistributedMasterJMSAtomic;
+import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJMSBatchAsync;
+import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJMSBatch;
 
 /**
  * 
@@ -32,7 +33,8 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		brokerHostOpt = "broker",
 		basePathOpt = "basePath",
 		expectedWorkersOpt = "workers",
-		masterModuleOpt = "master",
+		batchesOpt = "batches",
+		asyncOpt = "async",
 		sessionIdOpt = "session";
 	
 	@SuppressWarnings("unchecked")
@@ -41,12 +43,15 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 	}
 	
 	public JMSMasterConfigParser(B builder) {
-		super(builder);
-		
-		options.addOption(Option.builder("m")
-			.longOpt(masterModuleOpt)
-			.desc("The module to use (must be subclass of "+EvlModuleDistributedMasterJMS.class.getSimpleName()+")")
+		super(builder);		
+		options.addOption(Option.builder("bpw")
+			.longOpt(batchesOpt)
+			.desc("Number of batches per worker (sets the module to batch-based)")
 			.hasArg()
+			.build()
+		).addOption(Option.builder()
+			.longOpt(asyncOpt)
+			.desc("Whether to use asynchronous module (skips waiting for workers to connect before processing)")
 			.build()
 		).addOption(Option.builder()
 			.longOpt(expectedWorkersOpt)
@@ -70,28 +75,51 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 			.build()
 		);
 	}
-
+	
 	@Override
 	public void parseArgs(String[] args) throws Exception {
 		super.parseArgs(args);
 		builder.brokerHost = cmdLine.getOptionValue(brokerHostOpt);
 		builder.basePath = cmdLine.getOptionValue(basePathOpt);
-		builder.sessionID = Integer.valueOf(cmdLine.getOptionValue(sessionIdOpt));
-		if (cmdLine.hasOption(expectedWorkersOpt)) {
-			builder.expectedWorkers = Integer.parseInt(cmdLine.getOptionValue(expectedWorkersOpt));
-		}
-		String masterModule = cmdLine.getOptionValue(masterModuleOpt);
+		builder.sessionID = tryParse(sessionIdOpt, builder.sessionID);
+		builder.async = cmdLine.hasOption(asyncOpt);
+		builder.expectedWorkers = tryParse(expectedWorkersOpt, builder.expectedWorkers);
+		builder.bpw = tryParse(batchesOpt, builder.bpw);
 		
-		if (masterModule != null && !masterModule.trim().isEmpty()) {
-			String pkg = JMSMasterConfigParser.class.getPackage().getName();
-			pkg = pkg.substring(0, pkg.lastIndexOf('.')+1);
-			builder.module = (EvlModuleDistributedMasterJMS) Class.forName(pkg + masterModule)
-				.getConstructor(int.class, String.class, int.class)
-				.newInstance(builder.expectedWorkers, builder.brokerHost, builder.sessionID);
+		if (builder.async && builder.bpw > 0) {
+			builder.module = new EvlModuleDistributedMasterJMSBatchAsync(
+				builder.expectedWorkers, builder.bpw, builder.brokerHost, builder.sessionID
+			);
+		}
+		else if (builder.async) {
+			// TODO implement
+		}
+		else if (builder.bpw > 0) {
+			builder.module = new EvlModuleDistributedMasterJMSBatch(
+				builder.expectedWorkers, builder.bpw, builder.brokerHost, builder.sessionID
+			);
 		}
 		else {
-			builder.module = new EvlModuleDistributedMasterJMSAtomicSynch(builder.expectedWorkers, builder.brokerHost, builder.sessionID);
+			builder.module = new EvlModuleDistributedMasterJMSAtomic(
+				builder.expectedWorkers, builder.brokerHost, builder.sessionID
+			);
 		}
 	}
 
+	protected int tryParse(String opt, int absentDefault) throws IllegalArgumentException {
+		if (cmdLine.hasOption(opt)) {
+			String value = cmdLine.getOptionValue(opt);
+			try {
+				return Integer.valueOf(value);
+			}
+			catch (NumberFormatException nan) {
+				throw new IllegalArgumentException(
+					"Invalid value for option '"+opt
+					+ "': expected int but got "+value
+				);
+			}
+		}
+		else return absentDefault;
+	}
+	
 }

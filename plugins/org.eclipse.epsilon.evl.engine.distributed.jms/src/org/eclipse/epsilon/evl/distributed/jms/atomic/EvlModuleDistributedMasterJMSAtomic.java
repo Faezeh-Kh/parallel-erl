@@ -21,9 +21,9 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistributedMasterJMS {
+public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMasterJMS {
 
-	public EvlModuleDistributedMasterJMSAtomicSynch(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMSAtomic(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
 	}
 
@@ -38,17 +38,10 @@ public class EvlModuleDistributedMasterJMSAtomicSynch extends EvlModuleDistribut
 		assert slaveWorkers.size() == expectedSlaves;
 		assert expectedSlaves == parallelism-1;
 		
-		for (SerializableEvlInputAtom jobAtom : jobs.subList(selfBatch, jobs.size())) {
-			sendJob(jobAtom);
-		}
-		signalCompletion();
+		sendAllJobsAsync(jobs.subList(selfBatch, jobs.size()));
 		
 		log("Began processing own jobs");
-		
-		for (SerializableEvlInputAtom jobAtom : jobs.subList(0, selfBatch)) {
-			addToResults(jobAtom.evaluate(this));
-		}
-		
+		executeParallel(jobs.subList(0, selfBatch));
 		log("Finished processing own jobs");
 	}
 }

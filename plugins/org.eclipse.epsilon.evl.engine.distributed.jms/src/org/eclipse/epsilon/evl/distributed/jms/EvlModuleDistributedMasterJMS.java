@@ -25,6 +25,7 @@ import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedConsumer;
 import org.eclipse.epsilon.common.function.CheckedRunnable;
+import org.eclipse.epsilon.common.function.ExceptionContainer;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
@@ -388,6 +389,34 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 */
 	abstract protected void processJobs(final AtomicInteger workersReady) throws Exception;
 
+	/**
+	 * Sends all of the jobs in a new thread, returning immediately. If an exception is
+	 * raised, no further jobs are submitted and the thread terminates. If all jobs
+	 * were sent successfully, the {@link #signalCompletion()} method is called.
+	 * 
+	 * @param jobs The parameters to call {@link #sendJob(Serializable)} with.
+	 * @return A handle on an exception, which will be present if sending any jobs failed.
+	 */
+	protected ExceptionContainer<JMSException> sendAllJobsAsync(Iterable<? extends Serializable> jobs) {
+		ExceptionContainer<JMSException> exWrapper = new ExceptionContainer<>();
+		
+		Thread jobSender = new Thread(() -> {
+			try {
+				for (Serializable job : jobs) {
+					sendJob(job);
+				}
+				signalCompletion();
+			}
+			catch (JMSException jmx) {
+				exWrapper.setException(jmx);
+				return;
+			}
+		});
+		jobSender.setName("job-sender");
+		jobSender.start();
+		return exWrapper;
+	}
+	
 	/**
 	 * Called when a worker has registered.
 	 * @param currentWorkers The number of currently registered workers.

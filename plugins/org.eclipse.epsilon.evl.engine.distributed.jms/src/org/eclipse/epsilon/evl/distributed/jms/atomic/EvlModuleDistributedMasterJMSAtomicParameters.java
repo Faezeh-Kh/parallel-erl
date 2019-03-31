@@ -23,9 +23,9 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSAtomicParametersSynch extends EvlModuleDistributedMasterJMS {
+public class EvlModuleDistributedMasterJMSAtomicParameters extends EvlModuleDistributedMasterJMS {
 	
-	public EvlModuleDistributedMasterJMSAtomicParametersSynch(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMSAtomicParameters(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
 		
 		EvlContextDistributedMaster context = getContext();

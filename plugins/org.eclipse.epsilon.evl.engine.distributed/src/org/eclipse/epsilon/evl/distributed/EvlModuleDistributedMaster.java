@@ -13,10 +13,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.concurrent.Future;
 import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.eol.function.CheckedEolFunction;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
@@ -59,6 +61,43 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 		for (SerializableEvlResultAtom sr : serializedResults) {
 			unsatisfiedConstraints.add(sr.deserializeResult(this));
 		}
+	}
+	
+	/**
+	 * Executes this worker's jobs in parallel and adds the deserialized results to the
+	 * unsatisfied constraints. Execution is done in two stages: first by calling
+	 * {@link #evaluateLocal(Object)} and then {@link #addToResults(Iterable)}, both
+	 * in parallel.
+	 * 
+	 * @param jobs The Serializable instances to forward to {@link #evaluateLocal(Object)}
+	 * @throws EolRuntimeException
+	 */
+	protected void executeParallel(Iterable<?> jobs) throws EolRuntimeException {
+		EvlContextDistributedMaster context = getContext();
+		EolExecutorService executor = context.beginParallelTask(this);
+		Collection<Future<?>> evalFutures = jobs instanceof Collection ?
+			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
+		
+		for (Object job : jobs) {
+			evalFutures.add(executor.submit(() -> evaluateLocal(job)));
+		}
+		
+		Collection<Future<?>> resultFutures = new ArrayList<>(evalFutures.size());
+		for (Object intermediate : evalFutures) {
+			@SuppressWarnings("unchecked")
+			Collection<SerializableEvlResultAtom> resValues = (Collection<SerializableEvlResultAtom>) intermediate;
+			resultFutures.add(executor.submit(() -> {
+				try {
+					addToResults(resValues);
+				}
+				catch (EolRuntimeException exception) {
+					context.handleException(exception);
+				}
+			}));
+		}
+		
+		executor.awaitCompletion(resultFutures);
+		context.endParallelTask(this);
 	}
 	
 	/**

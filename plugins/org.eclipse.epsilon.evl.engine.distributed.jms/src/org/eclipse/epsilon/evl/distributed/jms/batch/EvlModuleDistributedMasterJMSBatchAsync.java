@@ -17,7 +17,6 @@ import javax.jms.Message;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
-import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
@@ -27,13 +26,13 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistributedMasterJMS {
+public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistributedMasterJMSBatch {
 
 	List<ConstraintContextAtom> jobs;
 	List<DistributedEvlBatch> batches;
-
-	public EvlModuleDistributedMasterJMSBatchAsync(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
-		super(expectedWorkers, host, sessionID);
+	
+	public EvlModuleDistributedMasterJMSBatchAsync(int expectedWorkers, int bpw, String host, int sessionID) throws URISyntaxException {
+		super(expectedWorkers, bpw, host, sessionID);
 	}
 
 	@Override
