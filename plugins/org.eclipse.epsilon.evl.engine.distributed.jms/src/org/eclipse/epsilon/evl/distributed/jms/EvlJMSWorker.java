@@ -171,6 +171,9 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	}
 	
 	void onCompletion(JMSContext session) throws Exception {
+		// This is to ensure execution times are merged into main thread
+		module.getContext().endParallel();
+		
 		ObjectMessage finishedMsg = session.createObjectMessage();
 		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
