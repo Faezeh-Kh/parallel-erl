@@ -23,7 +23,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.*;
 import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
-import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -86,7 +85,8 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					prepareToProcessJobs(jobContext, resultContext);
+					// Start the job processing loop
+					prepareToProcessJobs(jobContext, resultContext).start();
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
@@ -141,18 +141,17 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	void prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
-		
+	Thread prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
 		Thread resultsProcessor = new Thread(
 			getJopProcessor(resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE))
 		);
 		resultsProcessor.setName("job-processor");
 		
 		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID))
-			.setMessageListener(getTerminalProcessor());
+			.setMessageListener(getTerminationListener());
 		
 		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID))
-			.setMessageListener(getJobProcessor());
+			.setMessageListener(getJobListener());
 		
 		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
 			finished.set(true);
@@ -162,7 +161,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			log("Acknowledged end of jobs");
 		});
 		
-		resultsProcessor.start();
+		return resultsProcessor;
 	}
 	
 	void onCompletion(JMSContext jobContext) throws Exception {
@@ -273,7 +272,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	MessageListener getJobProcessor() {
+	MessageListener getJobListener() {
 		return msg -> {
 			if (stopBody != null) return;
 			try {
@@ -298,7 +297,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		};
 	}
 
-	MessageListener getTerminalProcessor() {
+	MessageListener getTerminationListener() {
 		return msg -> {
 			log("Stopping execution!");
 			synchronized (finished) {
