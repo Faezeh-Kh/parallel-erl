@@ -93,9 +93,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected final int expectedSlaves;
 	protected final ConcurrentMap<String, Map<String, Duration>> slaveWorkers;
 	protected final Collection<Serializable> failedJobs;
-	protected ConnectionFactory connectionFactory;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
+	ConnectionFactory connectionFactory;
 	private CheckedConsumer<Serializable, JMSException> jobSender;
 	private CheckedRunnable<JMSException> completionSender;
 	
@@ -350,6 +350,10 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 						if (failedJobs.add(contents)) {
 							failedJobs.notify();
 						}
+						Object exception = msg.getObjectProperty(EXCEPTION_PROPERTY);
+						if (exception instanceof Exception) {
+							handleExceptionFromWorker((Exception) exception, msg.getStringProperty(WORKER_ID_PROPERTY));
+						}
 					}
 				}
 			}
@@ -466,6 +470,16 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			catch (InterruptedException ie) {}
 		}
 		log("All workers connected");
+	}
+	
+	/**
+	 * Called when receiving a message with the {@link #EXCEPTION_PROPERTY}.
+	 * 
+	 * @param ex The received exception.
+	 * @param workerID The received {@link #WORKER_ID_PROPERTY}.
+	 */
+	protected void handleExceptionFromWorker(Exception ex, String workerID) {
+		log("Received exception "+ex.getMessage());
 	}
 	
 	@Override
