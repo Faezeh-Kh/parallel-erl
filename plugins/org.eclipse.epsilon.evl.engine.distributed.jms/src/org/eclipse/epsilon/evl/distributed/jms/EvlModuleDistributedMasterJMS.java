@@ -111,7 +111,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
-		log("Connected to "+host);
+		log("Connected to "+host+" session "+sessionID);
 	}
 	
 	@Override

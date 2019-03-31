@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.*;
@@ -61,7 +62,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	final java.util.concurrent.BlockingQueue<Serializable> jobsInProgress = new LinkedBlockingQueue<>();
+	final BlockingQueue<Serializable> jobsInProgress = new LinkedBlockingQueue<>();
 	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	final String basePath;
@@ -70,6 +71,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	DistributedEvlRunConfiguration configContainer;
 	EvlModuleDistributedSlave module;
 	volatile Serializable stopBody;
+	volatile boolean jobIsInProgress;
 
 	public EvlJMSWorker(String host, String basePath, int sessionID) {
 		connectionFactory = new ActiveMQJMSConnectionFactory(host);
@@ -84,7 +86,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					CheckedRunnable<?> completionSignaller = prepareToProcessJobs(jobContext, resultContext);
+					prepareToProcessJobs(jobContext, resultContext);
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
@@ -93,8 +95,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					awaitCompletion();
 			
 					// Tell the master we've finished
-					completionSignaller.runThrows();
-					onCompletion();
+					onCompletion(jobContext);
 				}
 			}
 		}
@@ -140,7 +141,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	CheckedRunnable<JMSException> prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
+	void prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
 		
 		Thread resultsProcessor = new Thread(
 			getJopProcessor(resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE))
@@ -162,24 +163,27 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		});
 		
 		resultsProcessor.start();
-		
-		return () -> {
-			resultsProcessor.interrupt();
-			ObjectMessage finishedMsg = jobContext.createObjectMessage();
-			finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
-			finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-			finishedMsg.setObject((Serializable) configContainer.getSerializableRuleExecutionTimes());
-			jobContext.createProducer().send(jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
-		};
 	}
 	
-	void onCompletion() throws Exception {
+	void onCompletion(JMSContext jobContext) throws Exception {
+		ObjectMessage finishedMsg = jobContext.createObjectMessage();
+		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
+		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
+		finishedMsg.setObject(configContainer.getSerializableRuleExecutionTimes());
+		if (stopBody instanceof Serializable) {
+			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
+		}
+		jobContext.createProducer().send(jobContext.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 		log("Signalled completion");
+	}
+	
+	void onFail(Exception ex, Message msg) {
+		System.err.println("Failed job '"+msg+"': "+ex);
 	}
 	
 	void awaitCompletion() {
 		log("Awaiting completion");
-		while (!finished.get()) synchronized (finished) {
+		while (isActiveCondition()) synchronized (finished) {
 			try {
 				finished.wait();
 			}
@@ -194,8 +198,8 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	void onFail(Exception ex, Message msg) {
-		System.err.println("Failed job '"+msg+"': "+ex);
+	boolean isActiveCondition() {
+		return stopBody == null && (jobIsInProgress || !finished.get() || !jobsInProgress.isEmpty());
 	}
 	
 	Runnable getJopProcessor(JMSContext replyContext) {
@@ -203,10 +207,11 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			JMSProducer resultSender = replyContext.createProducer();
 			Queue resultQueue = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
 			
-			while (stopBody == null && (!jobsInProgress.isEmpty() || !finished.get())) try {
+			while (isActiveCondition()) try {
 				Serializable currentJob = null;
 				try {
 					currentJob = jobsInProgress.take();
+					jobIsInProgress = true;
 				}
 				catch (InterruptedException ie) {
 					if (stopBody != null) break;
@@ -224,6 +229,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				
 				resultsMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 				resultSender.send(resultQueue, resultsMsg);
+				jobIsInProgress = false;
 			}
 			catch (JMSException jmx) {
 				throw new JMSRuntimeException(jmx.getMessage());
@@ -286,7 +292,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				throw new JMSRuntimeException(jmx.getMessage());
 			}
 			// Wake up the main thread once all jobs have been processed.
-			if (finished.get() && jobsInProgress.isEmpty()) synchronized (finished) {
+			if (finished.get() && !jobIsInProgress) synchronized (finished) {
 				finished.notify();
 			}
 		};
