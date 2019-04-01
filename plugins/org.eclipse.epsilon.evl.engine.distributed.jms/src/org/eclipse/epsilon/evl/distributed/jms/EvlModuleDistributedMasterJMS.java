@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.jms.*;
-import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.common.function.CheckedConsumer;
 import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.common.function.ExceptionContainer;
@@ -77,17 +76,28 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
 	
 	public static final String
-		JOBS_QUEUE = "worker-jobs",
+		JOBS_QUEUE = "worker_jobs",
 		CONFIG_TOPIC = "configuration",
-		END_JOBS_TOPIC = "no-more-jobs",
-		STOP_TOPIC = "short-circuit",
+		END_JOBS_TOPIC = "no_more_jobs",
+		STOP_TOPIC = "shortcircuit",
 		REGISTRATION_QUEUE = "registration",
 		RESULTS_QUEUE_NAME = "results",
-		WORKER_ID_PREFIX = "EVL-jms-",
+		WORKER_ID_PREFIX = "EVL_jms",
 		LAST_MESSAGE_PROPERTY = "lastMsg",
 		EXCEPTION_PROPERTY = "exception",
 		WORKER_ID_PROPERTY = "workerID",
 		CONFIG_HASH = "configChecksum";
+	
+	static final CompletionListener NOOP_COMPLETION_LISTENER = new CompletionListener() {
+		@Override
+		public void onException(Message arg0, Exception arg1) {
+			// Don't care
+		}
+		@Override
+		public void onCompletion(Message arg0) {
+			// Don't care
+		}
+	};
 	
 	protected final String host;
 	protected final int sessionID;
@@ -111,7 +121,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
-		connectionFactory = new ActiveMQJMSConnectionFactory(host);
+		connectionFactory = new org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory(host);
 		log("Connected to "+host+" session "+sessionID);
 	}
 	
@@ -153,7 +163,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				}
 			});
 			
-			try (JMSContext resultsContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+			try (JMSContext resultsContext = regContext.createContext(JMSContext.CLIENT_ACKNOWLEDGE)) {
 				final AtomicInteger workersFinished = new AtomicInteger();
 				
 				resultsContext.createConsumer(createResultsQueue(resultsContext))
@@ -174,8 +184,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					}
 				});
 				
-				try (JMSContext jobContext = resultsContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					final JMSProducer jobsProducer = jobContext.createProducer();
+				try (JMSContext jobContext = resultsContext.createContext(JMSContext.CLIENT_ACKNOWLEDGE)) {
+					final JMSProducer jobsProducer = jobContext.createProducer();//.setAsync(NOOP_COMPLETION_LISTENER);
 					final Queue jobsQueue = createJobQueue(jobContext);
 					jobSender = obj -> jobsProducer.send(jobsQueue, obj);
 					final Topic completionTopic = createEndOfJobsTopic(jobContext);
@@ -322,6 +332,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		return msg -> {
 			try {
 				resultsInProgress.incrementAndGet();
+				msg.acknowledge();
 				
 				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
 					String workerID = msg.getStringProperty(WORKER_ID_PROPERTY);

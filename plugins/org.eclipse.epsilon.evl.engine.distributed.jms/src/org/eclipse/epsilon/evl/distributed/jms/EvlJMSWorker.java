@@ -22,7 +22,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.*;
-import org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
@@ -73,7 +72,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	volatile boolean jobIsInProgress;
 
 	public EvlJMSWorker(String host, String basePath, int sessionID) {
-		connectionFactory = new ActiveMQJMSConnectionFactory(host);
+		connectionFactory = new org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory(host);
 		this.basePath = basePath;
 		this.sessionID = sessionID;
 	}
@@ -84,7 +83,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			Runnable ackSender = setup(regContext);
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-				try (JMSContext jobContext = resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
+				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 					Thread jobThread = prepareToProcessJobs(jobContext, resultContext);
 					// Start the job processing loop
 					jobThread.start();
@@ -148,7 +147,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	Thread prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
 		Thread resultsProcessor = new Thread(
-			getJopProcessor(resultContext.createContext(JMSContext.AUTO_ACKNOWLEDGE))
+			getJopProcessor(resultContext.createContext(JMSContext.CLIENT_ACKNOWLEDGE))
 		);
 		resultsProcessor.setName("job-processor");
 		resultsProcessor.setDaemon(false);
@@ -181,7 +180,9 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		if (stopBody instanceof Serializable) {
 			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
 		}
-		session.createProducer().send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
+		session.createProducer()//.setAsync(NOOP_COMPLETION_LISTENER)
+			.send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
+		
 		log("Signalled completion");
 	}
 	
@@ -212,7 +213,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	Runnable getJopProcessor(JMSContext replyContext) {
 		return () -> {
-			JMSProducer resultSender = replyContext.createProducer();
+			JMSProducer resultSender = replyContext.createProducer().setAsync(NOOP_COMPLETION_LISTENER);
 			Queue resultQueue = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
 			
 			while (isActiveCondition()) try {
