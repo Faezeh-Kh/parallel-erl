@@ -13,6 +13,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
@@ -83,9 +86,11 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 		}
 		
 		Collection<Future<?>> resultFutures = new ArrayList<>(evalFutures.size());
-		for (Object intermediate : evalFutures) {
+		for (Object intermediate : evalFutures) try {
 			@SuppressWarnings("unchecked")
-			Collection<SerializableEvlResultAtom> resValues = (Collection<SerializableEvlResultAtom>) intermediate;
+			Collection<SerializableEvlResultAtom> resValues = (Collection<SerializableEvlResultAtom>)
+				((Future<Collection<SerializableEvlResultAtom>>) intermediate).get();
+			
 			resultFutures.add(executor.submit(() -> {
 				try {
 					addToResults(resValues);
@@ -95,9 +100,30 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 				}
 			}));
 		}
+		catch (ExecutionException | CancellationException | InterruptedException ex) {
+			throw new EolRuntimeException(ex);
+		}
 		
 		executor.awaitCompletion(resultFutures);
 		context.endParallelTask(this);
+	}
+	
+	/**
+	 * Deserializes the results in parallel using this context's ExecutorService.
+	 * @param results The serialized results.
+	 * @return The deserialized UnsatisfiedConstraints.
+	 * @throws EolRuntimeException
+	 */
+	protected Collection<UnsatisfiedConstraint> deserializeParallel(Iterable<? extends SerializableEvlResultAtom> results) throws EolRuntimeException {
+		EvlContextDistributedMaster context = getContext();
+		ArrayList<Callable<UnsatisfiedConstraint>> jobs = results instanceof Collection ?
+			new ArrayList<>(((Collection<?>)results).size()) : new ArrayList<>();
+		
+		for (SerializableEvlResultAtom sera : results) {
+			jobs.add(() -> sera.deserializeResult(this));
+		}
+		
+		return context.executeParallelTyped(null, jobs);
 	}
 	
 	/**
@@ -124,16 +150,22 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	 * 
 	 * @throws EolRuntimeException
 	 */
+	@SuppressWarnings("unchecked")
 	protected boolean deserializeResults(Object response) throws EolRuntimeException {
 		if (response instanceof Iterable) {
-			return deserializeResults(((Iterable<?>) response).iterator());
+			Iterable<SerializableEvlResultAtom> srIter;
+			try {
+				srIter = (Iterable<SerializableEvlResultAtom>) response;
+			}
+			catch (ClassCastException ccx) {
+				return false;
+			}
+			getContext().getUnsatisfiedConstraints().addAll(deserializeParallel(srIter));
+			return true;
 		}
 		else if (response instanceof Iterator) {
-			boolean result = true;
-			for (Iterator<?> contentsIter = (Iterator<?>) response; contentsIter.hasNext();) {
-				result = deserializeResults(contentsIter.next()) && result;
-			}
-			return result;
+			java.util.function.Supplier<Iterator<Object>> iterSup = () -> (Iterator<Object>) response;
+			return deserializeResults((Iterable<Object>) iterSup::get);
 		}
 		else if (response instanceof SerializableEvlResultAtom) {
 			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeResult(this));

@@ -99,7 +99,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 					jobThread.interrupt();
 					
 					// Tell the master we've finished
-					onCompletion(resultContext);
+					onCompletion(jobContext);
 				}
 			}
 		}
