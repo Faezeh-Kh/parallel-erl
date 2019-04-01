@@ -26,8 +26,6 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  */
 public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMasterJMS {
 	
-	// TODO: use bpw field for splitting jobs
-	
 	protected final int batchesPerWorker;
 	
 	public EvlModuleDistributedMasterJMSBatch(int expectedWorkers, int bpw, String host, int sessionID) throws URISyntaxException {
@@ -40,25 +38,22 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 		waitForWorkersToConnect(workersReady);
 		
 		final EvlContextDistributedMaster evlContext = getContext();
-		final int parallelism = evlContext.getDistributedParallelism()+1;
+		final int batchSize = 1 + (expectedSlaves * batchesPerWorker);
 		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);
-		final List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs, parallelism);
+		final List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs.size(), batchSize);
 		
-		assert expectedSlaves == parallelism-1;
+		assert expectedSlaves == evlContext.getDistributedParallelism();
 		assert slaveWorkers.size() == expectedSlaves;
-		assert slaveWorkers.size() == batches.size()-1;
 		
-		for (DistributedEvlBatch batch : batches.subList(0, expectedSlaves)) {
+		for (DistributedEvlBatch batch : batches.subList(0, batchSize-1)) {
 			sendJob(batch);
 		}
 		signalCompletion();
 		
 		log("Began processing own jobs");
-		
-		for (ConstraintContextAtom cca : batches.get(expectedSlaves).split(ccJobs)) {
+		for (ConstraintContextAtom cca : batches.get(batchSize-1).split(ccJobs)) {
 			cca.execute(evlContext);
 		}
-		
 		log("Finished processing own jobs");
 	}
 }

@@ -68,12 +68,17 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		return getClass().getSimpleName()+": from="+from+", to="+to;
 	}
 	
-	public static List<DistributedEvlBatch> getBatches(List<?> batches, int batchSize) throws EolRuntimeException {
-		final int
-			totalJobs = batches.size(),
-			increments = totalJobs / batchSize;
+	/**
+	 * Provides a List of indices based on the desired split size.
+	 * 
+	 * @param totalJobs The size of the source List being split
+	 * @param batchSize The number of batches (i.e. the size of the returned List).
+	 * @return A List of indexes with {@code totalJobs/batches} increments.
+	 */
+	public static List<DistributedEvlBatch> getBatches(int totalJobs, int batches) {
+		final int increments = totalJobs / batches;
 		
-		return IntStream.range(0, batchSize)
+		return IntStream.range(0, batches)
 			.mapToObj(i -> {
 				DistributedEvlBatch batch = new DistributedEvlBatch();
 				batch.from = i*increments;
@@ -93,9 +98,15 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 */
 	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
 		// Plus one because master itself is also included as a worker
-		return getBatches(ConstraintContextAtom.getContextJobs(module), module.getContext().getDistributedParallelism()+1);
+		return getBatches(ConstraintContextAtom.getContextJobs(module).size(), module.getContext().getDistributedParallelism()+1);
 	}
 	
+	/**
+	 * Splits the given list based on this class's indices.
+	 * @param <T> The type of the List
+	 * @param list The list to call {@link List#subList(int, int)} on
+	 * @return The split list.
+	 */
 	public <T> List<T> split(List<T> list) {
 		return list.subList(from, to);
 	}

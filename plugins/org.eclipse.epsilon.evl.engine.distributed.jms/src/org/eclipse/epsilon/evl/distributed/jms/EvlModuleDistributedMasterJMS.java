@@ -272,7 +272,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	}
 	
 	/**
-	 * Sends the job to the job queue.
+	 * Sends the job to the job queue. This is a blocking call.
 	 * 
 	 * @param msgBody The workload (job)
 	 * @throws JMSException

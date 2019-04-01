@@ -38,17 +38,16 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
-		final EvlContextDistributedMaster evlContext = getContext();
-		final int parallelism = evlContext.getDistributedParallelism()+1;
+		final int batchSize = 1 + (expectedSlaves * batchesPerWorker);
 		jobs = ConstraintContextAtom.getContextJobs(this);
-		batches = DistributedEvlBatch.getBatches(jobs, parallelism);
+		batches = DistributedEvlBatch.getBatches(jobs.size(), batchSize);
 	}
 	
 	@Override
 	protected void confirmWorker(Message confirmation, AtomicInteger workersReady) throws JMSException {
 		int batchNum = workersReady.incrementAndGet();
 		sendJob(batches.get(batchNum));
-		if (batchNum >= expectedSlaves) {
+		if (batchNum >= expectedSlaves * batchesPerWorker) {
 			signalCompletion();
 		}
 	}
