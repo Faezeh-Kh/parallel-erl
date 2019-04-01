@@ -180,8 +180,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		if (stopBody instanceof Serializable) {
 			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
 		}
-		session.createProducer()//.setAsync(NOOP_COMPLETION_LISTENER)
-			.send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
+		session.createProducer().send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 		
 		log("Signalled completion");
 	}
@@ -213,7 +212,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	
 	Runnable getJopProcessor(JMSContext replyContext) {
 		return () -> {
-			JMSProducer resultSender = replyContext.createProducer().setAsync(NOOP_COMPLETION_LISTENER);
+			JMSProducer resultSender = replyContext.createProducer().setAsync(null);
 			Queue resultQueue = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
 			
 			while (isActiveCondition()) try {

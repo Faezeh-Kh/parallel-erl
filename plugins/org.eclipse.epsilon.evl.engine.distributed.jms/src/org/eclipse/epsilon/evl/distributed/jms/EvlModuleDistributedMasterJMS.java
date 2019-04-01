@@ -88,17 +88,6 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		WORKER_ID_PROPERTY = "workerID",
 		CONFIG_HASH = "configChecksum";
 	
-	static final CompletionListener NOOP_COMPLETION_LISTENER = new CompletionListener() {
-		@Override
-		public void onException(Message arg0, Exception arg1) {
-			// Don't care
-		}
-		@Override
-		public void onCompletion(Message arg0) {
-			// Don't care
-		}
-	};
-	
 	protected final String host;
 	protected final int sessionID;
 	protected final int expectedSlaves;
@@ -185,7 +174,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				});
 				
 				try (JMSContext jobContext = resultsContext.createContext(JMSContext.CLIENT_ACKNOWLEDGE)) {
-					final JMSProducer jobsProducer = jobContext.createProducer();//.setAsync(NOOP_COMPLETION_LISTENER);
+					final JMSProducer jobsProducer = jobContext.createProducer().setAsync(null);
 					final Queue jobsQueue = createJobQueue(jobContext);
 					jobSender = obj -> jobsProducer.send(jobsQueue, obj);
 					final Topic completionTopic = createEndOfJobsTopic(jobContext);
