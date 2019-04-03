@@ -11,18 +11,15 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.stream.BaseStream;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
-import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
@@ -42,9 +39,10 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
+public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 
 	public EvlModuleDistributedMaster(int parallelism) {
+		super(parallelism);
 		setContext(new EvlContextDistributedMaster(0, parallelism));
 	}
 
@@ -91,7 +89,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
 		
 		for (Object job : jobs) {
-			evalFutures.add(executor.submit(() -> evaluateLocal(job)));
+			evalFutures.add(executor.submit(() -> evaluateJob(job)));
 		}
 		
 		Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
@@ -162,36 +160,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			return deserializeResults(((java.util.stream.BaseStream<?,?>) response).iterator());
 		}
 		else return false;
-	}
-	
-	/**
-	 * Processes the serialized jobs using this module.
-	 * 
-	 * @param job
-	 * @throws EolRuntimeException
-	 * @return The serialized results
-	 */
-	protected Collection<SerializableEvlResultAtom> evaluateLocal(Object job) throws EolRuntimeException {
-		if (job instanceof Iterable) {
-			return evaluateLocal(((Iterable<?>) job).iterator());
-		}
-		else if (job instanceof Iterator) {
-			Collection<SerializableEvlResultAtom> results = new ArrayList<>();
-			for (Iterator<?> it = (Iterator<?>) job; it.hasNext();) {
-				results.addAll(evaluateLocal(it.next()));
-			}
-			return results;
-		}
-		if (job instanceof SerializableEvlInputAtom) {
-			return ((SerializableEvlInputAtom) job).evaluate(this);
-		}
-		else if (job instanceof DistributedEvlBatch) {
-			return ((DistributedEvlBatch) job).evaluate(this);
-		}
-		else if (job instanceof BaseStream<?,?>) {
-			return evaluateLocal(((BaseStream<?,?>) job).iterator());
-		}
-		else return Collections.emptyList();
 	}
 	
 	@Override

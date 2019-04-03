@@ -14,8 +14,6 @@ import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
@@ -25,7 +23,6 @@ import javax.jms.*;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**
@@ -227,7 +224,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				
 				ObjectMessage resultsMsg = null;
 				try {
-					Serializable resultObj = module.evaluateJob(currentJob);
+					Serializable resultObj = (Serializable) module.evaluateJob(currentJob);
 					resultsMsg = replyContext.createObjectMessage(resultObj);
 				}
 				catch (EolRuntimeException eox) {

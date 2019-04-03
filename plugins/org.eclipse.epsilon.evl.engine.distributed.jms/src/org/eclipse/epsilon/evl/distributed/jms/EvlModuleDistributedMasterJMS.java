@@ -214,7 +214,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		if (!failedJobs.isEmpty()) {
 			log("Processing "+failedJobs.size()+" failed jobs...");
 			for (Iterator<Serializable> it = failedJobs.iterator(); it.hasNext(); it.remove()) {
-				evaluateLocal(it.next());
+				evaluateJob(it.next());
 			}
 		}
 	}
