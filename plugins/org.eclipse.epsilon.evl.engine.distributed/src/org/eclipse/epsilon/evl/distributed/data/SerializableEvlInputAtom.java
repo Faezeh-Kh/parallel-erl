@@ -13,14 +13,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
 import org.eclipse.epsilon.evl.IEvlModule;
-import org.eclipse.epsilon.evl.dom.Constraint;
+import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
+import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * Data unit to be used as inputs in distributed processing. No additional
@@ -41,8 +44,11 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	/**
 	 * Deserializes this element, executes it and transforms the results into a collection of
 	 * serialized {@linkplain UnsatisfiedConstraint}s.
-	 * @param module
-	 * @return
+	 * 
+	 * @param module The IEvlModule to use for resolution and its context for execution. Note
+	 * that if the module is an instanceof {@linkplain EvlModuleParallel}, then execution is
+	 * performed in parallel using Parallel Streams.
+	 * @return A Serializable Collection of UnsatisfiedConstraint instances.
 	 * @throws EolRuntimeException
 	 */
 	public Collection<SerializableEvlResultAtom> evaluate(IEvlModule module) throws EolRuntimeException {
@@ -64,17 +70,21 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 			return Collections.emptyList();
 		}
 		
-		Collection<Constraint> constraintsToCheck = constraintContext.getConstraints();
-		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
-		
-		for (Constraint constraint : constraintsToCheck) {
-			serializeUnsatisfiedConstraintIfPresent(
-				constraint.execute(modelElement, context)
-			)
-			.ifPresent(unsatisfied::add);
-		}
-		
-		return unsatisfied;
+		return StreamSupport.stream(
+			constraintContext.getConstraints().spliterator(), module instanceof EvlModuleParallel)
+			.map(constraint -> {
+				try {
+					return constraint.execute(modelElement, context);
+				}
+				catch (EolRuntimeException ex) {
+					((IEvlContextParallel) context).handleException(ex, null);
+					return Optional.<UnsatisfiedConstraint> empty();
+				}
+			})
+			.map(this::serializeUnsatisfiedConstraintIfPresent)
+			.filter(Optional::isPresent)
+			.map(Optional::get)
+			.collect(Collectors.toCollection(ArrayList::new));
 	}
 	
 	protected Optional<SerializableEvlResultAtom> serializeUnsatisfiedConstraintIfPresent(Optional<UnsatisfiedConstraint> result) {
@@ -90,7 +100,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	}
 	
 	/**
-	 * Splits the workload into a collection of model elements. The order can be randomised
+	 * Splits the workload into a Collection of model elements. The order can be randomised
 	 * (shuffled) to ensure a balanced workload. Subclasses may override this method to
 	 * define an optimal split based on static analysis.
 	 * 

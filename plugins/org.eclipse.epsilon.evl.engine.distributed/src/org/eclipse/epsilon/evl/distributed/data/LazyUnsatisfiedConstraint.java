@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed.data;
 
 import java.util.Deque;
 import java.util.Map;
+import java.util.Objects;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
 import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.dom.Constraint;
@@ -27,7 +28,7 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 public class LazyUnsatisfiedConstraint extends UnsatisfiedConstraint {
 
 	protected final SerializableEvlResultAtom proxy;
-	protected IEvlModule module;
+	protected transient IEvlModule module;
 	
 	public LazyUnsatisfiedConstraint(SerializableEvlResultAtom proxy, IEvlModule module) {
 		this.proxy = proxy;
@@ -68,5 +69,17 @@ public class LazyUnsatisfiedConstraint extends UnsatisfiedConstraint {
 	public Map<String, Object> getExtras() {
 		// TODO Support
 		return super.getExtras();
+	}
+	
+	@Override
+	public int hashCode() {
+		return Objects.hash(super.hashCode(), proxy);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (!super.equals(obj)) return false;
+		LazyUnsatisfiedConstraint luc = (LazyUnsatisfiedConstraint) obj;
+		return Objects.equals(this.proxy, luc.proxy);
 	}
 }

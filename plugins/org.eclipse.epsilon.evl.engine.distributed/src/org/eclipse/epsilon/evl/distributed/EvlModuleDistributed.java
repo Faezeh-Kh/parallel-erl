@@ -14,7 +14,9 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
+import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
@@ -30,6 +32,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 
 	public EvlModuleDistributed(int parallelism) {
 		super(parallelism);
+		setContext(new EvlContextDistributed(parallelism));
 	}
 
 	@Override
@@ -104,5 +107,17 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
 		}
 		return batch.evaluate(contextJobsCache, getContext());
+	}
+	
+	@Override
+	public EvlContextDistributed getContext() {
+		return (EvlContextDistributed) super.getContext();
+	}
+	
+	@Override
+	public void setContext(IEolContext context) {
+		if (context instanceof EvlContextDistributed) {
+			super.setContext(context);
+		}
 	}
 }

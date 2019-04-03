@@ -56,9 +56,18 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		EvlContextDistributedMaster evlContext = getContext();
 		log("Began processing own jobs");
-		for (ConstraintContextAtom cca : batches.get(0).split(jobs)) {
-			cca.execute(evlContext);
-		}
+		
+		batches.get(0).split(jobs)
+			.parallelStream()
+			.forEach(cca -> {
+				try {
+					cca.execute(evlContext);
+				}
+				catch (EolRuntimeException ex) {
+					evlContext.handleException(ex);
+				}
+			});
+		
 		log("Finished processing own jobs");
 	}
 }

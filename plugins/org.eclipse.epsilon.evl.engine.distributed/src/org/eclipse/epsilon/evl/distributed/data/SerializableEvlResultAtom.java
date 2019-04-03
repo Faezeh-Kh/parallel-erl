@@ -80,6 +80,12 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 		return outputAtom;
 	}
 	
+	/**
+	 * Calls {@link #serializeResult(UnsatisfiedConstraint, IEvlContext)} in parallel.
+	 * 
+	 * @param context
+	 * @return The serialized {@linkplain UnsatisfiedConstraint} instances.
+	 */
 	public static Collection<SerializableEvlResultAtom> serializeResults(IEvlContext context) {
 		return context.getUnsatisfiedConstraints()
 			.parallelStream()

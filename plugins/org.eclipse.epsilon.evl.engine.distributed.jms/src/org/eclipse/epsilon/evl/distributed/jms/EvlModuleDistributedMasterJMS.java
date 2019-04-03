@@ -205,7 +205,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	/**
 	 * Always called after execution, to finish unprocessed jobs. Implementations may override this
 	 * method to handle the processing differently, e.g. to re-distributed failed jobs. Subclasses
-	 * are free to call this method at any time prior to completion to avoid waiting
+	 * are free to call this method at any time prior to completion to avoid waiting.
 	 * 
 	 * @see #failedJobs
 	 * @throws EolRuntimeException

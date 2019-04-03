@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed.jms.batch;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
@@ -51,9 +52,18 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 		signalCompletion();
 		
 		log("Began processing own jobs");
-		for (ConstraintContextAtom cca : batches.get(batchSize-1).split(ccJobs)) {
-			cca.execute(evlContext);
-		}
+		
+		batches.get(batchSize-1).split(ccJobs)
+			.parallelStream()
+			.forEach(cca -> {
+				try {
+					cca.execute(evlContext);
+				}
+				catch (EolRuntimeException ex) {
+					evlContext.handleException(ex);
+				}
+			});
+
 		log("Finished processing own jobs");
 	}
 }

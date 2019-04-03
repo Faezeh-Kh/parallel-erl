@@ -25,28 +25,14 @@ import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.context.Variable;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
  * 
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlContextDistributedMaster extends EvlContextParallel {
+public class EvlContextDistributedMaster extends EvlContextDistributed {
 
-	protected static final String
-		ENCODING = java.nio.charset.StandardCharsets.UTF_8.toString(),
-		BASE_PATH = "basePath",
-		BASE_PATH_SUBSTITUTE = "//BASEPATH//",
-		LOCAL_PARALLELISM = "localParallelism",
-		DISTRIBUTED_PARALLELISM = "distributedParallelism",
-		EVL_SCRIPT = "evlScript",
-		OUTPUT_DIR = "output",
-		NUM_MODELS = "numberOfModels",
-		MODEL_PREFIX = "model",
-		SCRIPT_PARAMS = "scriptParameters",
-		IGNORE_MODELS = "noModelLoading";
-	
 	protected Collection<StringProperties> modelProperties;
 	protected Collection<Variable> initialVariables;
 	protected int distributedParallelism;

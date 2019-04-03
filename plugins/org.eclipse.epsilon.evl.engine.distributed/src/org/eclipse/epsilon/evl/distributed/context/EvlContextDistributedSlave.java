@@ -10,7 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.context;
 
 import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
-import static org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster.*;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -23,17 +22,16 @@ import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecuto
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
-import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
  * 
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlContextDistributedSlave extends EvlContextParallel {
+public class EvlContextDistributedSlave extends EvlContextDistributed {
 	
 	public EvlContextDistributedSlave(int localParallelism) {
-		super(localParallelism, false);
+		super(localParallelism);
 	}
 	
 	@Override
