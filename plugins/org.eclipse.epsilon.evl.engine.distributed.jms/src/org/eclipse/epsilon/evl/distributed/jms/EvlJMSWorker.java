@@ -227,7 +227,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				
 				ObjectMessage resultsMsg = null;
 				try {
-					Serializable resultObj = evaluateJob(currentJob);
+					Serializable resultObj = module.evaluateJob(currentJob);
 					resultsMsg = replyContext.createObjectMessage(resultObj);
 				}
 				catch (EolRuntimeException eox) {
@@ -248,37 +248,6 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				finished.notify();
 			}
 		};
-	}
-
-	Serializable evaluateJob(Object msgObj) throws EolRuntimeException {
-		if (msgObj instanceof Iterable) {
-			return evaluateJob(((Iterable<?>) msgObj).iterator());
-		}
-		else if (msgObj instanceof Iterator) {
-			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-			for (Iterator<?> iter = (Iterator<?>) msgObj; iter.hasNext();) {
-				Object obj = iter.next();
-				if (obj instanceof SerializableEvlInputAtom) {
-					resultsCol.addAll(((SerializableEvlInputAtom) obj).evaluate(module));
-				}
-				else if (obj instanceof DistributedEvlBatch) {
-					resultsCol.addAll(module.evaluateBatch((DistributedEvlBatch) obj));
-				}
-			}
-			return resultsCol;
-		}
-		if (msgObj instanceof SerializableEvlInputAtom) {
-			return (Serializable)((SerializableEvlInputAtom) msgObj).evaluate(module);
-		}
-		else if (msgObj instanceof DistributedEvlBatch) {
-			return (Serializable) module.evaluateBatch((DistributedEvlBatch) msgObj);
-		}
-		else if (msgObj instanceof java.util.stream.BaseStream) {
-			return evaluateJob(((java.util.stream.BaseStream<?,?>)msgObj).iterator());
-		}
-		else {
-			throw new IllegalArgumentException("Received unexpected object of type "+msgObj.getClass().getName());
-		}
 	}
 	
 	MessageListener getJobListener() {

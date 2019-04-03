@@ -9,7 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
@@ -58,6 +61,55 @@ public class EvlModuleDistributedSlave extends EvlModuleParallel {
 		return batch.evaluate(contextJobsCache, getContext());
 	}
 
+	/**
+	 * Executes the provided Serializable job(s) and returns the Serializable result.
+	 * 
+	 * @param msgObj The input job.
+	 * @return Zero or more {@link SerializableEvlResultAtom}s.
+	 * @throws EolRuntimeException If an exception occurs when executing the job using this module.
+	 * @throws IllegalArgumentException If the job type was not recognised.
+	 */
+	@SuppressWarnings("unchecked")
+	public Serializable evaluateJob(Object msgObj) throws EolRuntimeException {
+		if (msgObj instanceof SerializableEvlInputAtom) {
+			return (Serializable)((SerializableEvlInputAtom) msgObj).evaluate(this);
+		}
+		else if (msgObj instanceof DistributedEvlBatch) {
+			return (Serializable) evaluateBatch((DistributedEvlBatch) msgObj);
+		}
+		else if (msgObj instanceof Iterable) {
+			return evaluateJob(((Iterable<?>) msgObj).iterator());
+		}
+		else if (msgObj instanceof Iterator) {
+			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
+			for (Iterator<?> iter = (Iterator<?>) msgObj; iter.hasNext();) {
+				Object obj = iter.next();
+				if (obj instanceof SerializableEvlInputAtom) {
+					resultsCol.addAll(((SerializableEvlInputAtom) obj).evaluate(this));
+				}
+				else if (obj instanceof DistributedEvlBatch) {
+					resultsCol.addAll(evaluateBatch((DistributedEvlBatch) obj));
+				}
+				else {
+					Serializable result = evaluateJob(obj);
+					if (result instanceof Collection) {
+						resultsCol.addAll((Collection<SerializableEvlResultAtom>) result);
+					}
+					else if (result instanceof SerializableEvlResultAtom) {
+						resultsCol.add((SerializableEvlResultAtom) result);
+					}
+				}
+			}
+			return resultsCol;
+		}
+		else if (msgObj instanceof java.util.stream.BaseStream) {
+			return evaluateJob(((java.util.stream.BaseStream<?,?>)msgObj).iterator());
+		}
+		else {
+			throw new IllegalArgumentException("Received unexpected object of type "+msgObj.getClass().getName());
+		}
+	}
+	
 	@Override
 	public EvlContextDistributedSlave getContext() {
 		return (EvlContextDistributedSlave) super.getContext();
