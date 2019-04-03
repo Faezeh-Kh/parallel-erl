@@ -11,6 +11,8 @@ package org.eclipse.epsilon.evl.distributed.flink;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -20,6 +22,7 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
  * Convenience base class for Flink EVL modules.
@@ -53,6 +56,19 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 	}
 	
 	protected abstract DataSet<SerializableEvlResultAtom> getProcessingPipeline(final ExecutionEnvironment execEnv) throws Exception;
+	
+	/**
+	 * Performs a batch collection of serialized unsatisfied constraints and
+	 * adds them to the context's UnsatisfiedConstraints.
+	 * 
+	 * @param results The serialized {@linkplain UnsatisfiedConstraint}s
+	 */
+	protected void assignDeserializedResults(Stream<SerializableEvlResultAtom> results) {
+		getContext().setUnsatisfiedConstraints(
+			results.map(sr -> sr.deserializeLazy(this))
+			.collect(Collectors.toSet())
+		);
+	}
 	
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {

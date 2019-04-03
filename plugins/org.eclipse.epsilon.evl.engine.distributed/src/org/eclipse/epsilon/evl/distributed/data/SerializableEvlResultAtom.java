@@ -90,11 +90,12 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 	// TODO: support fixes and 'extras'
 	/**
 	 * Transforms the serialized UnsatisfiedConstraint into a native UnsatisfiedConstraint.
-	 * @param sr The unsatisfied constraint information.
-	 * @return The derived {@link UnsatisfiedConstraint}.
+	 * 
+	 * @param module The IEvlModule used to resolve this atom.
+	 * @return The derived {@link UnsatisfiedConstraint} with its properties populated.
 	 * @throws EolRuntimeException If the constraint or model element could not be found.
 	 */
-	public UnsatisfiedConstraint deserializeResult(IEvlModule module) throws EolRuntimeException {
+	public UnsatisfiedConstraint deserializeEager(IEvlModule module) throws EolRuntimeException {
 		IEvlContext context =  module.getContext();
 		UnsatisfiedConstraint uc = new UnsatisfiedConstraint();
 		Object modelElement = findElement(context);
@@ -107,5 +108,15 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 		uc.setConstraint(constraint);
 		
 		return uc;
+	}
+	
+	/**
+	 * Provides a reference to an UnsatisfiedConstraint with this atom's values used for resolution.
+	 * 
+	 * @param module The IEvlModule used to resolve this atom.
+	 * @return An {@linkplain UnsatisfiedConstraint} with the properties not resolved (yet).
+	 */
+	public LazyUnsatisfiedConstraint deserializeLazy(IEvlModule module) {
+		return new LazyUnsatisfiedConstraint(this, module);
 	}
 }

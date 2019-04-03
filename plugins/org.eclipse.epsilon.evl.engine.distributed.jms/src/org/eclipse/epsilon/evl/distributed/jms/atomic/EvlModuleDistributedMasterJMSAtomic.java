@@ -32,11 +32,11 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 		waitForWorkersToConnect(workersReady);
 		
 		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(this, false);
-		final int parallelism = getContext().getDistributedParallelism()+1;
+		final int parallelism = expectedSlaves + 1;
 		final int selfBatch = jobs.size() / parallelism;
 		
 		assert slaveWorkers.size() == expectedSlaves;
-		assert expectedSlaves == parallelism-1;
+		assert expectedSlaves == getContext().getDistributedParallelism();
 		
 		sendAllJobsAsync(jobs.subList(selfBatch, jobs.size()));
 		

@@ -18,12 +18,10 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.BaseStream;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
-import org.eclipse.epsilon.eol.function.CheckedEolFunction;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
@@ -35,7 +33,7 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * method initiates the distributed processing; which in turn should spawn instances of
  * {@link EvlModuleDistributedSlave}. If a data sink is used (i.e.the results can be
  * acquired by this module as they appear), the 
- * {@link SerializableEvlResultAtom#deserializeResult(org.eclipse.epsilon.evl.IEvlModule)} 
+ * {@link SerializableEvlResultAtom#deserializeEager(org.eclipse.epsilon.evl.IEvlModule)} 
  * method can be used to rebuild the unsatisfied constraints and apply them to the context. Otherwise if
  * the processing is blocking (i.e. the master must wait for all results to become available), then
  * {@linkplain #assignDeserializedResults(Stream)} can be used.
@@ -59,17 +57,28 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	@Override
 	protected abstract void checkConstraints() throws EolRuntimeException;
 	
-	protected void addToResults(Iterable<SerializableEvlResultAtom> serializedResults) throws EolRuntimeException {
-		Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
+	/**
+	 * Resolves the serialized unsatisfied constraints lazily.
+	 * 
+	 * @param serializedResults The serialized UnsatisfiedConstraint instances.
+	 * @return A Collection of lazily resolved UnsatisfiedConstraints.
+	 */
+	protected Collection<LazyUnsatisfiedConstraint> deserializeLazy(Iterable<SerializableEvlResultAtom> serializedResults) {
+		Collection<LazyUnsatisfiedConstraint> results = serializedResults instanceof Collection ?
+			new ArrayList<>(((Collection<?>) serializedResults).size()) : new ArrayList<>();
+		
 		for (SerializableEvlResultAtom sr : serializedResults) {
-			unsatisfiedConstraints.add(sr.deserializeResult(this));
+			results.add(sr.deserializeLazy(this));
 		}
+		
+		return results;
 	}
 	
+	// TODO refactor to use CompletableFuture
 	/**
 	 * Executes this worker's jobs in parallel and adds the deserialized results to the
 	 * unsatisfied constraints. Execution is done in two stages: first by calling
-	 * {@link #evaluateLocal(Object)} and then {@link #addToResults(Iterable)}, both
+	 * {@link #evaluateLocal(Object)} and then {@link #deserializeLazy(Iterable)}, both
 	 * in parallel.
 	 * 
 	 * @param jobs The Serializable instances to forward to {@link #evaluateLocal(Object)}
@@ -85,60 +94,39 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			evalFutures.add(executor.submit(() -> evaluateLocal(job)));
 		}
 		
-		Collection<Future<?>> resultFutures = new ArrayList<>(evalFutures.size());
+		Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
+		
 		for (Object intermediate : evalFutures) try {
 			@SuppressWarnings("unchecked")
 			Collection<SerializableEvlResultAtom> resValues = (Collection<SerializableEvlResultAtom>)
 				((Future<Collection<SerializableEvlResultAtom>>) intermediate).get();
-			
-			resultFutures.add(executor.submit(() -> {
-				try {
-					addToResults(resValues);
-				}
-				catch (EolRuntimeException exception) {
-					context.handleException(exception);
-				}
-			}));
+
+			unsatisfiedConstraints.addAll(deserializeLazy(resValues));
 		}
 		catch (ExecutionException | CancellationException | InterruptedException ex) {
 			throw new EolRuntimeException(ex);
 		}
 		
-		executor.awaitCompletion(resultFutures);
 		context.endParallelTask(this);
 	}
 	
 	/**
-	 * Deserializes the results in parallel using this context's ExecutorService.
+	 * Deserializes the results eagerly in parallel using this context's ExecutorService.
 	 * @param results The serialized results.
+	 * @param eager Whether to fully resolve each UnsatisfiedConstraint.
 	 * @return The deserialized UnsatisfiedConstraints.
 	 * @throws EolRuntimeException
 	 */
-	protected Collection<UnsatisfiedConstraint> deserializeParallel(Iterable<? extends SerializableEvlResultAtom> results) throws EolRuntimeException {
+	protected Collection<UnsatisfiedConstraint> deserializeEager(Iterable<? extends SerializableEvlResultAtom> results) throws EolRuntimeException {
 		EvlContextDistributedMaster context = getContext();
 		ArrayList<Callable<UnsatisfiedConstraint>> jobs = results instanceof Collection ?
 			new ArrayList<>(((Collection<?>)results).size()) : new ArrayList<>();
 		
 		for (SerializableEvlResultAtom sera : results) {
-			jobs.add(() -> sera.deserializeResult(this));
+			jobs.add(() -> sera.deserializeEager(this));
 		}
 		
 		return context.executeParallelTyped(null, jobs);
-	}
-	
-	/**
-	 * Performs a batch collection of serialized unsatisfied constraints and
-	 * adds them to the context's UnsatisfiedConstraints.
-	 * 
-	 * @param results The serialized {@linkplain UnsatisfiedConstraint}s
-	 */
-	protected void assignDeserializedResults(Stream<SerializableEvlResultAtom> results) {
-		getContext().setUnsatisfiedConstraints(
-			results.map((CheckedEolFunction<SerializableEvlResultAtom, UnsatisfiedConstraint>)
-				sr -> sr.deserializeResult(this)
-			)
-			.collect(Collectors.toSet())
-		);
 	}
 	
 	/**
@@ -147,7 +135,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 	 * 
 	 * @param reponse The serializable result object.
 	 * @return Whether the object was a valid result
-	 * 
 	 * @throws EolRuntimeException
 	 */
 	@SuppressWarnings("unchecked")
@@ -160,7 +147,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			catch (ClassCastException ccx) {
 				return false;
 			}
-			getContext().getUnsatisfiedConstraints().addAll(deserializeParallel(srIter));
+			getContext().getUnsatisfiedConstraints().addAll(deserializeLazy(srIter));
 			return true;
 		}
 		else if (response instanceof Iterator) {
@@ -168,7 +155,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleParallel {
 			return deserializeResults((Iterable<Object>) iterSup::get);
 		}
 		else if (response instanceof SerializableEvlResultAtom) {
-			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeResult(this));
+			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeEager(this));
 			return true;
 		}
 		else if (response instanceof java.util.stream.BaseStream<?,?>) {
