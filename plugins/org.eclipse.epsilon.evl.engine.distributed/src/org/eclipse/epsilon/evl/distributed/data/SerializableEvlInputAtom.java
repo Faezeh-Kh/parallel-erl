@@ -51,7 +51,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	 * @return A Serializable Collection of UnsatisfiedConstraint instances.
 	 * @throws EolRuntimeException
 	 */
-	public Collection<SerializableEvlResultAtom> evaluate(IEvlModule module) throws EolRuntimeException {
+	public Collection<SerializableEvlResultAtom> execute(IEvlModule module) throws EolRuntimeException {
 		IEvlContext context = module.getContext();
 		Object modelElement = findElement(context);
 		

@@ -115,7 +115,7 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 	 * to find the model element.
 	 */
 	@Override
-	public Collection<SerializableEvlResultAtom> evaluate(IEvlModule module) throws EolRuntimeException {
+	public Collection<SerializableEvlResultAtom> execute(IEvlModule module) throws EolRuntimeException {
 		IEvlContext context = module.getContext();
 		FrameStack frameStack = context.getFrameStack();
 		ExpressionStatement entryPoint = new ExpressionStatement();

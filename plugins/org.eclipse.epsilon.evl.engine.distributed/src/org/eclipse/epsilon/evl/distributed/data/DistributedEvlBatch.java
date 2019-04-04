@@ -111,11 +111,11 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		return list.subList(from, to);
 	}
 	
-	public final Collection<SerializableEvlResultAtom> evaluate(EvlModuleParallel module) throws EolRuntimeException {
-		return evaluate(ConstraintContextAtom.getContextJobs(module), module.getContext());
+	public final Collection<SerializableEvlResultAtom> execute(EvlModuleParallel module) throws EolRuntimeException {
+		return execute(ConstraintContextAtom.getContextJobs(module), module.getContext());
 	}
 	
-	public Collection<SerializableEvlResultAtom> evaluate(List<ConstraintContextAtom> jobList, IEvlContextParallel context) throws EolRuntimeException {
+	public Collection<SerializableEvlResultAtom> execute(List<ConstraintContextAtom> jobList, IEvlContextParallel context) throws EolRuntimeException {
 		EolExecutorService executor = context.beginParallelTask(null);
 		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
 		

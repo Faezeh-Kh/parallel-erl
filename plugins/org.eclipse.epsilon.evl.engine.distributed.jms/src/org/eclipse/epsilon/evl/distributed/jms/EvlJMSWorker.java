@@ -224,7 +224,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				
 				ObjectMessage resultsMsg = null;
 				try {
-					Serializable resultObj = (Serializable) module.evaluateJob(currentJob);
+					Serializable resultObj = (Serializable) module.executeJob(currentJob);
 					resultsMsg = replyContext.createObjectMessage(resultObj);
 				}
 				catch (EolRuntimeException eox) {

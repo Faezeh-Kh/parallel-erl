@@ -13,12 +13,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
@@ -46,14 +42,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		setContext(new EvlContextDistributedMaster(0, parallelism));
 	}
 
-	@Override
-	protected void prepareContext() {
-		getContext().storeInitialVariables();
-		super.prepareContext();
-	}
-	
-	@Override
-	protected abstract void checkConstraints() throws EolRuntimeException;
 	
 	/**
 	 * Resolves the serialized unsatisfied constraints lazily.
@@ -70,42 +58,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		}
 		
 		return results;
-	}
-	
-	// TODO refactor to use CompletableFuture
-	/**
-	 * Executes this worker's jobs in parallel and adds the deserialized results to the
-	 * unsatisfied constraints. Execution is done in two stages: first by calling
-	 * {@link #evaluateLocal(Object)} and then {@link #deserializeLazy(Iterable)}, both
-	 * in parallel.
-	 * 
-	 * @param jobs The Serializable instances to forward to {@link #evaluateLocal(Object)}
-	 * @throws EolRuntimeException
-	 */
-	protected void executeParallel(Iterable<?> jobs) throws EolRuntimeException {
-		EvlContextDistributedMaster context = getContext();
-		EolExecutorService executor = context.beginParallelTask(this);
-		Collection<Future<?>> evalFutures = jobs instanceof Collection ?
-			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
-		
-		for (Object job : jobs) {
-			evalFutures.add(executor.submit(() -> evaluateJob(job)));
-		}
-		
-		Collection<UnsatisfiedConstraint> unsatisfiedConstraints = getContext().getUnsatisfiedConstraints();
-		
-		for (Object intermediate : evalFutures) try {
-			@SuppressWarnings("unchecked")
-			Collection<SerializableEvlResultAtom> resValues = (Collection<SerializableEvlResultAtom>)
-				((Future<Collection<SerializableEvlResultAtom>>) intermediate).get();
-
-			unsatisfiedConstraints.addAll(deserializeLazy(resValues));
-		}
-		catch (ExecutionException | CancellationException | InterruptedException ex) {
-			throw new EolRuntimeException(ex);
-		}
-		
-		context.endParallelTask(this);
 	}
 	
 	/**
@@ -160,6 +112,13 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 			return deserializeResults(((java.util.stream.BaseStream<?,?>) response).iterator());
 		}
 		else return false;
+	}
+	
+	
+	@Override
+	protected void prepareContext() {
+		getContext().storeInitialVariables();
+		super.prepareContext();
 	}
 	
 	@Override

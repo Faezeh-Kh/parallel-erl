@@ -28,7 +28,7 @@ class EvlFlinkAtomFlatMapFunction extends EvlFlinkRichFunction implements FlatMa
 
 	@Override
 	public void flatMap(SerializableEvlInputAtom value, Collector<SerializableEvlResultAtom> out) throws Exception {
-		for (SerializableEvlResultAtom result : value.evaluate(localModule)) {
+		for (SerializableEvlResultAtom result : value.execute(localModule)) {
 			out.collect(result);
 		}
 	}

@@ -37,7 +37,7 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 		
 		assert slaveWorkers.size() == expectedSlaves && expectedSlaves == getContext().getDistributedParallelism();
 		
-		sendAllJobsAsync(jobs.subList(selfBatch, jobs.size()));
+		sendAllJobsAsync(jobs.subList(selfBatch, jobs.size())).throwIfPresent();
 		
 		log("Began processing own jobs");
 		executeParallel(jobs.subList(0, selfBatch));

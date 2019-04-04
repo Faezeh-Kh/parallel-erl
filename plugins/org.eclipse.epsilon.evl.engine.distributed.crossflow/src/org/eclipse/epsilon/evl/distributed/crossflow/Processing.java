@@ -35,7 +35,7 @@ public class Processing extends ProcessingBase {
 			wait();
 		}
 		
-		Serializable result = slaveModule.evaluateJob(validationData.data);
+		Serializable result = slaveModule.executeJob(validationData.data);
 		if (result instanceof Iterable) {
 			for (Object obj : (Iterable<?>) result) {
 				if (obj instanceof SerializableEvlResultAtom) {
