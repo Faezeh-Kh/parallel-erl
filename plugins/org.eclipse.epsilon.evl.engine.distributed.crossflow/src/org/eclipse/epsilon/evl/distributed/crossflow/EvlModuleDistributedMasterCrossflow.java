@@ -41,4 +41,8 @@ public class EvlModuleDistributedMasterCrossflow extends EvlModuleDistributedMas
 			throw new EolRuntimeException(ex);
 		}
 	}
+	
+	public void deserializeValidationResult(ValidationResult result) {
+		result.atom.deserializeLazy(this);
+	}
 }

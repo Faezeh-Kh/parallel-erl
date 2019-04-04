@@ -384,7 +384,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	 * {@link #waitForWorkersToFinishJobs(JMSContext)} is called.
 	 * 
 	 * @param readyWorkers  Convenience handle which may be used for synchronization, e.g.
-	 * to wait on the workers to be ready.
+	 * to call {@link #waitForWorkersToConnect(AtomicInteger)}.
 	 * @throws Exception
 	 */
 	abstract protected void processJobs(final AtomicInteger workersReady) throws Exception;

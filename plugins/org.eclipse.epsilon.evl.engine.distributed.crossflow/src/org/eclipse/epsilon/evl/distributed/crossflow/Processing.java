@@ -1,9 +1,16 @@
+/*********************************************************************
+ * Copyright (c) 2019 The University of York.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
 package org.eclipse.epsilon.evl.distributed.crossflow;
 
-import java.io.Serializable;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**
@@ -13,7 +20,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  */
 public class Processing extends ProcessingBase {
 	
-	public DistributedEvlRunConfiguration configuration;
+	DistributedEvlRunConfiguration configuration;
 	EvlModuleDistributedSlave slaveModule;
 	
 	@SuppressWarnings("unchecked")
@@ -35,16 +42,9 @@ public class Processing extends ProcessingBase {
 			wait();
 		}
 		
-		Serializable result = slaveModule.executeJob(validationData.data);
-		if (result instanceof Iterable) {
-			for (Object obj : (Iterable<?>) result) {
-				if (obj instanceof SerializableEvlResultAtom) {
-					sendToValidationOutput(new ValidationResult((SerializableEvlResultAtom) obj));
-				}
-			}
-		}
-		else if (result instanceof SerializableEvlResultAtom) {
-			sendToValidationOutput((ValidationResult) result);
-		}
+		slaveModule.executeJob(validationData.data)
+			.stream()
+			.map(ValidationResult::new)
+			.forEach(this::sendToValidationOutput);
 	}
 }

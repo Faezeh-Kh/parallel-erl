@@ -105,7 +105,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 			return deserializeResults((Iterable<Object>) iterSup::get);
 		}
 		else if (response instanceof SerializableEvlResultAtom) {
-			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeEager(this));
+			getContext().getUnsatisfiedConstraints().add(((SerializableEvlResultAtom) response).deserializeLazy(this));
 			return true;
 		}
 		else if (response instanceof java.util.stream.BaseStream<?,?>) {
