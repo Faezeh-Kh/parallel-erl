@@ -12,15 +12,16 @@ package org.eclipse.epsilon.evl.distributed.jms.batch;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
- * Batch-based approach
+ * Batch-based approach, requiring only indices of the deterministic
+ * jobs created from ConstraintContext and element pairs.
  * 
+ * @see ConstraintContextAtom
  * @see DistributedEvlBatch
  * @author Sina Madani
  * @since 1.6
@@ -40,11 +41,10 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 		
 		final EvlContextDistributedMaster evlContext = getContext();
 		final int batchSize = 1 + (expectedSlaves * batchesPerWorker);
-		final List<ConstraintContextAtom> ccJobs = ConstraintContextAtom.getContextJobs(this);
+		final List<ConstraintContextAtom> ccJobs = getContextJobs();
 		final List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs.size(), batchSize);
 		
-		assert expectedSlaves == evlContext.getDistributedParallelism();
-		assert slaveWorkers.size() == expectedSlaves;
+		assert expectedSlaves == evlContext.getDistributedParallelism() && slaveWorkers.size() == expectedSlaves;
 		
 		for (DistributedEvlBatch batch : batches.subList(0, batchSize-1)) {
 			sendJob(batch);
@@ -52,18 +52,7 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 		signalCompletion();
 		
 		log("Began processing own jobs");
-		
-		batches.get(batchSize-1).split(ccJobs)
-			.parallelStream()
-			.forEach(cca -> {
-				try {
-					cca.execute(evlContext);
-				}
-				catch (EolRuntimeException ex) {
-					evlContext.handleException(ex);
-				}
-			});
-
+		executeParallel(batches.get(batchSize-1).split(ccJobs));
 		log("Finished processing own jobs");
 	}
 }

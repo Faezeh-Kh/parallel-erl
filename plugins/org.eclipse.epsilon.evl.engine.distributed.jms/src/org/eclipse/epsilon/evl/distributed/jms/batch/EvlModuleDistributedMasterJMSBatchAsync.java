@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
@@ -54,20 +53,8 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
-		EvlContextDistributedMaster evlContext = getContext();
 		log("Began processing own jobs");
-		
-		batches.get(0).split(jobs)
-			.parallelStream()
-			.forEach(cca -> {
-				try {
-					cca.execute(evlContext);
-				}
-				catch (EolRuntimeException ex) {
-					evlContext.handleException(ex);
-				}
-			});
-		
+		executeParallel(batches.get(0).split(jobs));
 		log("Finished processing own jobs");
 	}
 }

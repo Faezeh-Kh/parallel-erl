@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -73,35 +74,24 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		else if (job instanceof DistributedEvlBatch) {
 			return evaluateBatch((DistributedEvlBatch) job);
 		}
+		else if (job instanceof ConstraintContextAtom) {
+			executeAtom((ConstraintContextAtom) job);
+			return Collections.emptyList();
+		}
+		else if (job instanceof ConstraintAtom) {
+			executeAtom((ConstraintAtom) job);
+			return Collections.emptyList();
+		}
 		else if (job instanceof Iterable) {
 			return executeJob(((Iterable<?>) job).iterator());
 		}
 		else if (job instanceof Iterator) {
 			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-			
-			for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
-				Object obj = iter.next();
-				Collection<SerializableEvlResultAtom> nested = null;
-				
-				if (obj instanceof SerializableEvlInputAtom) {
-					nested = executeAtom((SerializableEvlInputAtom) job);
-				}
-				else if (obj instanceof DistributedEvlBatch) {
-					nested = evaluateBatch((DistributedEvlBatch) obj);
-				}
-				else if (obj instanceof ConstraintContextAtom) {
-					executeAtom((ConstraintContextAtom) obj);
-				}
-				else if (obj instanceof ConstraintAtom) {
-					executeAtom((ConstraintAtom) obj);
-				}
-				else {
-					nested = executeJob(obj);
-				}
-				
-				if (nested != null) resultsCol.addAll(nested);
-			}
-			
+			for (
+				Iterator<?> iter = (Iterator<?>) job;
+				iter.hasNext();
+				resultsCol.addAll(executeJob(iter.next()))
+			);
 			return resultsCol;
 		}
 		else if (job instanceof java.util.stream.BaseStream) {
@@ -113,6 +103,20 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	}
 	
 	List<ConstraintContextAtom> contextJobsCache;
+	
+	/**
+	 * Calls {@link ConstraintContextAtom#getContextJobs(org.eclipse.epsilon.evl.IEvlModule)}
+	 * 
+	 * @return A cached (re-usable) deterministicly ordered List of jobs.
+	 * @throws EolRuntimeException
+	 */
+	protected List<ConstraintContextAtom> getContextJobs() throws EolRuntimeException {
+		if (contextJobsCache == null) {
+			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
+		}
+		return contextJobsCache;
+	}
+	
 	/**
 	 * Creates data-parallel jobs (i.e. model elements from constraint contexts) and evaluates them based on the
 	 * specified indices. Since both the master and slave modules create the same jobs from the same inputs (i.e.
@@ -124,10 +128,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
 	public Collection<SerializableEvlResultAtom> evaluateBatch(final DistributedEvlBatch batch) throws EolRuntimeException {
-		if (contextJobsCache == null) {
-			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
-		}
-		return batch.execute(contextJobsCache, getContext());
+		return batch.execute(getContextJobs(), getContext());
 	}
 	
 	// TODO implement parallel
