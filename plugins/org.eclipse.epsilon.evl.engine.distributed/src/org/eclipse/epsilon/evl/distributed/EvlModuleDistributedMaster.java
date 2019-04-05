@@ -11,7 +11,9 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -19,6 +21,7 @@ import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
  * Base implementation of EVL with distributed execution semantics.
@@ -42,24 +45,62 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		setContext(new EvlContextDistributedMaster(0, parallelism));
 	}
 	
-	/**
-	 * 
-	 * @param fromIndex The start of the sublist
-	 * @param toIndex The end of the sublist
-	 * @return A subset of the Serializable context-element pairs.
-	 * @throws EolRuntimeException
-	 * @see SerializableEvlInputAtom#serializeJobs(Collection)
-	 */
-	protected ArrayList<SerializableEvlInputAtom> getSerializableJobs(int fromIndex, int toIndex) throws EolRuntimeException {
-		return SerializableEvlInputAtom.serializeJobs(getContextJobs().subList(fromIndex, toIndex));
+	// Job division
+
+	protected class BatchJobSplitter {
+		List<DistributedEvlBatch> masterBatches, workerBatches;
+		
+		/**
+		 * 
+		 * @param batchGranularity The ratio of batches to jobs. A value of 1 will create a batch for each job
+		 * such that jobs.size() == batches.size(). A value of 0 will create a single batch containing all jobs.
+		 * @param masterProportion The percentage of jobs assigned to the master (between 0 and 1)
+		 */
+		public BatchJobSplitter(double batchGranularity, float masterProportion) {
+			
+		}
 	}
 	
 	/**
-	 * @see SerializableEvlInputAtom#serializeJobs(Collection)
+	 * Utility class for splitting the jobs returned from {@link EvlModuleDistributedMaster#getContextJobs()}
+	 * into the master and worker proportions.
 	 */
-	protected ArrayList<SerializableEvlInputAtom> getAllSerializableJobs() throws EolRuntimeException {
-		return SerializableEvlInputAtom.serializeJobs(getContextJobs());
+	protected class AtomicJobSplitter {
+		public final List<ConstraintContextAtom> masterJobs;
+		public final List<SerializableEvlInputAtom> workerJobs;
+		
+		/**
+		 * 
+		 * @param masterProportion The percentage of jobs to be performed by the master. Must be between 0 and 1.
+		 * @param shuffle Whether to randomise thr order of jobs.
+		 * @throws EolRuntimeException If retrieving the jobs fails.
+		 * @throws IllegalArgumentException If the percentage is out of bounds.
+		 */
+		public AtomicJobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
+			if (masterProportion > 1 || masterProportion < 0)
+				throw new IllegalArgumentException("Percentage of master jobs must be a valid percentage");
+			
+			List<ConstraintContextAtom> allJobs = getContextJobs();
+			if (shuffle) Collections.shuffle(allJobs);
+			
+			int numTotalJobs = allJobs.size();
+			int numMasterJobs = (int) (masterProportion * numTotalJobs);
+			if (numMasterJobs >= numTotalJobs) {
+				masterJobs = allJobs;
+				workerJobs = Collections.emptyList();
+			}
+			else if (numMasterJobs <= 0) {
+				masterJobs = Collections.emptyList();
+				workerJobs = SerializableEvlInputAtom.serializeJobs(allJobs);
+			}
+			else {
+				masterJobs = allJobs.subList(0, numMasterJobs);
+				workerJobs = SerializableEvlInputAtom.serializeJobs(allJobs.subList(numMasterJobs-1, numTotalJobs));
+			}
+		}
 	}
+	
+	// UnsatisfiedConstraint resolution
 	
 	/**
 	 * Resolves the serialized unsatisfied constraints lazily.

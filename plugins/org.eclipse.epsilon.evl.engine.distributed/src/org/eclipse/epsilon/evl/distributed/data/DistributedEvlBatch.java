@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.data;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -99,6 +100,16 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
 		// Plus one because master itself is also included as a worker
 		return getBatches(ConstraintContextAtom.getContextJobs(module).size(), module.getContext().getDistributedParallelism()+1);
+	}
+	
+	public <T> T[] splitToArray(List<T> list, java.util.function.IntFunction<T[]> arrGenerator) {
+		return split(list).toArray(arrGenerator);
+	}
+	public <T> List<T> splitToList(T[] arr) {
+		return Arrays.asList(split(arr));
+	}
+	public <T> T[] split(T[] arr) {
+		return Arrays.copyOfRange(arr, from, to);
 	}
 	
 	/**

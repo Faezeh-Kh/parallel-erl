@@ -10,6 +10,7 @@
 package org.eclipse.epsilon.evl.distributed.jms.batch;
 
 import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
@@ -38,17 +39,20 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		final int batchSize = 1 + (expectedSlaves * batchesPerWorker);
+		final int batchSize = (1 + expectedSlaves) * batchesPerWorker;
 		final List<ConstraintContextAtom> ccJobs = getContextJobs();
-		final List<DistributedEvlBatch> batches = DistributedEvlBatch.getBatches(ccJobs.size(), batchSize);
+		final List<DistributedEvlBatch> allBatches = DistributedEvlBatch.getBatches(ccJobs.size(), batchSize);
+		Collections.shuffle(allBatches);
 
-		for (DistributedEvlBatch batch : batches.subList(0, batchSize-1)) {
+		//for ()
+		
+		for (DistributedEvlBatch batch : allBatches.subList(0, batchSize-1)) {
 			sendJob(batch);
 		}
 		signalCompletion();
 		
 		log("Began processing own jobs");
-		executeParallel(batches.get(batchSize-1).split(ccJobs));
+		executeParallel(allBatches.get(batchSize-1).split(ccJobs));
 		log("Finished processing own jobs");
 	}
 }

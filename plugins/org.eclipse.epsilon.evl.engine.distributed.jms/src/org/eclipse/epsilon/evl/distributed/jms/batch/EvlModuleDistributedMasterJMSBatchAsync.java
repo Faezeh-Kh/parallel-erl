@@ -10,12 +10,14 @@
 package org.eclipse.epsilon.evl.distributed.jms.batch;
 
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
  * Sends jobs to workers as soon as they are available, instead of waiting
@@ -35,21 +37,23 @@ public class EvlModuleDistributedMasterJMSBatchAsync extends EvlModuleDistribute
 	@Override
 	protected void prepareExecution() throws EolRuntimeException {
 		super.prepareExecution();
-		final int batchSize = 1 + (expectedSlaves * batchesPerWorker);
+		final int batchSize = (1 + expectedSlaves) * batchesPerWorker;
 		batches = DistributedEvlBatch.getBatches(getContextJobs().size(), batchSize);
 	}
 	
 	@Override
 	protected void confirmWorker(Message confirmation, AtomicInteger workersReady) throws JMSException {
 		final int worker = workersReady.incrementAndGet();
-		for (int b = worker; b < worker + batchesPerWorker; sendJob(batches.get(b++)));
+		for (int b = worker; b <= worker + batchesPerWorker; sendJob(batches.get(b++)));
 		if (worker >= expectedSlaves) signalCompletion();
 	}
 	
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		log("Began processing own jobs");
-		executeParallel(batches.get(0).split(getContextJobs()));
+		ArrayList<ConstraintContextAtom> localJobs = new ArrayList<>();
+		for (int b = 0; b <= batchesPerWorker; localJobs.addAll(batches.get(b++).split(getContextJobs())));
+		executeParallel(localJobs);
 		log("Finished processing own jobs");
 	}
 }

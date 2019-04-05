@@ -17,8 +17,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import javax.jms.*;
@@ -86,12 +84,12 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		LAST_MESSAGE_PROPERTY = "lastMsg",
 		EXCEPTION_PROPERTY = "exception",
 		WORKER_ID_PROPERTY = "workerID",
-		CONFIG_HASH = "configChecksum";
+		CONFIG_HASH_PROPERTY = "configChecksum";
 	
 	protected final String host;
 	protected final int sessionID;
 	protected final int expectedSlaves;
-	protected final ConcurrentMap<String, Map<String, Duration>> slaveWorkers;
+	protected final Map<String, Map<String, Duration>> slaveWorkers;
 	protected final Collection<Serializable> failedJobs;
 	// Set this to false for unbounded scalability
 	protected boolean refuseAdditionalWorkers = true;
@@ -103,7 +101,9 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		super(expectedWorkers);
 		this.host = host;
 		this.sessionID = sessionID;
-		slaveWorkers = new ConcurrentHashMap<>(this.expectedSlaves = expectedWorkers);
+		slaveWorkers = new java.util./*Hashtable*/concurrent.ConcurrentHashMap<>(
+			this.expectedSlaves = expectedWorkers
+		);
 		failedJobs = new java.util.HashSet<>();
 	}
 	
@@ -141,7 +141,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					Message configMsg = regContext.createObjectMessage(config);
 					configMsg.setJMSReplyTo(tempDest);
 					configMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
-					configMsg.setIntProperty(CONFIG_HASH, configHash);
+					configMsg.setIntProperty(CONFIG_HASH_PROPERTY, configHash);
 					regProducer.send(msg.getJMSReplyTo(), configMsg);
 				}
 				catch (JMSException jmx) {
@@ -162,7 +162,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				// Triggered when a worker has completed loading the configuration
 				regContext.createConsumer(tempDest).setMessageListener(response -> {
 					try {
-						final int receivedHash = response.getIntProperty(CONFIG_HASH);
+						final int receivedHash = response.getIntProperty(CONFIG_HASH_PROPERTY);
 						if (receivedHash != configHash) {
 							throw new java.lang.IllegalStateException("Received invalid configuration checksum!");
 						}

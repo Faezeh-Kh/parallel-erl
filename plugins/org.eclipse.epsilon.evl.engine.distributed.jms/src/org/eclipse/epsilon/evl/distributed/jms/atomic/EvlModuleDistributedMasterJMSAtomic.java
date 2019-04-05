@@ -10,7 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.jms.atomic;
 
 import java.net.URISyntaxException;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
@@ -35,15 +34,12 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		final List<ConstraintContextAtom> allJobs = getContextJobs();
-		final int totalNumJobs = allJobs.size();
-		final int parallelism = expectedSlaves + 1;
-		final int selfBatch = totalNumJobs / parallelism;
+		AtomicJobSplitter splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
 		
-		sendAllJobsAsync(getSerializableJobs(selfBatch, totalNumJobs)).throwIfPresent();
+		sendAllJobsAsync(splitter.workerJobs).throwIfPresent();
 		
 		log("Began processing own jobs");
-		executeParallel(allJobs.subList(0, selfBatch));
+		executeParallel(splitter.masterJobs);
 		log("Finished processing own jobs");
 	}
 }

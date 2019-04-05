@@ -132,12 +132,13 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			(module = (EvlModuleDistributedSlave) configContainer.getModule()).prepareExecution();
 
 			// This is to acknowledge when we have completed loading the script(s) and model(s) successfully
-			configuredAckMsg.setIntProperty(CONFIG_HASH, configMap.hashCode());
+			configuredAckMsg.setIntProperty(CONFIG_HASH_PROPERTY, configMap.hashCode());
 			return ackSender;
 		}
 		catch (Exception ex) {
 			// Tell the master we failed
 			ackSender.run();
+			stopBody = ex;
 			throw ex;
 		}
 	}
@@ -174,7 +175,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
 		finishedMsg.setObject(configContainer.getSerializableRuleExecutionTimes());
-		if (stopBody instanceof Serializable) {
+		if (stopBody instanceof Serializable) {	// Null check
 			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
 		}
 		session.createProducer().send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
@@ -237,6 +238,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 				jobIsInProgress = false;
 			}
 			catch (JMSException jmx) {
+				stopBody = jmx;
 				throw new JMSRuntimeException(jmx.getMessage());
 			}
 			
