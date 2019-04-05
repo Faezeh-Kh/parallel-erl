@@ -16,12 +16,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.models.IModel;
+import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
+import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
 import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
@@ -100,38 +102,25 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	}
 	
 	/**
-	 * Splits the workload into a Collection of model elements. The order can be randomised
-	 * (shuffled) to ensure a balanced workload. Subclasses may override this method to
-	 * define an optimal split based on static analysis.
+	 * Transforms the given non-serializable jobs into their serializable forms.
 	 * 
-	 * @param module
-	 * @param shuffle Whether to randomise the list order.
-	 * @return The data to be distributed.
-	 * @throws EolRuntimeException
+	 * @param atoms The ConstraintContext and element pairs.
+	 * @return A Serializable List of {@link SerializableEvlInputAtom}, in deterministic order.
+	 * @throws EolModelElementTypeNotFoundException If resolving any of the model elements fails.
+	 * @throws EolModelNotFoundException 
 	 */
-	public static ArrayList<SerializableEvlInputAtom> createJobs(IEvlModule module, boolean shuffle) throws EolRuntimeException {
-		IEvlContext context = module.getContext();
-		ArrayList<SerializableEvlInputAtom> problems = new ArrayList<>();
+	public static ArrayList<SerializableEvlInputAtom> serializeJobs(Collection<ConstraintContextAtom> atoms) throws EolModelElementTypeNotFoundException, EolModelNotFoundException {
+		ArrayList<SerializableEvlInputAtom> serAtoms = new ArrayList<>(atoms.size());
 		
-		for (ConstraintContext constraintContext : module.getConstraintContexts()) {
-			EolModelElementType modelElementType = constraintContext.getType(context);
-			IModel model = modelElementType.getModel();
-			Collection<?> allOfKind = model.getAllOfKind(modelElementType.getTypeName());
-			
-			problems.ensureCapacity(problems.size()+allOfKind.size());
-			
-			for (Object modelElement : allOfKind) {
-				SerializableEvlInputAtom problem = new SerializableEvlInputAtom();
-				problem.modelElementID = model.getElementId(modelElement);
-				problem.modelName = model.getName(); //modelElementType.getModelName();
-				problem.contextName = constraintContext.getTypeName();
-				problems.add(problem);
-			}
+		for (ConstraintContextAtom cca : atoms) {
+			EolModelElementType modelType = cca.unit.getType(cca.context);
+			SerializableEvlInputAtom sa = new SerializableEvlInputAtom();
+			sa.modelName = modelType.getModelName();
+			sa.modelElementID = modelType.getModel().getElementId(cca.element);
+			sa.contextName = cca.unit.getTypeName();
+			serAtoms.add(sa);
 		}
 		
-		if (shuffle)
-			Collections.shuffle(problems);
-		
-		return problems;
+		return serAtoms;
 	}
 }

@@ -76,7 +76,7 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @return A List of indexes with {@code totalJobs/batches} increments.
 	 */
 	public static List<DistributedEvlBatch> getBatches(int totalJobs, int batches) {
-		final int increments = totalJobs / batches;
+		final int increments = batches < totalJobs ? totalJobs / batches : 1;
 		
 		return IntStream.range(0, batches)
 			.mapToObj(i -> {

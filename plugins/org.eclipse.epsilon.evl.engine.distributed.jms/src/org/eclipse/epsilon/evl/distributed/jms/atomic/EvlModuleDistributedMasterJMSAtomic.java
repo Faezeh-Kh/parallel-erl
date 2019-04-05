@@ -14,10 +14,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
+import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 
 /**
+ * Atom-based approach, sending the Serializable ConstraintContext and model element
+ * pairs to workers.
  * 
- *
+ * @see SerializableEvlInputAtom
+ * @see ConstraintContextAtom
  * @author Sina Madani
  * @since 1.6
  */
@@ -31,16 +35,15 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		final List<SerializableEvlInputAtom> jobs = SerializableEvlInputAtom.createJobs(this, false);
+		final List<ConstraintContextAtom> allJobs = getContextJobs();
+		final int totalNumJobs = allJobs.size();
 		final int parallelism = expectedSlaves + 1;
-		final int selfBatch = jobs.size() / parallelism;
+		final int selfBatch = totalNumJobs / parallelism;
 		
-		assert slaveWorkers.size() == expectedSlaves && expectedSlaves == getContext().getDistributedParallelism();
-		
-		sendAllJobsAsync(jobs.subList(selfBatch, jobs.size())).throwIfPresent();
+		sendAllJobsAsync(getSerializableJobs(selfBatch, totalNumJobs)).throwIfPresent();
 		
 		log("Began processing own jobs");
-		executeParallel(jobs.subList(0, selfBatch));
+		executeParallel(allJobs.subList(0, selfBatch));
 		log("Finished processing own jobs");
 	}
 }

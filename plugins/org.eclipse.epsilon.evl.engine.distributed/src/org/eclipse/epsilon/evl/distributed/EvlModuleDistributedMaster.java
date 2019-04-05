@@ -41,7 +41,25 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		super(parallelism);
 		setContext(new EvlContextDistributedMaster(0, parallelism));
 	}
-
+	
+	/**
+	 * 
+	 * @param fromIndex The start of the sublist
+	 * @param toIndex The end of the sublist
+	 * @return A subset of the Serializable context-element pairs.
+	 * @throws EolRuntimeException
+	 * @see SerializableEvlInputAtom#serializeJobs(Collection)
+	 */
+	protected ArrayList<SerializableEvlInputAtom> getSerializableJobs(int fromIndex, int toIndex) throws EolRuntimeException {
+		return SerializableEvlInputAtom.serializeJobs(getContextJobs().subList(fromIndex, toIndex));
+	}
+	
+	/**
+	 * @see SerializableEvlInputAtom#serializeJobs(Collection)
+	 */
+	protected ArrayList<SerializableEvlInputAtom> getAllSerializableJobs() throws EolRuntimeException {
+		return SerializableEvlInputAtom.serializeJobs(getContextJobs());
+	}
 	
 	/**
 	 * Resolves the serialized unsatisfied constraints lazily.

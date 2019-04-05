@@ -406,6 +406,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					sendJob(job);
 				}
 				signalCompletion();
+				log("Sent all jobs");
 			}
 			catch (JMSException jmx) {
 				exWrapper.setException(jmx);
@@ -498,6 +499,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			}
 			catch (InterruptedException ie) {}
 		}
+		assert workersReady.get() == expectedSlaves && slaveWorkers.size() == expectedSlaves;
 		log("All workers connected");
 	}
 	

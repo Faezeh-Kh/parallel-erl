@@ -102,7 +102,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		}
 	}
 	
-	List<ConstraintContextAtom> contextJobsCache;
+	protected List<ConstraintContextAtom> contextJobsCache;
 	
 	/**
 	 * Calls {@link ConstraintContextAtom#getContextJobs(org.eclipse.epsilon.evl.IEvlModule)}
