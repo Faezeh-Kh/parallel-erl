@@ -37,7 +37,7 @@ public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink {
 	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
 		return execEnv
 			.createInput(
-				new FlinkInputFormat<>(new AtomicJobSplitter(0, true).workerJobs),
+				new FlinkInputFormat<>(new AtomicJobSplitter(0, true).getWorkerJobs()),
 				TypeInformation.of(SerializableEvlInputAtom.class)
 			)
 			.flatMap(new EvlFlinkAtomFlatMapFunction());

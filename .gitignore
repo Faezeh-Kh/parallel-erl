@@ -1,4 +1,3 @@
 bin/
 *.settings/
-plugins/org.eclipse.epsilon.evl.engine.distributed.*/.classpath
 *activemq-data/

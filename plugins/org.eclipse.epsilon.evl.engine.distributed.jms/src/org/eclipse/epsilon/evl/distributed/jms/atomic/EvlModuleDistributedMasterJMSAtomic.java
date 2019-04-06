@@ -36,10 +36,10 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 		
 		AtomicJobSplitter splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
 		
-		sendAllJobsAsync(splitter.workerJobs).throwIfPresent();
+		sendAllJobsAsync(splitter.getWorkerJobs()).throwIfPresent();
 		
 		log("Began processing own jobs");
-		executeParallel(splitter.masterJobs);
+		executeParallel(splitter.getMasterJobs());
 		log("Finished processing own jobs");
 	}
 }

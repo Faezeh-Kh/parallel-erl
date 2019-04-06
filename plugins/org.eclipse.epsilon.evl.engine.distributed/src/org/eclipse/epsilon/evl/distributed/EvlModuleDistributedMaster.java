@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -47,27 +48,11 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	
 	// Job division
 
-	protected class BatchJobSplitter {
-		List<DistributedEvlBatch> masterBatches, workerBatches;
-		
-		/**
-		 * 
-		 * @param batchGranularity The ratio of batches to jobs. A value of 1 will create a batch for each job
-		 * such that jobs.size() == batches.size(). A value of 0 will create a single batch containing all jobs.
-		 * @param masterProportion The percentage of jobs assigned to the master (between 0 and 1)
-		 */
-		public BatchJobSplitter(double batchGranularity, float masterProportion) {
-			
-		}
-	}
-	
-	/**
-	 * Utility class for splitting the jobs returned from {@link EvlModuleDistributedMaster#getContextJobs()}
-	 * into the master and worker proportions.
-	 */
-	protected class AtomicJobSplitter {
-		public final List<ConstraintContextAtom> masterJobs;
-		public final List<SerializableEvlInputAtom> workerJobs;
+	protected abstract class JobSplitter<T, S extends Serializable> {
+		protected final float masterProportion;
+		protected final boolean shuffle;
+		protected ArrayList<S> workerJobs;
+		protected List<T> masterJobs;
 		
 		/**
 		 * 
@@ -76,27 +61,79 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		 * @throws EolRuntimeException If retrieving the jobs fails.
 		 * @throws IllegalArgumentException If the percentage is out of bounds.
 		 */
-		public AtomicJobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
-			if (masterProportion > 1 || masterProportion < 0)
+		public JobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
+			if ((this.masterProportion = masterProportion) > 1 || masterProportion < 0)
 				throw new IllegalArgumentException("Percentage of master jobs must be a valid percentage");
-			
-			List<ConstraintContextAtom> allJobs = getContextJobs();
+			this.shuffle = shuffle;
+		}
+		
+		public ArrayList<S> getWorkerJobs() throws EolRuntimeException {
+			if (workerJobs == null) split();
+			return workerJobs;
+		}
+		
+		public List<T> getMasterJobs() throws EolRuntimeException {
+			if (masterJobs == null) split();
+			return masterJobs;
+		}
+		
+		protected void split() throws EolRuntimeException {
+			List<T> allJobs = getAllJobs();
 			if (shuffle) Collections.shuffle(allJobs);
 			
 			int numTotalJobs = allJobs.size();
 			int numMasterJobs = (int) (masterProportion * numTotalJobs);
 			if (numMasterJobs >= numTotalJobs) {
 				masterJobs = allJobs;
-				workerJobs = Collections.emptyList();
+				workerJobs = new ArrayList<>(0);
 			}
 			else if (numMasterJobs <= 0) {
-				masterJobs = Collections.emptyList();
-				workerJobs = SerializableEvlInputAtom.serializeJobs(allJobs);
+				masterJobs = null;
+				Collection<S> wj = convertToWorkerJobs(allJobs);
+				workerJobs = wj instanceof ArrayList ? (ArrayList<S>) wj : new ArrayList<>(wj);
 			}
 			else {
 				masterJobs = allJobs.subList(0, numMasterJobs);
-				workerJobs = SerializableEvlInputAtom.serializeJobs(allJobs.subList(numMasterJobs-1, numTotalJobs));
+				Collection<S> wj = convertToWorkerJobs(allJobs.subList(numMasterJobs-1, numTotalJobs));
+				workerJobs = wj instanceof ArrayList ? (ArrayList<S>) wj : new ArrayList<>(wj);
 			}
+		}
+		
+		protected abstract List<T> getAllJobs() throws EolRuntimeException;
+
+		protected abstract Collection<S> convertToWorkerJobs(List<T> masterJobs) throws EolRuntimeException;
+	}
+
+	protected abstract class ConstraintContextJobSplitter<S extends Serializable> extends JobSplitter<ConstraintContextAtom, S> {
+		public ConstraintContextJobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
+			super(masterProportion, shuffle);
+		}
+
+		@Override
+		protected List<ConstraintContextAtom> getAllJobs() throws EolRuntimeException {
+			return getContextJobs();
+		}
+	}
+	
+	public class AtomicJobSplitter extends ConstraintContextJobSplitter<SerializableEvlInputAtom> {
+		public AtomicJobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
+			super(masterProportion, shuffle);
+		}
+
+		@Override
+		protected List<SerializableEvlInputAtom> convertToWorkerJobs(List<ConstraintContextAtom> masterJobs) throws EolRuntimeException {
+			return SerializableEvlInputAtom.serializeJobs(masterJobs);
+		}
+	}
+
+	public class BatchJobSplitter extends ConstraintContextJobSplitter<DistributedEvlBatch> {
+		public BatchJobSplitter(float masterProportion, boolean shuffle) throws EolRuntimeException {
+			super(masterProportion, shuffle);
+		}
+
+		@Override
+		protected List<DistributedEvlBatch> convertToWorkerJobs(List<ConstraintContextAtom> masterJobs) throws EolRuntimeException {
+			return null;	// TODO implement
 		}
 	}
 	

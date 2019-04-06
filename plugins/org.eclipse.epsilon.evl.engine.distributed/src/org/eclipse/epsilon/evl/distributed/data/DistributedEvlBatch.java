@@ -101,10 +101,7 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 		// Plus one because master itself is also included as a worker
 		return getBatches(ConstraintContextAtom.getContextJobs(module).size(), module.getContext().getDistributedParallelism()+1);
 	}
-	
-	public <T> T[] splitToArray(List<T> list, java.util.function.IntFunction<T[]> arrGenerator) {
-		return split(list).toArray(arrGenerator);
-	}
+
 	public <T> List<T> splitToList(T[] arr) {
 		return Arrays.asList(split(arr));
 	}
