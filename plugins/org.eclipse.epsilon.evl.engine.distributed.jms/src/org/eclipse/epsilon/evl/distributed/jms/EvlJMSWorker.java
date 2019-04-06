@@ -23,7 +23,7 @@ import javax.jms.*;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
  * Reactive slave worker.
@@ -63,7 +63,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	final String basePath;
 	final int sessionID;
 	String workerID;
-	DistributedEvlRunConfiguration configContainer;
+	DistributedEvlRunConfigurationSlave configContainer;
 	EvlModuleDistributedSlave module;
 	volatile Serializable stopBody;
 	volatile boolean jobIsInProgress;

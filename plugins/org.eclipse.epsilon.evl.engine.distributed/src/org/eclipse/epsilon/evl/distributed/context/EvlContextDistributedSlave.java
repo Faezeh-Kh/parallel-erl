@@ -21,7 +21,7 @@ import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
  * 
@@ -39,7 +39,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 		return EolThreadPoolExecutor.adaptiveExecutor(numThreads);
 	}
 	
-	public static DistributedEvlRunConfiguration parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {
+	public static DistributedEvlRunConfigurationSlave parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {
 		String normBasePath = basePath.replace("\\", "/");
 		if (!normBasePath.endsWith("/")) normBasePath += "/";
 		String masterBasePath = Objects.toString(config.get(BASE_PATH), null);
@@ -71,7 +71,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 			Integer.parseInt(Objects.toString(config.get(LOCAL_PARALLELISM), "0"))
 		);
 		
-		return new DistributedEvlRunConfiguration(
+		return new DistributedEvlRunConfigurationSlave(
 			normBasePath,
 			Paths.get(evlScriptPath),
 			localModelsAndProperties,

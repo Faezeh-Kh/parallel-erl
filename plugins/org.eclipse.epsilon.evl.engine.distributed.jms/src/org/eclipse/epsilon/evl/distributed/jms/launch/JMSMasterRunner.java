@@ -9,14 +9,14 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.jms.launch;
 
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationMaster;
 
 /**
  *
  * @author Sina Madani
  * @since 1.6
  */
-public class JMSMasterRunner extends DistributedEvlRunConfiguration {
+public class JMSMasterRunner extends DistributedEvlRunConfigurationMaster {
 	
 	protected final String brokerHost;
 	protected final int expectedWorkers, sessionID, bpw;

@@ -10,17 +10,8 @@
 package org.eclipse.epsilon.evl.distributed.launch;
 
 import java.net.URI;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.models.IModel;
-import org.eclipse.epsilon.erl.execute.RuleProfiler;
-import org.eclipse.epsilon.evl.distributed.*;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
 
 /**
@@ -31,7 +22,7 @@ import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
  * @author Sina Madani
  * @since 1.6
  */
-public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
+public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 	
 	public static Builder<? extends DistributedEvlRunConfiguration, ?> Builder() {
 		return new Builder<>(DistributedEvlRunConfiguration.class);
@@ -83,68 +74,8 @@ public class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 		basePath = "/";
 	}
 	
-	public DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
+	DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
 		super(builder);
-		EvlContextDistributedMaster context = (EvlContextDistributedMaster) getModule().getContext();
-		context.setModelProperties(this.modelsAndProperties.values());
-		context.setBasePath(this.basePath = builder.basePath);
-		if (outputFile != null) {
-			context.setOutputPath(outputFile.toString());
-		}
-	}
-	
-	/**
-	 * This constructor is to be called by workers as a convenient
-	 * data holder for initializing Epsilon.
-	 * 
-	 * @param evlFile
-	 * @param modelsAndProperties
-	 * @param evlModule
-	 * @param parameters
-	 */
-	public DistributedEvlRunConfiguration(
-		String basePath,
-		Path evlFile,
-		Map<IModel, StringProperties> modelsAndProperties,
-		EvlModuleDistributedSlave evlModule,
-		Map<String, Object> parameters) {
-			super(Builder()
-				.withBasePath(basePath)
-				.withScript(evlFile)
-				.withModels(modelsAndProperties)
-				.withModule(evlModule)
-				.withParameters(parameters)
-				.withProfiling()
-			);
-			this.basePath = basePath;
-	}
-
-	/**
-	 * Convenience method for serializing the profiling information of a
-	 * slave worker to be sent to the master.
-	 * 
-	 * @return A serializable representation of {@link RuleProfiler}.
-	 */
-	public HashMap<String, java.time.Duration> getSerializableRuleExecutionTimes() {
-		return getModule().getContext()
-			.getExecutorFactory().getRuleProfiler()
-			.getExecutionTimes()
-			.entrySet().stream()
-			.collect(Collectors.toMap(
-				e -> e.getKey().getName(),
-				Map.Entry::getValue,
-				(t1, t2) -> t1.plus(t2),
-				HashMap::new
-			));
-	}
-	
-	@Override
-	protected EvlModuleDistributedMaster getDefaultModule() {
-		return new EvlModuleDistributedMaster(1) {
-			@Override
-			protected void checkConstraints() throws EolRuntimeException {
-				throw new UnsupportedOperationException("This is a no-op module.");
-			}
-		};
+		this.basePath = builder.basePath;
 	}
 }
