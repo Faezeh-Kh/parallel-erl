@@ -96,6 +96,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	ConnectionFactory connectionFactory;
 	private CheckedConsumer<Serializable, JMSException> jobSender;
 	private CheckedRunnable<JMSException> completionSender;
+	private Thread jobSenderThread;
 	
 	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers);
@@ -181,6 +182,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					completionSender = () -> jobsProducer.send(completionTopic, jobContext.createMessage());
 					
 					processJobs(readyWorkers);
+					jobSenderThread.join();
 					waitForWorkersToFinishJobs(workersFinished);
 					processFailedJobs();
 				}
@@ -400,7 +402,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	protected ExceptionContainer<JMSException> sendAllJobsAsync(Iterable<? extends Serializable> jobs) {
 		ExceptionContainer<JMSException> exWrapper = new ExceptionContainer<>();
 		
-		Thread jobSender = new Thread(() -> {
+		jobSenderThread = new Thread(() -> {
 			try {
 				for (Serializable job : jobs) {
 					sendJob(job);
@@ -413,8 +415,8 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 				return;
 			}
 		});
-		jobSender.setName("job-sender");
-		jobSender.start();
+		jobSenderThread.setName("job-sender");
+		jobSenderThread.start();
 		return exWrapper;
 	}
 	

@@ -23,8 +23,9 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
 public class JMSMasterBuilder<J extends JMSMasterRunner, B extends JMSMasterBuilder<J, B>> extends DistributedEvlRunConfiguration.Builder<J, B> {
 	
 	public String brokerHost = "tcp://localhost:61616";
-	public int expectedWorkers, sessionID, bpw;
-	public boolean async;
+	public int expectedWorkers, sessionID;
+	public double batchFactor = -1;
+	public boolean shuffle;
 	
 	public JMSMasterBuilder() {
 		this((Class<J>) JMSMasterRunner.class);
@@ -43,13 +44,13 @@ public class JMSMasterBuilder<J extends JMSMasterRunner, B extends JMSMasterBuil
 		return (B) this;
 	}
 	
-	public B withAsync(boolean asynchronous) {
-		this.async = asynchronous;
+	public B withShuffle(boolean random) {
+		this.shuffle = random;
 		return (B) this;
 	}
 	
 	public B withBatchesPerWorker(int batches) {
-		this.bpw = batches;
+		this.batchFactor = batches;
 		return (B) this;
 	}
 	

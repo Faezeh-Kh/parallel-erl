@@ -12,7 +12,6 @@ package org.eclipse.epsilon.evl.distributed.jms.launch;
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleDistributedMasterJMSAtomic;
-import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJMSBatchAsync;
 import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJMSBatch;
 
 /**
@@ -33,8 +32,8 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		brokerHostOpt = "broker",
 		basePathOpt = "basePath",
 		expectedWorkersOpt = "workers",
+		shuffleOpt = "shuffle",
 		batchesOpt = "batches",
-		asyncOpt = "async",
 		sessionIdOpt = "session";
 	
 	@SuppressWarnings("unchecked")
@@ -44,14 +43,14 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 	
 	public JMSMasterConfigParser(B builder) {
 		super(builder);		
-		options.addOption(Option.builder("bpw")
+		options.addOption(Option.builder("bf")
 			.longOpt(batchesOpt)
-			.desc("Number of batches per worker (sets the module to batch-based)")
+			.desc("Granularity of job batches, between 0 and 1 (sets the module to batch-based)")
 			.hasArg()
 			.build()
 		).addOption(Option.builder()
-			.longOpt(asyncOpt)
-			.desc("Whether to use asynchronous module (skips waiting for workers to connect before processing)")
+			.longOpt(shuffleOpt)
+			.desc("Whether to randomise the order of jobs")
 			.build()
 		).addOption(Option.builder()
 			.longOpt(expectedWorkersOpt)
@@ -82,30 +81,38 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		builder.brokerHost = cmdLine.getOptionValue(brokerHostOpt);
 		builder.basePath = cmdLine.getOptionValue(basePathOpt);
 		builder.sessionID = tryParse(sessionIdOpt, builder.sessionID);
-		builder.async = cmdLine.hasOption(asyncOpt);
+		builder.shuffle = cmdLine.hasOption(shuffleOpt);
 		builder.expectedWorkers = tryParse(expectedWorkersOpt, builder.expectedWorkers);
-		builder.bpw = tryParse(batchesOpt, builder.bpw);
+		builder.batchFactor = tryParse(batchesOpt, builder.batchFactor);
 		
-		if (builder.async && builder.bpw > 0) {
-			builder.module = new EvlModuleDistributedMasterJMSBatchAsync(
-				builder.expectedWorkers, builder.bpw, builder.brokerHost, builder.sessionID
-			);
-		}
-		else if (builder.async) {
-			// TODO implement
-		}
-		else if (builder.bpw > 0) {
+		if (builder.batchFactor > 0) {
 			builder.module = new EvlModuleDistributedMasterJMSBatch(
-				builder.expectedWorkers, builder.bpw, builder.brokerHost, builder.sessionID
+				builder.expectedWorkers, builder.batchFactor, builder.shuffle, builder.brokerHost, builder.sessionID
 			);
 		}
 		else {
 			builder.module = new EvlModuleDistributedMasterJMSAtomic(
-				builder.expectedWorkers, builder.brokerHost, builder.sessionID
+				builder.expectedWorkers, builder.shuffle, builder.brokerHost, builder.sessionID
 			);
 		}
 	}
 
+	protected double tryParse(String opt, double absentDefault) throws IllegalArgumentException {
+		if (cmdLine.hasOption(opt)) {
+			String value = cmdLine.getOptionValue(opt);
+			try {
+				return Double.valueOf(value);
+			}
+			catch (NumberFormatException nan) {
+				throw new IllegalArgumentException(
+					"Invalid value for option '"+opt
+					+ "': expected double but got "+value
+				);
+			}
+		}
+		else return absentDefault;
+	}
+	
 	protected int tryParse(String opt, int absentDefault) throws IllegalArgumentException {
 		if (cmdLine.hasOption(opt)) {
 			String value = cmdLine.getOptionValue(opt);

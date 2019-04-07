@@ -26,15 +26,16 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  */
 public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMasterJMS {
 
-	public EvlModuleDistributedMasterJMSAtomic(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	protected final AtomicJobSplitter splitter;
+	
+	public EvlModuleDistributedMasterJMSAtomic(int expectedWorkers, boolean shuffle, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
+		splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
 	}
 
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
-		
-		AtomicJobSplitter splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
 		
 		sendAllJobsAsync(splitter.getWorkerJobs()).throwIfPresent();
 		

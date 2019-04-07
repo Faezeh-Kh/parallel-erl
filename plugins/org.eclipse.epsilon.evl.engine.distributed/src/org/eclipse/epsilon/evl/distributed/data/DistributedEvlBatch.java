@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed.data;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -77,6 +78,12 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @return A List of indexes with {@code totalJobs/batches} increments.
 	 */
 	public static List<DistributedEvlBatch> getBatches(int totalJobs, int batches) {
+		if (batches <= 1) {
+			DistributedEvlBatch batch = new DistributedEvlBatch();
+			batch.from = 0;
+			batch.to = totalJobs;
+			return Collections.singletonList(batch);
+		}
 		final int increments = batches < totalJobs ? totalJobs / batches : 1;
 		
 		return IntStream.range(0, batches)

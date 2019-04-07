@@ -10,8 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.jms.batch;
 
 import java.net.URISyntaxException;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
@@ -28,31 +26,21 @@ import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
  */
 public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMasterJMS {
 	
-	protected final int batchesPerWorker;
+	protected final BatchJobSplitter splitter;
 	
-	public EvlModuleDistributedMasterJMSBatch(int expectedWorkers, int bpw, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleDistributedMasterJMSBatch(int expectedWorkers, double batchFactor, boolean shuffle, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
-		this.batchesPerWorker = bpw > 0 ? bpw : 1;
+		splitter = new BatchJobSplitter(1 / (1 + expectedSlaves), shuffle, batchFactor);
 	}
 	
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		final int batchSize = (1 + expectedSlaves) * batchesPerWorker;
-		final List<ConstraintContextAtom> ccJobs = getContextJobs();
-		final List<DistributedEvlBatch> allBatches = DistributedEvlBatch.getBatches(ccJobs.size(), batchSize);
-		Collections.shuffle(allBatches);
-
-		//for ()
-		
-		for (DistributedEvlBatch batch : allBatches.subList(0, batchSize-1)) {
-			sendJob(batch);
-		}
-		signalCompletion();
+		sendAllJobsAsync(splitter.getWorkerJobs());
 		
 		log("Began processing own jobs");
-		executeParallel(allBatches.get(batchSize-1).split(ccJobs));
+		executeParallel(splitter.getMasterJobs());
 		log("Finished processing own jobs");
 	}
 }
