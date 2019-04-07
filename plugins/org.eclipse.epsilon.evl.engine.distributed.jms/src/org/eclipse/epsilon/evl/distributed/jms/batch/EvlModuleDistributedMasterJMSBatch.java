@@ -37,7 +37,7 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		sendAllJobsAsync(splitter.getWorkerJobs());
+		sendAllJobs(splitter.getWorkerJobs());
 		
 		log("Began processing own jobs");
 		executeParallel(splitter.getMasterJobs());

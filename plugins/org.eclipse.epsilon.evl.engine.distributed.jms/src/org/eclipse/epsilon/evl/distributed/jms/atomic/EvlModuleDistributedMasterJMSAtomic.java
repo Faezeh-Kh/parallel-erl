@@ -37,7 +37,7 @@ public class EvlModuleDistributedMasterJMSAtomic extends EvlModuleDistributedMas
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);
 		
-		sendAllJobsAsync(splitter.getWorkerJobs()).throwIfPresent();
+		sendAllJobs(splitter.getWorkerJobs());
 		
 		log("Began processing own jobs");
 		executeParallel(splitter.getMasterJobs());

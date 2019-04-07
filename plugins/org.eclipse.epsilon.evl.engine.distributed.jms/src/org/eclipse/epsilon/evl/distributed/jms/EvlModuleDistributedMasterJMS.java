@@ -182,7 +182,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 					completionSender = () -> jobsProducer.send(completionTopic, jobContext.createMessage());
 					
 					processJobs(readyWorkers);
-					jobSenderThread.join();
+					if (jobSenderThread != null) jobSenderThread.join();
 					waitForWorkersToFinishJobs(workersFinished);
 					processFailedJobs();
 				}
@@ -392,6 +392,20 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	abstract protected void processJobs(final AtomicInteger workersReady) throws Exception;
 
 	/**
+	 * Convenience method for bulk sending of jobs followed by a call to {@link #signalCompletion()}.
+	 * 
+	 * @param jobs The Serializable jobs to send.
+	 * @throws JMSException
+	 */
+	protected void sendAllJobs(Iterable<? extends Serializable> jobs) throws JMSException {
+		for (Serializable job : jobs) {
+			sendJob(job);
+		}
+		signalCompletion();
+		log("Sent all jobs");
+	}
+	
+	/**
 	 * Sends all of the jobs in a new thread, returning immediately. If an exception is
 	 * raised, no further jobs are submitted and the thread terminates. If all jobs
 	 * were sent successfully, the {@link #signalCompletion()} method is called.
@@ -404,11 +418,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		
 		jobSenderThread = new Thread(() -> {
 			try {
-				for (Serializable job : jobs) {
-					sendJob(job);
-				}
-				signalCompletion();
-				log("Sent all jobs");
+				sendAllJobs(jobs);
 			}
 			catch (JMSException jmx) {
 				exWrapper.setException(jmx);
