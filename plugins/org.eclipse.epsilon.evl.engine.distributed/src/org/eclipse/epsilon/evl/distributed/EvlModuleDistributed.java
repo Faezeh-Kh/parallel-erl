@@ -41,6 +41,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException
 	 */
 	protected void executeParallel(Iterable<?> jobs) throws EolRuntimeException {
+		if (jobs == null) return;
 		EvlContextDistributed context = getContext();
 		Collection<Runnable> executorJobs = jobs instanceof Collection ?
 			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
