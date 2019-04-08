@@ -15,10 +15,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
+import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
 import org.eclipse.epsilon.evl.distributed.data.*;
+import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.concurrent.*;
 
 /**
@@ -111,11 +114,30 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @return A cached (re-usable) deterministicly ordered List of jobs.
 	 * @throws EolRuntimeException
 	 */
-	protected List<ConstraintContextAtom> getContextJobs() throws EolRuntimeException {
+	public final List<ConstraintContextAtom> getContextJobs() throws EolRuntimeException {
 		if (contextJobsCache == null) {
-			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
+			contextJobsCache = getContextJobsImpl();
 		}
 		return contextJobsCache;
+	}
+	
+	public List<DistributedEvlBatch> getBatches(int numBatches) throws EolRuntimeException {
+		return DistributedEvlBatch.getBatches(getContextJobs().size(), numBatches);
+	}
+	
+	protected ArrayList<ConstraintContextAtom> getContextJobsImpl() throws EolModelElementTypeNotFoundException, EolModelNotFoundException {
+		ArrayList<ConstraintContextAtom> atoms = new ArrayList<>();
+		EvlContextDistributed context = getContext();
+		
+		for (ConstraintContext constraintContext : getConstraintContexts()) {
+			Collection<?> allOfKind = constraintContext.getAllOfSourceKind(context);
+			atoms.ensureCapacity(atoms.size()+allOfKind.size());
+			for (Object element : allOfKind) {
+				atoms.add(new ConstraintContextAtom(constraintContext, element));
+			}
+		}
+		
+		return atoms;
 	}
 	
 	/**

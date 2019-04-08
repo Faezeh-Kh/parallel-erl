@@ -19,8 +19,6 @@ import java.util.stream.IntStream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
-import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
-import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
 import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
@@ -95,19 +93,6 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 			})
 			.collect(Collectors.toList());
 	}
-	
-	/**
-	 * Splits the jobs into batches based on the parallelism in the context.
-	 * By default, the batches are based on {@link ConstraintContextAtom}s.
-	 * 
-	 * @param module The module to derive the ConstraintContexts and batch size from.
-	 * @return The serializable start and end indexes for the batches.
-	 * @throws EolRuntimeException
-	 */
-	public static List<DistributedEvlBatch> getBatches(EvlModuleDistributedMaster module) throws EolRuntimeException {
-		// Plus one because master itself is also included as a worker
-		return getBatches(ConstraintContextAtom.getContextJobs(module).size(), module.getContext().getDistributedParallelism()+1);
-	}
 
 	public <T> List<T> splitToList(T[] arr) {
 		return Arrays.asList(split(arr));
@@ -124,10 +109,6 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 */
 	public <T> List<T> split(List<T> list) {
 		return list.subList(from, to);
-	}
-	
-	public final Collection<SerializableEvlResultAtom> execute(EvlModuleParallel module) throws EolRuntimeException {
-		return execute(ConstraintContextAtom.getContextJobs(module), module.getContext());
 	}
 	
 	public Collection<SerializableEvlResultAtom> execute(List<ConstraintContextAtom> jobList, IEvlContextParallel context) throws EolRuntimeException {
