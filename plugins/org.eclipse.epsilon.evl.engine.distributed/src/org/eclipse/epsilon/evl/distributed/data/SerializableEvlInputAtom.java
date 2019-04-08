@@ -126,7 +126,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 		return constraintContext.shouldBeChecked(modelElement, context);
 	}
 	
-	protected SerializableEvlResultAtom serializeUnsatisfiedConstraint(UnsatisfiedConstraint unsatisfiedConstraint) {
+	public SerializableEvlResultAtom serializeUnsatisfiedConstraint(UnsatisfiedConstraint unsatisfiedConstraint) {
 		SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
 		outputAtom.contextName = this.contextName;
 		outputAtom.modelName = this.modelName;

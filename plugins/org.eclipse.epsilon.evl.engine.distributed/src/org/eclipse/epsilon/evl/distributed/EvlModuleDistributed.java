@@ -13,11 +13,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
-import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
@@ -43,26 +43,32 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * Executes the given jobs in parallel.
 	 * 
 	 * @param jobs The Serializable instances to forward to {@link #executeJob(Object)}
+	 * @return The combined results of calling {@link #executeJob(Object)}
 	 * @throws EolRuntimeException
 	 */
-	protected void executeParallel(Iterable<?> jobs) throws EolRuntimeException {
-		if (jobs == null) return;
+	protected Collection<SerializableEvlResultAtom> executeParallel(Iterable<?> jobs) throws EolRuntimeException {
+		if (jobs == null) return null;
 		EvlContextDistributed context = getContext();
-		Collection<Runnable> executorJobs = jobs instanceof Collection ?
+		Collection<Callable<Collection<SerializableEvlResultAtom>>> executorJobs = jobs instanceof Collection ?
 			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
 		
 		for (Object job : jobs) {
 			executorJobs.add(() -> {
 				try {
-					executeJob(job);
+					return executeJob(job);
 				}
 				catch (EolRuntimeException eox) {
 					context.handleException(eox);
+					return null;
 				}
 			});
 		}
 
-		context.executeParallel(null, executorJobs);
+		return context.executeParallelTyped(null, executorJobs)
+			.stream()
+			.filter(rc -> rc != null)
+			.flatMap(Collection::stream)
+			.collect(Collectors.toCollection(ArrayList::new));
 	}
 	
 	/**
@@ -155,26 +161,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
 	public Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
-		EvlContextDistributed context = getContext();
-		EolExecutorService executor = context.beginParallelTask(null);
-		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
-		
-		for (ConstraintContextAtom job : batch.split(getContextJobs())) {
-			executor.execute(() -> {
-				try {
-					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {
-						results.addElement(SerializableEvlResultAtom.serializeResult(uc, context));
-					}
-				}
-				catch (EolRuntimeException ex) {
-					context.handleException(ex, executor);
-				}
-			});
-		}
-		
-		executor.awaitCompletion();
-		context.endParallelTask(null);
-		return results.getBatch();
+		return executeParallel(batch.split(getContextJobs()));
 	}
 	
 	protected Collection<SerializableEvlResultAtom> execute(final SerializableEvlInputAtom atom) throws EolRuntimeException {
@@ -182,13 +169,19 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	}
 	
 	protected Collection<SerializableEvlResultAtom> execute(final ConstraintContextAtom atom) throws EolRuntimeException {
-		atom.execute(getContext());
-		return null;
+		return serializeResults(atom.executeWithResults(getContext()));
 	}
 	
 	protected Collection<SerializableEvlResultAtom> execute(final ConstraintAtom atom) throws EolRuntimeException {
 		atom.execute(getContext());
 		return null;
+	}
+	
+	protected Collection<SerializableEvlResultAtom> serializeResults(Collection<UnsatisfiedConstraint> unsatisfiedConstraints) {
+		EvlContextDistributed context = getContext();
+		return unsatisfiedConstraints.parallelStream()
+			.map(uc -> SerializableEvlResultAtom.serializeResult(uc, context))
+			.collect(Collectors.toCollection(ArrayList::new));
 	}
 	
 	@Override

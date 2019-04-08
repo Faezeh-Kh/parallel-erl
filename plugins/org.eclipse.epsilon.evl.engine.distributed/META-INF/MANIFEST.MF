@@ -9,7 +9,8 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.epsilon.evl.engine;visibility:=reexport,
  org.eclipse.epsilon.eol.cli,
  org.eclipse.epsilon.emc.emf
-Export-Package: org.eclipse.epsilon.evl.distributed,
+Export-Package: org.eclipse.epsilon.emc.emf,
+ org.eclipse.epsilon.evl.distributed,
  org.eclipse.epsilon.evl.distributed.context,
  org.eclipse.epsilon.evl.distributed.data,
  org.eclipse.epsilon.evl.distributed.launch
