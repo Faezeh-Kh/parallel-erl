@@ -27,7 +27,7 @@ import org.eclipse.epsilon.eol.execute.context.IEolContext;
  */
 public abstract class SerializableEvlAtom implements java.io.Serializable, Cloneable {
 	
-	private static final long serialVersionUID = 7643563897928949494L;
+	private static final long serialVersionUID = 8319572468387196852L;
 	
 	public String modelElementID, modelName, contextName;
 

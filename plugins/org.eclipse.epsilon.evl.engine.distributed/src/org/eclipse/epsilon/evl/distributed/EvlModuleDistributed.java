@@ -11,7 +11,6 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -76,26 +75,30 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			return ((SerializableEvlInputAtom) job).execute(this);
 		}
 		else if (job instanceof DistributedEvlBatch) {
-			return evaluateBatch((DistributedEvlBatch) job);
+			return evaluateBatchWithResults((DistributedEvlBatch) job);
 		}
 		else if (job instanceof ConstraintContextAtom) {
 			executeAtom((ConstraintContextAtom) job);
-			return Collections.emptyList();
+			return null;
 		}
 		else if (job instanceof ConstraintAtom) {
 			executeAtom((ConstraintAtom) job);
-			return Collections.emptyList();
+			return null;
 		}
 		else if (job instanceof Iterable) {
 			return executeJob(((Iterable<?>) job).iterator());
 		}
 		else if (job instanceof Iterator) {
-			ArrayList<SerializableEvlResultAtom> resultsCol = new ArrayList<>();
-			for (
-				Iterator<?> iter = (Iterator<?>) job;
-				iter.hasNext();
-				resultsCol.addAll(executeJob(iter.next()))
-			);
+			Iterator<?> iter = (Iterator<?>) job;
+			ArrayList<SerializableEvlResultAtom> resultsCol = null;
+			
+			while (iter.hasNext()) {
+				Collection<SerializableEvlResultAtom> result = executeJob(iter.next());
+				if (result != null) {
+					if (resultsCol != null) resultsCol.addAll(result);
+					else resultsCol = new ArrayList<>(result);
+				}
+			}
 			return resultsCol;
 		}
 		else if (job instanceof java.util.stream.BaseStream) {
@@ -150,13 +153,16 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * the given element are satisfied, an empty collection is returned.
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
-	public Collection<SerializableEvlResultAtom> evaluateBatch(final DistributedEvlBatch batch) throws EolRuntimeException {
+	public Collection<SerializableEvlResultAtom> evaluateBatchWithResults(final DistributedEvlBatch batch) throws EolRuntimeException {
 		return batch.execute(getContextJobs(), getContext());
 	}
 	
-	// TODO implement parallel
-	protected Collection<SerializableEvlResultAtom> executeAtom(final SerializableEvlInputAtom atom) throws EolRuntimeException {
+	protected Collection<SerializableEvlResultAtom> executeAtomWithResult(final SerializableEvlInputAtom atom) throws EolRuntimeException {
 		return atom.execute(this);
+	}
+	
+	protected void executeAtom(final SerializableEvlInputAtom atom) throws EolRuntimeException {
+		atom.execute(this);
 	}
 	
 	protected void executeAtom(final ConstraintContextAtom atom) throws EolRuntimeException {

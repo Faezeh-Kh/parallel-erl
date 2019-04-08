@@ -116,8 +116,7 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 	 */
 	@Override
 	public Collection<SerializableEvlResultAtom> execute(IEvlModule module) throws EolRuntimeException {
-		IEvlContext context = module.getContext();
-		FrameStack frameStack = context.getFrameStack();
+		FrameStack frameStack = (context = module.getContext()).getFrameStack();
 		ExpressionStatement entryPoint = new ExpressionStatement();
 		Collection<Constraint> constraintsToCheck =  getConstraintsToCheck(module);
 		Collection<SerializableEvlResultAtom> unsatisfied = new ArrayList<>(constraintsToCheck.size());
@@ -129,10 +128,9 @@ public class SerializableEvlInputParametersAtom extends SerializableEvlInputAtom
 		for (Constraint constraint : constraintsToCheck) {
 			frameStack.enterLocal(FrameType.UNPROTECTED, entryPoint, variablesArr);
 			
-			serializeUnsatisfiedConstraintIfPresent(
-				constraint.execute(self, context)
-			)
-			.ifPresent(unsatisfied::add);
+			constraint.execute(self, context)
+				.map(this::serializeUnsatisfiedConstraint)
+				.ifPresent(unsatisfied::add);
 			
 			frameStack.leaveLocal(entryPoint);
 		}
