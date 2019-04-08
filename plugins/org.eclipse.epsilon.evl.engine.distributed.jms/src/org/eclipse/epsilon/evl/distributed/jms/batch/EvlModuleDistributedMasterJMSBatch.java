@@ -40,7 +40,7 @@ public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMast
 		sendAllJobs(splitter.getWorkerJobs());
 		
 		log("Began processing own jobs");
-		executeParallel(splitter.getMasterJobs());
+		executeJob(splitter.getMasterJobs());
 		log("Finished processing own jobs");
 	}
 }

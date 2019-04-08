@@ -27,8 +27,6 @@ class EvlFlinkSubsetFlatMapFunction extends EvlFlinkRichFunction implements Flat
 
 	@Override
 	public void flatMap(DistributedEvlBatch batch, Collector<SerializableEvlResultAtom> out) throws Exception {
-		for (SerializableEvlResultAtom resultElement : localModule.evaluateBatch(batch)) {
-			out.collect(resultElement);
-		}
+		localModule.execute(batch).forEach(out::collect);
 	}
 }

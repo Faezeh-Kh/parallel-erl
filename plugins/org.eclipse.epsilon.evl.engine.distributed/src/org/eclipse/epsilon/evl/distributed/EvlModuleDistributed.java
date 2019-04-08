@@ -13,8 +13,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
+import java.util.Spliterator;
+import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
@@ -40,42 +43,6 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	}
 	
 	/**
-	 * Executes the given jobs in parallel.
-	 * 
-	 * @param jobs The Serializable instances to forward to {@link #executeJob(Object)}
-	 * @return The combined results of calling {@link #executeJob(Object)}
-	 * @throws EolRuntimeException
-	 */
-	protected Collection<SerializableEvlResultAtom> executeParallel(Iterable<?> jobs) throws EolRuntimeException {
-		if (jobs == null) return null;
-		EvlContextDistributed context = getContext();
-		
-		if (context.getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD) {
-			Collection<Callable<Collection<SerializableEvlResultAtom>>> executorJobs = jobs instanceof Collection ?
-				new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
-			
-			for (Object job : jobs) {
-				executorJobs.add(() -> {
-					try {
-						return executeJob(job);
-					}
-					catch (EolRuntimeException eox) {
-						context.handleException(eox);
-						return null;
-					}
-				});
-			}
-	
-			return context.executeParallelTyped(null, executorJobs)
-				.stream()
-				.filter(rc -> rc != null)
-				.flatMap(Collection::stream)
-				.collect(Collectors.toCollection(ArrayList::new));
-		}
-		else return executeJob(jobs);
-	}
-	
-	/**
 	 * Executes the provided Serializable job(s) and returns the Serializable result.
 	 * 
 	 * @param job The Serializable input job(s).
@@ -84,7 +51,10 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws IllegalArgumentException If the job type was not recognised.
 	 */
 	public Collection<SerializableEvlResultAtom> executeJob(Object job) throws EolRuntimeException {
-		if (job instanceof SerializableEvlInputAtom) {
+		if (job == null) {
+			return null;
+		}
+		else if (job instanceof SerializableEvlInputAtom) {
 			return execute((SerializableEvlInputAtom) job);
 		}
 		else if (job instanceof DistributedEvlBatch) {
@@ -112,8 +82,27 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			}
 			return resultsCol;
 		}
-		else if (job instanceof java.util.stream.BaseStream) {
-			return executeJob(((java.util.stream.BaseStream<?,?>)job).iterator());
+		else if (job instanceof Spliterator) {
+			return executeJob(StreamSupport.stream(
+				(Spliterator<?>) job,
+				getContext().getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD)
+			);
+		}
+		else if (job instanceof BaseStream) {
+			if (job instanceof Stream) {
+				return ((Stream<?>)job).map(t -> {
+					try {
+						return executeJob(t);
+					}
+					catch (EolRuntimeException ex) {
+						ex.printStackTrace();
+						throw new RuntimeException(ex);
+					}
+				})
+				.flatMap(Collection::stream)
+				.collect(Collectors.toCollection(ArrayList::new));
+			}
+			else return executeJob(((BaseStream<?,?>)job).iterator());
 		}
 		else {
 			throw new IllegalArgumentException("Received unexpected object of type "+job.getClass().getName());
@@ -165,7 +154,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
 	public Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
-		return executeParallel(batch.split(getContextJobs()));
+		return executeJob(batch.split(getContextJobs()));
 	}
 	
 	protected Collection<SerializableEvlResultAtom> execute(final SerializableEvlInputAtom atom) throws EolRuntimeException {
