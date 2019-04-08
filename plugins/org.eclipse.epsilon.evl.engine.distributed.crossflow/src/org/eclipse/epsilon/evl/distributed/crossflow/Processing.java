@@ -45,7 +45,7 @@ public class Processing extends ProcessingBase {
 		}
 		
 		Collection<SerializableEvlResultAtom> results = slaveModule.executeJob(validationData.data);
-		if (results != null) for (SerializableEvlResultAtom resultAtom : results) {
+		if (results != null && !workflow.isMaster()) for (SerializableEvlResultAtom resultAtom : results) {
 			sendToValidationOutput(new ValidationResult(resultAtom));
 		}
 	}

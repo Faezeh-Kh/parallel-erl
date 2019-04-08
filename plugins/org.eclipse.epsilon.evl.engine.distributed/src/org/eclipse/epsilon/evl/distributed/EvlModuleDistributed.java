@@ -49,26 +49,30 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	protected Collection<SerializableEvlResultAtom> executeParallel(Iterable<?> jobs) throws EolRuntimeException {
 		if (jobs == null) return null;
 		EvlContextDistributed context = getContext();
-		Collection<Callable<Collection<SerializableEvlResultAtom>>> executorJobs = jobs instanceof Collection ?
-			new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
 		
-		for (Object job : jobs) {
-			executorJobs.add(() -> {
-				try {
-					return executeJob(job);
-				}
-				catch (EolRuntimeException eox) {
-					context.handleException(eox);
-					return null;
-				}
-			});
+		if (context.getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD) {
+			Collection<Callable<Collection<SerializableEvlResultAtom>>> executorJobs = jobs instanceof Collection ?
+				new ArrayList<>(((Collection<?>) jobs).size()) : new ArrayList<>();
+			
+			for (Object job : jobs) {
+				executorJobs.add(() -> {
+					try {
+						return executeJob(job);
+					}
+					catch (EolRuntimeException eox) {
+						context.handleException(eox);
+						return null;
+					}
+				});
+			}
+	
+			return context.executeParallelTyped(null, executorJobs)
+				.stream()
+				.filter(rc -> rc != null)
+				.flatMap(Collection::stream)
+				.collect(Collectors.toCollection(ArrayList::new));
 		}
-
-		return context.executeParallelTyped(null, executorJobs)
-			.stream()
-			.filter(rc -> rc != null)
-			.flatMap(Collection::stream)
-			.collect(Collectors.toCollection(ArrayList::new));
+		else return executeJob(jobs);
 	}
 	
 	/**
