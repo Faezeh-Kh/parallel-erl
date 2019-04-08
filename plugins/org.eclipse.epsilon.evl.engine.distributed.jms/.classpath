@@ -8,7 +8,7 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/mnt/OS/Users/Sina-/Google Drive/PhD/Experiments/bin/dependencies/artemis-jms-client-all-2.6.4.jar"/>
+	<classpathentry kind="lib" path="/home/smadani/Epsilon/bin/dependencies/artemis-jms-client-all-2.6.4.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

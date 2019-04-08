@@ -9,8 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.crossflow;
 
+import java.util.Collection;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
@@ -42,9 +44,9 @@ public class Processing extends ProcessingBase {
 			wait();
 		}
 		
-		slaveModule.executeJob(validationData.data)
-			.stream()
-			.map(ValidationResult::new)
-			.forEach(this::sendToValidationOutput);
+		Collection<SerializableEvlResultAtom> results = slaveModule.executeJob(validationData.data);
+		if (results != null) for (SerializableEvlResultAtom resultAtom : results) {
+			sendToValidationOutput(new ValidationResult(resultAtom));
+		}
 	}
 }

@@ -10,18 +10,11 @@
 package org.eclipse.epsilon.evl.distributed.data;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.execute.concurrent.ThreadLocalBatchData;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
-import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
-import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * Simple over-the-wire input for telling each node the start and end indexes
@@ -109,27 +102,5 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 */
 	public <T> List<T> split(List<T> list) {
 		return list.subList(from, to);
-	}
-	
-	public Collection<SerializableEvlResultAtom> execute(List<ConstraintContextAtom> jobList, IEvlContextParallel context) throws EolRuntimeException {
-		EolExecutorService executor = context.beginParallelTask(null);
-		ThreadLocalBatchData<SerializableEvlResultAtom> results = new ThreadLocalBatchData<>(context.getParallelism());
-		
-		for (ConstraintContextAtom job : split(jobList)) {
-			executor.execute(() -> {
-				try {
-					for (UnsatisfiedConstraint uc : job.executeWithResults(context)) {
-						results.addElement(SerializableEvlResultAtom.serializeResult(uc, context));
-					}
-				}
-				catch (EolRuntimeException ex) {
-					context.handleException(ex, executor);
-				}
-			});
-		}
-		
-		executor.awaitCompletion();
-		context.endParallelTask(null);
-		return results.getBatch();
 	}
 }

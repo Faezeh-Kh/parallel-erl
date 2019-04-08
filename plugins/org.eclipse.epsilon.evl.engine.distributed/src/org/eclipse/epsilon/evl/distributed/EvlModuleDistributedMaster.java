@@ -213,6 +213,40 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		else return false;
 	}
 	
+	/**
+	 * Evaluates locally
+	 * @return <code>null</code>
+	 */
+	@Override
+	public Collection<SerializableEvlResultAtom> execute(DistributedEvlBatch batch) throws EolRuntimeException {
+		EvlContextDistributedMaster context = getContext();
+		Collection<ConstraintContextAtom> contextJobs = getContextJobs();
+		ArrayList<Runnable> execJobs = new ArrayList<>(contextJobs.size());
+		
+		for (ConstraintContextAtom atom : batch.split(getContextJobs())) {
+			execJobs.add(() -> {
+				try {
+					execute(atom);
+				}
+				catch (EolRuntimeException ex) {
+					context.handleException(ex);
+				}
+			});
+		}
+		
+		context.executeParallel(this, execJobs);
+		return null;
+	}
+	
+	/**
+	 * Evaluates locally
+	 * @return <code>null</code>
+	 */
+	@Override
+	protected Collection<SerializableEvlResultAtom> execute(SerializableEvlInputAtom atom) throws EolRuntimeException {
+		atom.executeLocal(this);
+		return null;
+	}
 	
 	@Override
 	protected void prepareContext() {
