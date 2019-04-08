@@ -11,6 +11,7 @@ package org.eclipse.epsilon.evl.distributed;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Spliterator;
@@ -67,7 +68,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			return execute((ConstraintAtom) job);
 		}
 		else if (job instanceof Iterable) {
-			return executeJob(((Iterable<?>) job).iterator());
+			return executeJob(((Iterable<?>) job).spliterator());
 		}
 		else if (job instanceof Iterator) {
 			Iterator<?> iter = (Iterator<?>) job;
@@ -90,7 +91,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		}
 		else if (job instanceof BaseStream) {
 			if (job instanceof Stream) {
-				return ((Stream<?>)job).map(t -> {
+				return executeJob(((Stream<?>)job).map(t -> {
 					try {
 						return executeJob(t);
 					}
@@ -99,10 +100,13 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 						throw new RuntimeException(ex);
 					}
 				})
-				.flatMap(Collection::stream)
-				.collect(Collectors.toCollection(ArrayList::new));
+				//.flatMap(Collection::stream)
+				.iterator());
 			}
 			else return executeJob(((BaseStream<?,?>)job).iterator());
+		}
+		else if (job instanceof SerializableEvlResultAtom) {
+			return Collections.singletonList((SerializableEvlResultAtom) job);
 		}
 		else {
 			throw new IllegalArgumentException("Received unexpected object of type "+job.getClass().getName());
