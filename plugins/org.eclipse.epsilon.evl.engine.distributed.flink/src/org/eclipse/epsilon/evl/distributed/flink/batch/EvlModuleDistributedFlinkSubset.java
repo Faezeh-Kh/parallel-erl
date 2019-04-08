@@ -41,7 +41,7 @@ public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink {
 	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
 		return execEnv
 			.createInput(
-				new FlinkInputFormat<>(DistributedEvlBatch.getBatches(this)),
+				new FlinkInputFormat<>(getBatches(getContext().getDistributedParallelism() * getContext().getParallelism())),
 				TypeInformation.of(DistributedEvlBatch.class)
 			)
 			.flatMap(new EvlFlinkSubsetFlatMapFunction());

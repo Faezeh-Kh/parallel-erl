@@ -11,7 +11,7 @@ package org.eclipse.epsilon.evl.distributed.crossflow;
 
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
  * Master-bare only
@@ -20,7 +20,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  */
 public class Processing extends ProcessingBase {
 	
-	DistributedEvlRunConfiguration configuration;
+	DistributedEvlRunConfigurationSlave configuration;
 	EvlModuleDistributedSlave slaveModule;
 	
 	@SuppressWarnings("unchecked")
@@ -31,7 +31,7 @@ public class Processing extends ProcessingBase {
 				config.data,
 				"C:/Users/Sina-/Google Drive/PhD/Experiments/"
 			);
-			slaveModule = (EvlModuleDistributedSlave) configuration.getModule();
+			slaveModule = configuration.getModule();
 			notify();
 		}
 	}
