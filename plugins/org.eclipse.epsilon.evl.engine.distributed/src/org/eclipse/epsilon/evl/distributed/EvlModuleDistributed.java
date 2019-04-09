@@ -100,7 +100,8 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 						throw new RuntimeException(ex);
 					}
 				})
-				//.flatMap(Collection::stream)
+				.filter(c -> c != null)
+				.flatMap(Collection::stream)
 				.iterator());
 			}
 			else return executeJob(((BaseStream<?,?>)job).iterator());
@@ -128,8 +129,9 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		return contextJobsCache;
 	}
 	
-	public List<DistributedEvlBatch> getBatches(int numBatches) throws EolRuntimeException {
-		return DistributedEvlBatch.getBatches(getContextJobs().size(), numBatches);
+	public List<DistributedEvlBatch> getBatches(double batchPercent) throws EolRuntimeException {
+		final int numTotalJobs = getContextJobs().size();
+		return DistributedEvlBatch.getBatches(numTotalJobs, (int) (numTotalJobs * batchPercent));
 	}
 	
 	protected ArrayList<ConstraintContextAtom> getContextJobsImpl() throws EolModelElementTypeNotFoundException, EolModelNotFoundException {

@@ -135,8 +135,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 
 		@Override
 		protected List<DistributedEvlBatch> getAllJobs() throws EolRuntimeException {
-			int numTotalJobs = getContextJobs().size();
-			return DistributedEvlBatch.getBatches(numTotalJobs, (int) (numTotalJobs * granularity));
+			return getBatches(granularity);
 		}
 	}
 	
@@ -179,7 +178,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	}
 	
 	/**
-	 * Deserializes the object if it is a valid result type and adds it to
+	 * Deserializes the object lazily if it is a valid result type and adds it to
 	 * the unsatisfied constraints.
 	 * 
 	 * @param reponse The serializable result object.

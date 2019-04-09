@@ -9,12 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.data;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Simple over-the-wire input for telling each node the start and end indexes
@@ -24,10 +22,17 @@ import java.util.stream.IntStream;
  * @since 1.6
  */
 public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
-	
-	private static final long serialVersionUID = 6660450310143565940L;
+
+	private static final long serialVersionUID = 5398211400355108382L;
 	
 	public int from, to;
+	
+	public DistributedEvlBatch() {}
+	
+	public DistributedEvlBatch(int from, int to) {
+		this.from = from;
+		this.to = to;
+	}
 	
 	@Override
 	protected DistributedEvlBatch clone() {
@@ -65,26 +70,25 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * Provides a List of indices based on the desired split size.
 	 * 
 	 * @param totalJobs The size of the source List being split
-	 * @param batchSize The number of batches (i.e. the size of the returned List).
+	 * @param chunks The range (i.e. <code>to - from</code>) of each batch.
+	 * The last batch may be larger than this but the other batches are guaranteed
+	 * to be of this size.
 	 * @return A List of indexes with {@code totalJobs/batches} increments.
 	 */
-	public static List<DistributedEvlBatch> getBatches(int totalJobs, int batches) {
-		if (batches <= 1) {
-			DistributedEvlBatch batch = new DistributedEvlBatch();
-			batch.from = 0;
-			batch.to = totalJobs;
-			return Collections.singletonList(batch);
-		}
-		final int increments = batches < totalJobs ? totalJobs / batches : 1;
+	public static List<DistributedEvlBatch> getBatches(int totalJobs, int chunks) {
+		List<DistributedEvlBatch> resultList = new ArrayList<>(1 + (totalJobs / chunks));
 		
-		return IntStream.range(0, batches)
-			.mapToObj(i -> {
-				DistributedEvlBatch batch = new DistributedEvlBatch();
-				batch.from = i*increments;
-				batch.to = (i+1)*increments;
-				return batch;
-			})
-			.collect(Collectors.toList());
+		for (int prev = 0, curr = chunks; curr <= totalJobs; curr += chunks) {
+			resultList.add(new DistributedEvlBatch(prev, prev = curr));
+		}
+		
+		final int numBatches = resultList.size();
+		assert numBatches <= 1 + (totalJobs / chunks);
+		if (numBatches > 0) {
+			resultList.get(numBatches-1).to = totalJobs;
+		}
+		
+		return resultList;
 	}
 
 	public <T> List<T> splitToList(T[] arr) {
