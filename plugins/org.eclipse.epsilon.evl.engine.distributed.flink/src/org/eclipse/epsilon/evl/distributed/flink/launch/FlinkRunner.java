@@ -14,21 +14,21 @@ import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
 import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
-import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationMaster;
 
 /**
  * 
  * @author Sina Madani
  * @since 1.6
  */
-public class FlinkRunner extends DistributedEvlRunConfiguration {
+public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 
 	public static void main(String[] args) throws ClassNotFoundException {
 		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
 		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
 		
 		EolConfigParser.main(new String[] {
-			"CONFIG:"+DistributedEvlRunConfiguration.class.getName(),
+			"CONFIG:"+DistributedEvlRunConfigurationMaster.class.getName(),
 			args[0],
 			"-models",
 				"\"emf.DistributableEmfModel#"
@@ -39,13 +39,13 @@ public class FlinkRunner extends DistributedEvlRunConfiguration {
 			"-module",
 				(args.length > 4 && (
 					args[4].toLowerCase().contains("batch")  || args[4].toLowerCase().contains("subset")
-				) ? EvlModuleDistributedFlinkSubset.class : EvlModuleDistributedFlinkSubset.class).getName().substring(20),
+				) ? EvlModuleDistributedFlinkSubset.class : EvlModuleDistributedFlinkAtoms.class).getName().substring(20),
 			"int="+(args.length > 3 ? args[3] : "-1")
 		});
 	}
 	
-	public FlinkRunner(EvlRunConfiguration other) {
-		super(other);
+	public FlinkRunner(DistributedEvlRunConfiguration.Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
+		super(builder);
 	}
 
 	@Override

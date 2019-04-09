@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -16,6 +17,7 @@ import java.util.stream.Stream;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
@@ -27,10 +29,12 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 /**
  * Convenience base class for Flink EVL modules.
  * 
+ * @param <D> The type of inputs used for {@link EvlFlinkFlatMapFunction}.
+ * 
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMaster {
+public abstract class EvlModuleDistributedFlink<D extends Serializable> extends EvlModuleDistributedMaster {
 
 	private ExecutionEnvironment executionEnv;
 	
@@ -55,7 +59,7 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 		executionEnv.setParallelism(parallelism);
 	}
 	
-	protected abstract DataSet<SerializableEvlResultAtom> getProcessingPipeline(final ExecutionEnvironment execEnv) throws Exception;
+	protected abstract DataSource<D> getProcessingPipeline(final ExecutionEnvironment execEnv) throws Exception;
 	
 	/**
 	 * Performs a batch collection of serialized unsatisfied constraints and
@@ -76,7 +80,8 @@ public abstract class EvlModuleDistributedFlink extends EvlModuleDistributedMast
 			Configuration config = getJobConfiguration();
 			String outputPath = getContext().getOutputPath();
 			executionEnv.getConfig().setGlobalJobParameters(config);
-			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv);
+			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv)
+				.flatMap(new EvlFlinkFlatMapFunction<>());
 			
 			if (outputPath != null && !outputPath.isEmpty()) {
 				pipeline.writeAsText(outputPath, WriteMode.OVERWRITE);

@@ -9,23 +9,28 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink;
 
+import java.io.Serializable;
 import org.apache.flink.api.common.ExecutionConfig.GlobalJobParameters;
-import org.apache.flink.api.common.functions.AbstractRichFunction;
+import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.util.Collector;
+import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**
  * Performs one-time setup on slave nodes. This mainly involves parsing the script,
- * loading models and putting variables into the FrameStack.
+ * loading models and putting variables into the FrameStack. Also takes care of
+ * calling {@link EvlModuleDistributed#executeJob(Object)} and sending the results.
  * 
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
+public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMapFunction<IN, SerializableEvlResultAtom> {
 	
 	private static final long serialVersionUID = -9011432964023365634L;
 	
@@ -47,6 +52,11 @@ public abstract class EvlFlinkRichFunction extends AbstractRichFunction {
 		}
 		
 		return parameters;
+	}
+	
+	@Override
+	public void flatMap(IN value, Collector<SerializableEvlResultAtom> out) throws Exception {
+		localModule.executeJob(value).forEach(out::collect);
 	}
 	
 	@Override

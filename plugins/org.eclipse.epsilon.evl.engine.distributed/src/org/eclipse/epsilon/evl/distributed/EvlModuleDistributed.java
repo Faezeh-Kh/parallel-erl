@@ -47,7 +47,8 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * Executes the provided Serializable job(s) and returns the Serializable result.
 	 * 
 	 * @param job The Serializable input job(s).
-	 * @return A Serializable Collection containing zero or more {@link SerializableEvlResultAtom}s.
+	 * @return A Serializable Collection containing zero or more {@link SerializableEvlResultAtom}s,
+	 * or <code>null</code> if this module is the master.
 	 * @throws EolRuntimeException If an exception occurs when executing the job using this module.
 	 * @throws IllegalArgumentException If the job type was not recognised.
 	 */
@@ -159,7 +160,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * the given element are satisfied, an empty collection is returned.
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
-	public Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
+	protected Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
 		return executeJob(batch.split(getContextJobs()));
 	}
 	

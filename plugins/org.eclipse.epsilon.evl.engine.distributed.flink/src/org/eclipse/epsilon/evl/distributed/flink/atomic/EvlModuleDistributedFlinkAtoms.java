@@ -10,10 +10,9 @@
 package org.eclipse.epsilon.evl.distributed.flink.atomic;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
 import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
@@ -23,7 +22,7 @@ import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink {
+public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink<SerializableEvlInputAtom> {
 
 	public EvlModuleDistributedFlinkAtoms() {
 		super();
@@ -34,12 +33,11 @@ public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedFlink {
 	}
 
 	@Override
-	protected DataSet<SerializableEvlResultAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
+	protected DataSource<SerializableEvlInputAtom> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
 		return execEnv
 			.createInput(
 				new FlinkInputFormat<>(new AtomicJobSplitter(0, true).getWorkerJobs()),
 				TypeInformation.of(SerializableEvlInputAtom.class)
-			)
-			.flatMap(new EvlFlinkAtomFlatMapFunction());
+			);
 	}
 }
