@@ -87,25 +87,25 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		else if (job instanceof Spliterator) {
 			return executeJob(StreamSupport.stream(
 				(Spliterator<?>) job,
-				getContext().getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD)
-			);
+				getContext().getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD
+			));
 		}
-		else if (job instanceof BaseStream) {
-			if (job instanceof Stream) {
-				return executeJob(((Stream<?>)job).map(t -> {
+		else if (job instanceof Stream) {
+			return ((Stream<?>)job).map(t -> {
 					try {
 						return executeJob(t);
 					}
 					catch (EolRuntimeException ex) {
-						ex.printStackTrace();
+						 getContext().handleException(ex, null);
 						throw new RuntimeException(ex);
 					}
 				})
 				.filter(c -> c != null)
 				.flatMap(Collection::stream)
-				.iterator());
-			}
-			else return executeJob(((BaseStream<?,?>)job).iterator());
+				.collect(Collectors.toList());
+		}
+		else if (job instanceof BaseStream) {
+			return executeJob(((BaseStream<?,?>)job).iterator());
 		}
 		else if (job instanceof SerializableEvlResultAtom) {
 			return Collections.singletonList((SerializableEvlResultAtom) job);

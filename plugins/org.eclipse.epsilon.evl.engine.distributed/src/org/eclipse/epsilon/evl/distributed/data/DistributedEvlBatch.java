@@ -73,25 +73,25 @@ public class DistributedEvlBatch implements java.io.Serializable, Cloneable {
 	 * @param chunks The range (i.e. <code>to - from</code>) of each batch.
 	 * The last batch may be smaller than this but the other batches are guaranteed
 	 * to be of this size.
-	 * @return A List of indexes with {@code totalJobs/batches} increments.
+	 * @return A Serializable List of indexes with {@code totalJobs/batches} increments.
 	 */
 	public static List<DistributedEvlBatch> getBatches(int totalJobs, int chunks) {
-		final int maxBatches = 1 + (totalJobs / chunks);
-		List<DistributedEvlBatch> resultList = new ArrayList<>(maxBatches);
+		final int
+			modulo = totalJobs % chunks,
+			division = totalJobs / chunks,
+			maxBatches = modulo > 0 ? 1 + (totalJobs / chunks) : division;
 		
+		ArrayList<DistributedEvlBatch> resultList = new ArrayList<>(maxBatches);
+
 		for (int prev = 0, curr = chunks; curr <= totalJobs; curr += chunks) {
 			resultList.add(new DistributedEvlBatch(prev, prev = curr));
 		}
 		
-		final int numBatches = resultList.size();
-		assert numBatches <= maxBatches;
-		if (numBatches > 0) {
-			DistributedEvlBatch lastBatch = resultList.get(numBatches-1);
-			if (lastBatch.to < totalJobs) {
-				resultList.add(new DistributedEvlBatch(lastBatch.to, totalJobs));
-			}
+		if (maxBatches > 0 && modulo > 0) {
+			resultList.add(new DistributedEvlBatch(totalJobs - modulo, totalJobs));
 		}
 		
+		assert resultList.size() == maxBatches;
 		return resultList;
 	}
 
