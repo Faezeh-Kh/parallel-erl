@@ -25,7 +25,7 @@
 		</type>
 		
 		<type name="ValidationResult">
-			<field name="atom" type="org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom"/>
+			<field name="atoms" type="java.util.Collection&lt;org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom&gt;"/>
 		</type>	
 		
 	</workflow> 

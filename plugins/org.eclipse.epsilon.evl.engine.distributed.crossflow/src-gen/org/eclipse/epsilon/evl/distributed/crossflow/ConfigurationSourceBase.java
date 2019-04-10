@@ -27,7 +27,7 @@ public abstract class ConfigurationSourceBase extends Task {
 		this.configTopic = configTopic;
 	}
 	
-	private ConfigTopic getConfigTopic() {
+	protected ConfigTopic getConfigTopic() {
 		return configTopic;
 	}
 	

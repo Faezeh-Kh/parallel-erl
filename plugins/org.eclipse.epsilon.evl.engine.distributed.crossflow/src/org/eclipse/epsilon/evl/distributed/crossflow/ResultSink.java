@@ -13,7 +13,7 @@ public class ResultSink extends ResultSinkBase {
 	
 	@Override
 	public void consumeValidationOutput(ValidationResult validationResult) throws Exception {
-		workflow.configurationSource.masterModule.deserializeValidationResult(validationResult);
+		workflow.configurationSource.masterModule.deserializeResults(validationResult);
 	}
 
 }

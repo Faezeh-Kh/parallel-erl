@@ -147,7 +147,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	 * @param serializedResults The serialized UnsatisfiedConstraint instances.
 	 * @return A Collection of lazily resolved UnsatisfiedConstraints.
 	 */
-	protected Collection<LazyUnsatisfiedConstraint> deserializeLazy(Iterable<SerializableEvlResultAtom> serializedResults) {
+	public Collection<LazyUnsatisfiedConstraint> deserializeLazy(Iterable<SerializableEvlResultAtom> serializedResults) {
 		Collection<LazyUnsatisfiedConstraint> results = serializedResults instanceof Collection ?
 			new ArrayList<>(((Collection<?>) serializedResults).size()) : new ArrayList<>();
 		
@@ -165,7 +165,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	 * @return The deserialized UnsatisfiedConstraints.
 	 * @throws EolRuntimeException
 	 */
-	protected Collection<UnsatisfiedConstraint> deserializeEager(Iterable<? extends SerializableEvlResultAtom> results) throws EolRuntimeException {
+	public Collection<UnsatisfiedConstraint> deserializeEager(Iterable<? extends SerializableEvlResultAtom> results) throws EolRuntimeException {
 		EvlContextDistributedMaster context = getContext();
 		ArrayList<Callable<UnsatisfiedConstraint>> jobs = results instanceof Collection ?
 			new ArrayList<>(((Collection<?>)results).size()) : new ArrayList<>();
@@ -181,7 +181,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	 * Deserializes the object lazily if it is a valid result type and adds it to
 	 * the unsatisfied constraints.
 	 * 
-	 * @param reponse The serializable result object.
+	 * @param response The serializable result object.
 	 * @return Whether the object was a valid result
 	 * @throws EolRuntimeException
 	 */

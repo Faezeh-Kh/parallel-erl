@@ -11,34 +11,34 @@ public class ValidationResult extends Job  {
 	
 	public ValidationResult() {}
 	
-	public ValidationResult(org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom atom) {
-		this.atom = atom;
+	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms) {
+		this.atoms = atoms;
 	}
 	
-	public ValidationResult(org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom atom, Job correlation) {
-		this.atom = atom;
+	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms, Job correlation) {
+		this.atoms = atoms;
 		this.correlationId = correlation.getId();
 	}
 		
-	protected org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom atom;
+	protected java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms;
 	
-	public void setAtom(org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom atom) {
-		this.atom = atom;
+	public void setAtoms(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms) {
+		this.atoms = atoms;
 	}
 	
-	public org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom getAtom() {
-		return atom;
+	public java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> getAtoms() {
+		return atoms;
 	}
 	
 	
 	public Object[] toObjectArray(){
 		Object[] ret = new Object[1];
-	 	ret[0] = getAtom();
+	 	ret[0] = getAtoms();
 		return ret;
 	}
 	
 	public String toString() {
-		return "ValidationResult (" + " atom=" + atom + " id=" + id + " correlationId=" + correlationId + " destination=" + destination + ")";
+		return "ValidationResult (" + " atoms=" + atoms + " id=" + id + " correlationId=" + correlationId + " destination=" + destination + ")";
 	}
 	
 }

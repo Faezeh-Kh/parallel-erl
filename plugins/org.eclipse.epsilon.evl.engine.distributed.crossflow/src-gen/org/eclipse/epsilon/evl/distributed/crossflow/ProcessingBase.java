@@ -27,7 +27,7 @@ public abstract class ProcessingBase extends Task  implements ConfigTopicConsume
 		this.validationOutput = validationOutput;
 	}
 	
-	private ValidationOutput getValidationOutput() {
+	protected ValidationOutput getValidationOutput() {
 		return validationOutput;
 	}
 	

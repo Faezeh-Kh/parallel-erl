@@ -16,18 +16,22 @@ import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
- * Master-bare only
  * 
  * @author Sina Madani
+ * @since 1.6
  */
 public class Processing extends ProcessingBase {
 	
+	final boolean isMaster = workflow.isMaster();
 	DistributedEvlRunConfigurationSlave configuration;
 	EvlModuleDistributedSlave slaveModule;
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	public void consumeConfigTopic(Config config) throws Exception {
+		if (isMaster) return;
+		
+		assert workflow.isWorker();
 		while (configuration == null) synchronized (this) {
 			configuration = EvlContextDistributedSlave.parseJobParameters(
 				config.data,
@@ -40,13 +44,21 @@ public class Processing extends ProcessingBase {
 	
 	@Override
 	public void consumeValidationDataQueue(ValidationData validationData) throws Exception {
-		while (configuration == null) synchronized (this) {
+		while (!isMaster && configuration == null) synchronized (this) {
 			wait();
 		}
 		
-		Collection<SerializableEvlResultAtom> results = slaveModule.executeJob(validationData.data);
-		if (results != null && !workflow.isMaster()) for (SerializableEvlResultAtom resultAtom : results) {
-			sendToValidationOutput(new ValidationResult(resultAtom));
+		final java.io.Serializable job = validationData.data;
+		
+		if (isMaster) {
+			workflow.configurationSource.masterModule.executeJob(job);
+		}
+		else {
+			assert workflow.isWorker() && slaveModule != null;
+			Collection<SerializableEvlResultAtom> results = slaveModule.executeJob(job);
+			if (results != null) {
+				sendToValidationOutput(new ValidationResult(results));
+			}
 		}
 	}
 }

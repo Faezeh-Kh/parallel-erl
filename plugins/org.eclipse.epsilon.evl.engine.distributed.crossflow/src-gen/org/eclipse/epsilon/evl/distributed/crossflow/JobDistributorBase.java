@@ -27,7 +27,7 @@ public abstract class JobDistributorBase extends Task  implements ConfigTopicCon
 		this.validationDataQueue = validationDataQueue;
 	}
 	
-	private ValidationDataQueue getValidationDataQueue() {
+	protected ValidationDataQueue getValidationDataQueue() {
 		return validationDataQueue;
 	}
 	

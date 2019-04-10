@@ -42,7 +42,12 @@ public class EvlModuleDistributedMasterCrossflow extends EvlModuleDistributedMas
 		}
 	}
 	
-	public void deserializeValidationResult(ValidationResult result) {
-		result.atom.deserializeLazy(this);
+	@Override
+	protected boolean deserializeResults(Object response) throws EolRuntimeException {
+		boolean result = super.deserializeResults(response);
+		if (!result && response instanceof ValidationResult) {
+			result = super.deserializeResults(((ValidationResult) response).getAtoms());
+		}
+		return result;
 	}
 }

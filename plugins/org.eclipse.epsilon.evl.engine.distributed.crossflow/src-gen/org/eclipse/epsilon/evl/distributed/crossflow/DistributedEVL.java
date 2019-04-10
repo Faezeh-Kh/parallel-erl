@@ -1,12 +1,14 @@
 package org.eclipse.epsilon.evl.distributed.crossflow;
 
 import java.util.List;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
+import org.apache.activemq.broker.BrokerFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.eclipse.scava.crossflow.runtime.utils.ParallelList;
 import org.eclipse.scava.crossflow.runtime.utils.ControlSignal;
@@ -110,7 +112,13 @@ public class DistributedEVL extends Workflow {
 					
 		if (isMaster()) {
 			if (createBroker) {
-				brokerService = new BrokerService();
+				if (activeMqConfig != null && activeMqConfig != "") {
+					brokerService = BrokerFactory.createBroker(new URI("xbean:" + activeMqConfig));
+				} else {
+					brokerService = new BrokerService();
+				}
+			
+				//activeMqConfig
 				brokerService.setUseJmx(true);
 				brokerService.addConnector(getBroker());
 				brokerService.start();
@@ -168,7 +176,7 @@ public class DistributedEVL extends Workflow {
 							terminate();
 						}
 					}
-				}).run();	
+				}).start();	
 			}
 				
 			// delay non-master connections to allow master to create the relevant listeners
