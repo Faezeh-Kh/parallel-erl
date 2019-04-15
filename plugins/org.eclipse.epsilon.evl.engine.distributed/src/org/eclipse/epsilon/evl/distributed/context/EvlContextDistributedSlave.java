@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
@@ -35,7 +34,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	}
 	
 	@Override
-	public EolExecutorService newExecutorService() {
+	public EolThreadPoolExecutor newExecutorService() {
 		return EolThreadPoolExecutor.adaptiveExecutor(numThreads);
 	}
 	

@@ -87,7 +87,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		else if (job instanceof Spliterator) {
 			return executeJob(StreamSupport.stream(
 				(Spliterator<?>) job,
-				getContext().getNestedParallelism() < EvlContextDistributed.PARALLEL_NEST_THRESHOLD
+				getContext().isParallelisationLegal()
 			));
 		}
 		else if (job instanceof Stream) {

@@ -4,10 +4,8 @@ import java.util.List;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-
 import org.apache.activemq.broker.BrokerFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.eclipse.scava.crossflow.runtime.utils.ParallelList;
@@ -101,7 +99,7 @@ public class DistributedEVL extends Workflow {
 	 * @param delay
 	 */
 	@Override
-	public void run(int delay) throws Exception {
+	public void run(long delay) throws Exception {
 	
 	jobDistributors.init(this);
 	processings.init(this);
@@ -161,20 +159,16 @@ public class DistributedEVL extends Workflow {
 				}
 			}
 			
-			if (isMaster()){
+			if (isMaster()) {
 				// run all sources in parallel threads
-				new Thread(new Runnable() {
-
-					@Override
-					public void run() {
-						try {
-							setTaskInProgess(configurationSource);
-							configurationSource.produce();
-							setTaskWaiting(configurationSource);
-						} catch (Exception ex) {
-							reportInternalException(ex);
-							terminate();
-						}
+				new Thread(() -> {
+					try {
+						setTaskInProgess(configurationSource);
+						configurationSource.produce();
+						setTaskWaiting(configurationSource);
+					} catch (Exception ex) {
+						reportInternalException(ex);
+						terminate();
 					}
 				}).start();	
 			}
