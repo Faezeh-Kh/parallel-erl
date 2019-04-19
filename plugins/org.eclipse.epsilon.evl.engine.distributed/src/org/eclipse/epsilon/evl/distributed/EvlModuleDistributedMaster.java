@@ -135,7 +135,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 
 		@Override
 		protected List<DistributedEvlBatch> getAllJobs() throws EolRuntimeException {
-			return getBatches(granularity);
+			return getBatches(granularity / 2);
 		}
 	}
 	

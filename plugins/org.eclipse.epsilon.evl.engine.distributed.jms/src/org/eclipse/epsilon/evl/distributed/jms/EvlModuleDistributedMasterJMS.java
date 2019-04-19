@@ -16,6 +16,7 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import org.eclipse.epsilon.common.function.ExceptionContainer;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -113,6 +115,11 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 		super.prepareExecution();
 		connectionFactory = new org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory(host);
 		log("Connected to "+host+" session "+sessionID);
+	}
+	
+	@Override
+	public List<DistributedEvlBatch> getBatches(double batchPercent) throws EolRuntimeException {
+		return super.getBatches(batchPercent / expectedSlaves);
 	}
 	
 	@Override
