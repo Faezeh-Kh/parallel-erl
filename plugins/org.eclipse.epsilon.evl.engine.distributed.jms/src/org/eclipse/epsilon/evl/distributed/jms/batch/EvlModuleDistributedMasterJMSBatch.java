@@ -13,7 +13,7 @@ import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
+import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
 
 /**
  * Batch-based approach, requiring only indices of the deterministic

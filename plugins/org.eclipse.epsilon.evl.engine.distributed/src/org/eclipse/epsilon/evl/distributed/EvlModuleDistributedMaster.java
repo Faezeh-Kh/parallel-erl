@@ -22,7 +22,7 @@ import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.concurrent.ConstraintContextAtom;
+import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
 
 /**
  * Base implementation of EVL with distributed execution semantics.

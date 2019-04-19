@@ -28,7 +28,7 @@ import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
 import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
-import org.eclipse.epsilon.evl.execute.concurrent.*;
+import org.eclipse.epsilon.evl.execute.atoms.*;
 
 /**
  * 
@@ -85,10 +85,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			return resultsCol;
 		}
 		else if (job instanceof Spliterator) {
-			return executeJob(StreamSupport.stream(
-				(Spliterator<?>) job,
-				getContext().isParallelisationLegal()
-			));
+			return executeJob(StreamSupport.stream((Spliterator<?>) job, true));
 		}
 		else if (job instanceof Stream) {
 			return ((Stream<?>)job).map(t -> {
@@ -96,7 +93,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 						return executeJob(t);
 					}
 					catch (EolRuntimeException ex) {
-						 getContext().handleException(ex, null);
+						getContext().handleException(ex, null);
 						throw new RuntimeException(ex);
 					}
 				})
