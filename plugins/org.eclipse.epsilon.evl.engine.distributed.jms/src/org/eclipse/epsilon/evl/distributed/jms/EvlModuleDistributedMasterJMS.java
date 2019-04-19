@@ -119,7 +119,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	
 	@Override
 	public List<DistributedEvlBatch> getBatches(double batchPercent) throws EolRuntimeException {
-		return super.getBatches(batchPercent / expectedSlaves);
+		return super.getBatches(batchPercent / Math.max(expectedSlaves, 1));
 	}
 	
 	@Override

@@ -44,6 +44,17 @@ public class EvlContextDistributed extends EvlContextParallel {
 	}
 
 	@Override
+	public boolean isParallelisationLegal() {
+		if (super.isParallelisationLegal()) return true;
+		if (!isParallel) return false;
+		String current = Thread.currentThread().getName();
+		return !(
+			current.startsWith("ForkJoinPool.commonPool-worker") ||
+			current.startsWith("EOL-Worker")
+		);
+	}
+	
+	@Override
 	public void setModule(IModule module) {
 		if (module instanceof EvlModuleDistributed) {
 			super.setModule(module);

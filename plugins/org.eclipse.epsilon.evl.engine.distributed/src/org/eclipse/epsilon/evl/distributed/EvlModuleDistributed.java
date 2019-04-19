@@ -85,7 +85,9 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			return resultsCol;
 		}
 		else if (job instanceof Spliterator) {
-			return executeJob(StreamSupport.stream((Spliterator<?>) job, true));
+			return executeJob(StreamSupport.stream(
+				(Spliterator<?>) job, getContext().isParallelisationLegal())
+			);
 		}
 		else if (job instanceof Stream) {
 			return ((Stream<?>)job).map(t -> {
@@ -158,7 +160,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
 	 */
 	protected Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
-		return executeJob(batch.split(getContextJobs()));
+		return executeJob(batch.split(getContextJobs()).parallelStream());
 	}
 	
 	protected Collection<SerializableEvlResultAtom> execute(final SerializableEvlInputAtom atom) throws EolRuntimeException {
