@@ -20,13 +20,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
-import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
 import org.eclipse.epsilon.evl.distributed.data.*;
-import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.atoms.*;
 
@@ -124,7 +121,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 */
 	public final List<ConstraintContextAtom> getContextJobs() throws EolRuntimeException {
 		if (contextJobsCache == null) {
-			contextJobsCache = getContextJobsImpl();
+			contextJobsCache = ConstraintContextAtom.getContextJobs(this);
 		}
 		return contextJobsCache;
 	}
@@ -132,21 +129,6 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	public List<DistributedEvlBatch> getBatches(double batchPercent) throws EolRuntimeException {
 		final int numTotalJobs = getContextJobs().size();
 		return DistributedEvlBatch.getBatches(numTotalJobs, (int) (numTotalJobs * batchPercent));
-	}
-	
-	protected ArrayList<ConstraintContextAtom> getContextJobsImpl() throws EolModelElementTypeNotFoundException, EolModelNotFoundException {
-		ArrayList<ConstraintContextAtom> atoms = new ArrayList<>();
-		EvlContextDistributed context = getContext();
-		
-		for (ConstraintContext constraintContext : getConstraintContexts()) {
-			Collection<?> allOfKind = constraintContext.getAllOfSourceKind(context);
-			atoms.ensureCapacity(atoms.size()+allOfKind.size());
-			for (Object element : allOfKind) {
-				atoms.add(new ConstraintContextAtom(constraintContext, element));
-			}
-		}
-		
-		return atoms;
 	}
 	
 	/**
