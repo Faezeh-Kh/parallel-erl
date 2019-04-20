@@ -48,13 +48,17 @@ public class EvlOclTests {
 	
 	static final String CWD = getTestBaseDir(EvlOclTests.class);
 	
+	static final String[]
+		oclJavaModels = {"ocl_java_codegen.xmi"},
+		oclJavaScripts = Arrays.copyOfRange(javaScripts, 0, 2);
+	
 	static final List<String[]>
 		oclTestInputs = addAllInputs(
 			// Exclude the java_noguard script
-			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
+			oclJavaScripts, oclJavaModels, javaMetamodel, "ocl", CWD+"scripts/", CWD+"models/", metamodelsRoot
 		),
 		evlTestInputs = addAllInputs(
-			javaScripts, new String[]{"ocl_java_codegen.xmi"}, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
+			oclJavaScripts, oclJavaModels, javaMetamodel, "evl", scriptsRoot, CWD+"models/", metamodelsRoot
 		);
 	
 	// This is to ensure that the scenarios have same ID because the paths (and file extension for scripts) are different.
