@@ -12,12 +12,7 @@ package org.eclipse.epsilon.evl.distributed.context;
 import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
 import java.io.Serializable;
 import java.nio.file.Paths;
-import java.util.AbstractSet;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
@@ -36,7 +31,12 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	protected static final Set<UnsatisfiedConstraint> NOOP_UC = new AbstractSet<UnsatisfiedConstraint>() {	
 		@Override
 		public boolean add(UnsatisfiedConstraint uc) {
-			return true; // no-op
+			return true;
+		}
+		
+		@Override
+		public boolean addAll(Collection<? extends UnsatisfiedConstraint> c) {
+			return false;
 		}
 		
 		@Override
@@ -62,7 +62,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	@Override
 	protected void initMainThreadStructures() {
 		super.initMainThreadStructures();
-		resetUnsatisfiedConstraints();
+		unsatisfiedConstraints = NOOP_UC;
 	}
 	
 	@Override
@@ -74,14 +74,6 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	@Override
 	public Set<UnsatisfiedConstraint> getUnsatisfiedConstraints() {
 		return unsatisfiedConstraints;
-	}
-	
-	public void resetUnsatisfiedConstraints() {
-		unsatisfiedConstraints = NOOP_UC;
-	}
-	
-	public void setUnsatisfiedConstraints(Set<UnsatisfiedConstraint> unsatisfiedConstraints) {
-		this.unsatisfiedConstraints = unsatisfiedConstraints;
 	}
 	
 	public static DistributedEvlRunConfigurationSlave parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {

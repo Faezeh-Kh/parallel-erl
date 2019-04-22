@@ -212,26 +212,6 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		else return false;
 	}
 	
-	/**
-	 * Evaluates locally
-	 * @return <code>null</code>
-	 */
-	@Override
-	protected Collection<SerializableEvlResultAtom> execute(ConstraintContextAtom atom) throws EolRuntimeException {
-		atom.execute(getContext());
-		return null;
-	}
-	
-	/**
-	 * Evaluates locally
-	 * @return <code>null</code>
-	 */
-	@Override
-	protected Collection<SerializableEvlResultAtom> execute(SerializableEvlInputAtom atom) throws EolRuntimeException {
-		atom.executeLocal(this);
-		return null;
-	}
-	
 	@Override
 	protected void prepareContext() {
 		getContext().storeInitialVariables();

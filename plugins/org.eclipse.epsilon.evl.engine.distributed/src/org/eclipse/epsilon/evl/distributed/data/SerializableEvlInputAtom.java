@@ -121,7 +121,8 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 		
 		ConstraintContext constraintContext = module.getConstraintContext(contextName);
 		constraintStream = StreamSupport.stream(
-			constraintContext.getConstraints().spliterator(), module instanceof EvlModuleParallel
+			constraintContext.getConstraints().spliterator(),
+			module instanceof EvlModuleParallel && ((EvlModuleParallel) module).getContext().isParallelisationLegal()
 		);
 		return constraintContext.shouldBeChecked(modelElement, context);
 	}

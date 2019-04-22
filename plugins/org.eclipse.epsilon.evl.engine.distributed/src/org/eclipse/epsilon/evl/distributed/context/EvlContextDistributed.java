@@ -9,8 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.context;
 
+import java.util.Set;
 import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
+import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
@@ -43,6 +45,10 @@ public class EvlContextDistributed extends EvlContextParallel {
 		super(parallelism);
 	}
 
+	public void setUnsatisfiedConstraints(Set<UnsatisfiedConstraint> unsatisfiedConstraints) {
+		this.unsatisfiedConstraints = unsatisfiedConstraints;
+	}
+	
 	@Override
 	public boolean isParallelisationLegal() {
 		if (super.isParallelisationLegal()) return true;

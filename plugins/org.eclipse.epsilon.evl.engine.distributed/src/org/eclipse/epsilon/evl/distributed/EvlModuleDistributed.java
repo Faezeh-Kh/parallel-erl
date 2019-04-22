@@ -14,12 +14,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.eclipse.epsilon.common.concurrent.ConcurrencyUtils;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributed;
@@ -53,58 +55,69 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		if (job == null) {
 			return null;
 		}
-		else if (job instanceof SerializableEvlInputAtom) {
-			return execute((SerializableEvlInputAtom) job);
-		}
-		else if (job instanceof DistributedEvlBatch) {
-			return execute((DistributedEvlBatch) job);
-		}
-		else if (job instanceof ConstraintContextAtom) {
-			return execute((ConstraintContextAtom) job);
-		}
-		else if (job instanceof ConstraintAtom) {
-			return execute((ConstraintAtom) job);
-		}
-		else if (job instanceof Iterable) {
-			return executeJob(((Iterable<?>) job).spliterator());
-		}
-		else if (job instanceof Iterator) {
-			Iterator<?> iter = (Iterator<?>) job;
-			ArrayList<SerializableEvlResultAtom> resultsCol = null;
-			
-			while (iter.hasNext()) {
-				Collection<SerializableEvlResultAtom> result = executeJob(iter.next());
-				if (result != null) {
-					if (resultsCol != null) resultsCol.addAll(result);
-					else resultsCol = new ArrayList<>(result);
-				}
-			}
-			return resultsCol;
-		}
-		else if (job instanceof Spliterator) {
-			return executeJob(StreamSupport.stream(
-				(Spliterator<?>) job, getContext().isParallelisationLegal())
-			);
-		}
-		else if (job instanceof Stream) {
-			return ((Stream<?>)job).map(t -> {
-					try {
-						return executeJob(t);
-					}
-					catch (EolRuntimeException ex) {
-						getContext().handleException(ex, null);
-						throw new RuntimeException(ex);
-					}
-				})
-				.filter(c -> c != null)
-				.flatMap(Collection::stream)
-				.collect(Collectors.toList());
-		}
-		else if (job instanceof BaseStream) {
-			return executeJob(((BaseStream<?,?>)job).iterator());
-		}
 		else if (job instanceof SerializableEvlResultAtom) {
 			return Collections.singletonList((SerializableEvlResultAtom) job);
+		}
+		
+		final EvlContextDistributed context = getContext();
+		final Set<UnsatisfiedConstraint>
+			originalUc = context.getUnsatisfiedConstraints(),
+			tempUc = ConcurrencyUtils.concurrentSet(16, context.getParallelism());
+		context.setUnsatisfiedConstraints(tempUc);
+		
+		try {
+			executeJobImpl(job);
+			return serializeResults(tempUc);
+		}
+		finally {
+			originalUc.addAll(tempUc);
+			context.setUnsatisfiedConstraints(originalUc);
+		}
+	}
+	
+	/**
+	 * Evaluates the job locally, adding the results to the Set of UnsatisfiedConstraint in the context.
+	 * @param job The job (or jobs) to evaluate.
+	 * @throws EolRuntimeException If an exception is thrown whilst evaluating the job(s).
+	 */
+	protected void executeJobImpl(Object job) throws EolRuntimeException {
+		if (job instanceof SerializableEvlInputAtom) {
+			((SerializableEvlInputAtom) job).executeLocal(this);
+		}
+		else if (job instanceof DistributedEvlBatch) {
+			executeJobImpl(((DistributedEvlBatch) job).split(getContextJobs()));
+		}
+		else if (job instanceof ConstraintContextAtom) {
+			((ConstraintContextAtom) job).execute(getContext());
+		}
+		else if (job instanceof ConstraintAtom) {
+			((ConstraintAtom) job).execute(getContext());
+		}
+		else if (job instanceof Iterable) {
+			executeJobImpl(((Iterable<?>) job).iterator());
+		}
+		else if (job instanceof Iterator) {
+			EolExecutorService executor = getContext().newExecutorService();
+			for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
+				final Object nextJob = iter.next();
+				executor.execute(() -> {
+					try {
+						executeJobImpl(nextJob);
+					}
+					catch (EolRuntimeException exception) {
+						getContext().handleException(exception, executor);
+					}
+				});
+			}
+			executor.awaitCompletion();
+		}
+		else if (job instanceof BaseStream) {
+			executeJobImpl(((BaseStream<?,?>)job).iterator());
+		}
+		else if (job instanceof Spliterator) {
+			executeJobImpl(StreamSupport.stream(
+				(Spliterator<?>) job, getContext().isParallelisationLegal())
+			);
 		}
 		else {
 			throw new IllegalArgumentException("Received unexpected object of type "+job.getClass().getName());
@@ -129,33 +142,6 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	public List<DistributedEvlBatch> getBatches(double batchPercent) throws EolRuntimeException {
 		final int numTotalJobs = getContextJobs().size();
 		return DistributedEvlBatch.getBatches(numTotalJobs, (int) (numTotalJobs * batchPercent));
-	}
-	
-	/**
-	 * Creates data-parallel jobs (i.e. model elements from constraint contexts) and evaluates them based on the
-	 * specified indices. Since both the master and slave modules create the same jobs from the same inputs (i.e.
-	 * the process is deterministic), this approach can only fail if the supplied batch numbers are out of range.
-	 * 
-	 * @param batch The chunk of the problem this module should solve.
-	 * @return A collection of serializable UnsatisfiedConstraints. If all constraints for
-	 * the given element are satisfied, an empty collection is returned.
-	 * @throws EolRuntimeException If anything in Epsilon goes wrong (e.g. problems with the user's code).
-	 */
-	protected Collection<SerializableEvlResultAtom> execute(final DistributedEvlBatch batch) throws EolRuntimeException {
-		return executeJob(batch.split(getContextJobs()).parallelStream());
-	}
-	
-	protected Collection<SerializableEvlResultAtom> execute(final SerializableEvlInputAtom atom) throws EolRuntimeException {
-		return atom.execute(this);
-	}
-	
-	protected Collection<SerializableEvlResultAtom> execute(final ConstraintContextAtom atom) throws EolRuntimeException {
-		return serializeResults(atom.executeWithResults(getContext()));
-	}
-	
-	protected Collection<SerializableEvlResultAtom> execute(final ConstraintAtom atom) throws EolRuntimeException {
-		atom.execute(getContext());
-		return null;
 	}
 	
 	protected Collection<SerializableEvlResultAtom> serializeResults(Collection<UnsatisfiedConstraint> unsatisfiedConstraints) {
