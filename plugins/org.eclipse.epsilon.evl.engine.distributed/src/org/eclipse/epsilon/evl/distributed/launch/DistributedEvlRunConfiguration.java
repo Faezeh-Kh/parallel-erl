@@ -12,6 +12,7 @@ package org.eclipse.epsilon.evl.distributed.launch;
 import java.net.URI;
 import java.nio.file.Paths;
 import org.eclipse.epsilon.common.util.StringProperties;
+import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
 
 /**
@@ -77,5 +78,16 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 	DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
 		super(builder);
 		this.basePath = builder.basePath;
+	}
+	
+	@Override
+	public void postExecute() throws Exception {
+		writeOut("Number of jobs: "+getModule().getContextJobs().size());
+		super.postExecute();
+	}
+	
+	@Override
+	public EvlModuleDistributed getModule() {
+		return (EvlModuleDistributed) super.getModule();
 	}
 }

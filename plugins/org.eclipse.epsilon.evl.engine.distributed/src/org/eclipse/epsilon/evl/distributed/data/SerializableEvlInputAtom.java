@@ -26,7 +26,6 @@ import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
 import org.eclipse.epsilon.evl.execute.context.IEvlContext;
-import org.eclipse.epsilon.evl.execute.context.concurrent.IEvlContextParallel;
 
 /**
  * Data unit to be used as inputs in distributed processing. No additional
@@ -67,9 +66,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 						.map(this::serializeUnsatisfiedConstraint);
 				}
 				catch (EolRuntimeException ex) {
-					if (context instanceof IEvlContextParallel) {
-						((IEvlContextParallel) context).handleException(ex, null);
-					}
+					ex.printStackTrace();
 					return Optional.<SerializableEvlResultAtom> empty();
 				}
 			})
@@ -91,10 +88,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 				constraint.execute(modelElement, context);
 			}
 			catch (EolRuntimeException ex) {
-				if (context instanceof IEvlContextParallel) {
-					((IEvlContextParallel) context).handleException(ex, null);
-				}
-				else ex.printStackTrace();
+				ex.printStackTrace();
 			}
 		});
 	}

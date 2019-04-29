@@ -51,7 +51,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	 * @throws EolRuntimeException If an exception occurs when executing the job using this module.
 	 * @throws IllegalArgumentException If the job type was not recognised.
 	 */
-	public Collection<SerializableEvlResultAtom> executeJob(Object job) throws EolRuntimeException {
+	public final Collection<SerializableEvlResultAtom> executeJob(Object job) throws EolRuntimeException {
 		if (job == null) {
 			return null;
 		}
@@ -100,14 +100,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			EolExecutorService executor = getContext().newExecutorService();
 			for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
 				final Object nextJob = iter.next();
-				executor.execute(() -> {
-					try {
-						executeJobImpl(nextJob);
-					}
-					catch (EolRuntimeException exception) {
-						getContext().handleException(exception, executor);
-					}
-				});
+				executor.execute(() -> executeJobImpl(nextJob));
 			}
 			executor.awaitCompletion();
 		}
