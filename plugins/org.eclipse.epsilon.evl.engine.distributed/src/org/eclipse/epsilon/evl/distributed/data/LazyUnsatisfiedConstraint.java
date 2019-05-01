@@ -12,7 +12,7 @@ package org.eclipse.epsilon.evl.distributed.data;
 import java.util.Deque;
 import java.util.Map;
 import java.util.Objects;
-import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.IEvlModule;
 import org.eclipse.epsilon.evl.dom.Constraint;
 import org.eclipse.epsilon.evl.execute.FixInstance;
@@ -53,7 +53,7 @@ public class LazyUnsatisfiedConstraint extends UnsatisfiedConstraint {
 		try {
 			instance = proxy.findElement(module.getContext());
 		}
-		catch (EolModelNotFoundException mnf) {
+		catch (EolRuntimeException mnf) {
 			System.err.println(mnf.getMessage());
 		}
 		return instance;

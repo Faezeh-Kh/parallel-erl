@@ -20,7 +20,7 @@ import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
+import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
  * Performs one-time setup on slave nodes. This mainly involves parsing the script,
@@ -35,7 +35,7 @@ public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMa
 	private static final long serialVersionUID = -9011432964023365634L;
 	
 	protected transient EvlModuleDistributedSlave localModule;
-	protected transient DistributedEvlRunConfiguration configContainer;
+	protected transient DistributedEvlRunConfigurationSlave configContainer;
 	
 	public static Configuration getParameters(RuntimeContext context, Configuration additionalParameters) {
 		GlobalJobParameters globalParameters = context.getExecutionConfig().getGlobalJobParameters();
@@ -65,7 +65,7 @@ public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMa
 		configContainer = EvlContextDistributedSlave.parseJobParameters(
 			getParameters(getRuntimeContext(), additionalParameters).toMap(), null
 		);
-		localModule = (EvlModuleDistributedSlave) configContainer.getModule();
+		localModule = configContainer.getModule();
 		
 		configContainer.preExecute();
 		localModule.prepareExecution();

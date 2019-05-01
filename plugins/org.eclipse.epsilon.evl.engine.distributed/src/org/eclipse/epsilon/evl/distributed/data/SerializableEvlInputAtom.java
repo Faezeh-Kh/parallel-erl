@@ -11,21 +11,13 @@ package org.eclipse.epsilon.evl.distributed.data;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-import java.util.stream.Stream;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelElementTypeNotFoundException;
 import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.eol.types.EolModelElementType;
-import org.eclipse.epsilon.evl.IEvlModule;
-import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
-import org.eclipse.epsilon.evl.dom.Constraint;
-import org.eclipse.epsilon.evl.dom.ConstraintContext;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
-import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 
 /**
  * Data unit to be used as inputs in distributed processing. No additional
@@ -36,73 +28,16 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
  */
 public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = -4229068854180769590L;
-	
-	protected transient Stream<Constraint> constraintStream;
-	protected transient Object modelElement;
-	protected transient IEvlContext context;
-	
+	private static final long serialVersionUID = -196776296963767472L;
+
 	@Override
 	protected SerializableEvlInputAtom clone() {
 		return (SerializableEvlInputAtom) super.clone();
 	}
 	
-	/**
-	 * Deserializes this element, executes it and transforms the results into a collection of
-	 * serialized {@linkplain UnsatisfiedConstraint}s.
-	 * 
-	 * @param module The IEvlModule to use for resolution and its context for execution. Note
-	 * that if the module is an instanceof {@linkplain EvlModuleParallel}, then execution is
-	 * performed in parallel using Parallel Streams.
-	 * @return A Serializable Collection of UnsatisfiedConstraint instances.
-	 * @throws EolRuntimeException
-	 */
-	public Collection<SerializableEvlResultAtom> execute(IEvlModule module) throws EolRuntimeException {
-		if (!preExecute(module)) return new ArrayList<>(0);	
-		return constraintStream
-			.map(constraint -> {
-				try {
-					return constraint.execute(modelElement, context)
-						.map(this::serializeUnsatisfiedConstraint);
-				}
-				catch (EolRuntimeException ex) {
-					ex.printStackTrace();
-					return Optional.<SerializableEvlResultAtom> empty();
-				}
-			})
-			.filter(Optional::isPresent)
-			.map(Optional::get)
-			.collect(Collectors.toCollection(ArrayList::new));
-	}
-	
-	/**
-	 * Executes this atom without any results.
-	 * 
-	 * @param module
-	 * @throws EolRuntimeException
-	 */
-	public void executeLocal(IEvlModule module) throws EolRuntimeException {
-		if (!preExecute(module)) return;
-		constraintStream.forEach(constraint -> {
-			try {
-				constraint.execute(modelElement, context);
-			}
-			catch (EolRuntimeException ex) {
-				ex.printStackTrace();
-			}
-		});
-	}
-	
-	/**
-	 * Internal method to be called prior to execution for convenience. Resolves
-	 * the actual data required for evaluation.
-	 * @param module
-	 * @return Whether the ConstraintContext's guard was satisfied.
-	 * @throws EolRuntimeException
-	 */
-	protected boolean preExecute(IEvlModule module) throws EolRuntimeException {
-		modelElement = findElement(context = module.getContext());
-		
+	@Override
+	public Object findElement(IEolContext context) throws EolRuntimeException {
+		Object modelElement = super.findElement(context);
 		if (modelElement == null) {
 			throw new EolRuntimeException(
 				"Could not find model element with ID "+modelElementID+
@@ -112,13 +47,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 				+" in context of "+contextName
 			);
 		}
-		
-		ConstraintContext constraintContext = module.getConstraintContext(contextName);
-		constraintStream = StreamSupport.stream(
-			constraintContext.getConstraints().spliterator(),
-			module instanceof EvlModuleParallel && ((EvlModuleParallel) module).getContext().isParallelisationLegal()
-		);
-		return constraintContext.shouldBeChecked(modelElement, context);
+		return modelElement;
 	}
 	
 	public SerializableEvlResultAtom serializeUnsatisfiedConstraint(UnsatisfiedConstraint unsatisfiedConstraint) {
@@ -140,8 +69,7 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 	 * @throws EolModelNotFoundException 
 	 */
 	public static ArrayList<SerializableEvlInputAtom> serializeJobs(Collection<ConstraintContextAtom> atoms) throws EolModelElementTypeNotFoundException, EolModelNotFoundException {
-		ArrayList<SerializableEvlInputAtom> serAtoms = new ArrayList<>(atoms.size());
-		
+		ArrayList<SerializableEvlInputAtom> serAtoms = new ArrayList<>(atoms.size());	
 		for (ConstraintContextAtom cca : atoms) {
 			EolModelElementType modelType = cca.unit.getType(cca.context);
 			SerializableEvlInputAtom sa = new SerializableEvlInputAtom();
@@ -150,7 +78,6 @@ public class SerializableEvlInputAtom extends SerializableEvlAtom {
 			sa.contextName = cca.unit.getTypeName();
 			serAtoms.add(sa);
 		}
-		
 		return serAtoms;
 	}
 }

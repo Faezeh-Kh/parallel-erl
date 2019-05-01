@@ -78,11 +78,12 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	/**
 	 * Evaluates the job locally, adding the results to the Set of UnsatisfiedConstraint in the context.
 	 * @param job The job (or jobs) to evaluate.
+	 * 
 	 * @throws EolRuntimeException If an exception is thrown whilst evaluating the job(s).
 	 */
 	protected void executeJobImpl(Object job) throws EolRuntimeException {
 		if (job instanceof SerializableEvlInputAtom) {
-			((SerializableEvlInputAtom) job).executeLocal(this);
+			executeAtom((SerializableEvlInputAtom) job);
 		}
 		else if (job instanceof DistributedEvlBatch) {
 			executeJobImpl(((DistributedEvlBatch) job).split(getContextJobs()));
@@ -115,6 +116,11 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		else {
 			throw new IllegalArgumentException("Received unexpected object of type "+job.getClass().getName());
 		}
+	}
+	
+	protected void executeAtom(SerializableEvlInputAtom job) throws EolRuntimeException {
+		EvlContextDistributed context = getContext();
+		getConstraintContext(job.contextName).execute(job.findElement(context), context);
 	}
 	
 	List<ConstraintContextAtom> contextJobsCache;

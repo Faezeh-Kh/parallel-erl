@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.eclipse.epsilon.eol.exceptions.models.EolModelNotFoundException;
+import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 
 /**
@@ -70,7 +70,7 @@ public abstract class SerializableEvlAtom implements java.io.Serializable, Clone
 				+ ", contextType=" + contextName;
 	}
 	
-	public Object findElement(IEolContext context) throws EolModelNotFoundException {
+	public Object findElement(IEolContext context) throws EolRuntimeException {
 		return context.getModelRepository().getModelByName(modelName).getElementById(modelElementID);
 	}
 	
