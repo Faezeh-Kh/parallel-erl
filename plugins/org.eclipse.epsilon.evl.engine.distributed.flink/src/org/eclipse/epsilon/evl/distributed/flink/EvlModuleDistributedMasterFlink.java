@@ -12,8 +12,6 @@ package org.eclipse.epsilon.evl.distributed.flink;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -24,7 +22,6 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
-import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**
  * Convenience base class for Flink EVL modules.
@@ -34,15 +31,15 @@ import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedFlink<D extends Serializable> extends EvlModuleDistributedMaster {
+public abstract class EvlModuleDistributedMasterFlink<D extends Serializable> extends EvlModuleDistributedMaster {
 
 	private ExecutionEnvironment executionEnv;
 	
-	public EvlModuleDistributedFlink() {
+	public EvlModuleDistributedMasterFlink() {
 		this(-1);
 	}
 	
-	public EvlModuleDistributedFlink(int parallelism) {
+	public EvlModuleDistributedMasterFlink(int parallelism) {
 		super(parallelism);
 	}
 	
@@ -61,19 +58,6 @@ public abstract class EvlModuleDistributedFlink<D extends Serializable> extends 
 	
 	protected abstract DataSource<D> getProcessingPipeline(final ExecutionEnvironment execEnv) throws Exception;
 	
-	/**
-	 * Performs a batch collection of serialized unsatisfied constraints and
-	 * adds them to the context's UnsatisfiedConstraints.
-	 * 
-	 * @param results The serialized {@linkplain UnsatisfiedConstraint}s
-	 */
-	protected void assignDeserializedResults(Stream<SerializableEvlResultAtom> results) {
-		getContext().setUnsatisfiedConstraints(
-			results.map(sr -> sr.deserializeLazy(this))
-			.collect(Collectors.toSet())
-		);
-	}
-	
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {
 		try {
@@ -88,7 +72,7 @@ public abstract class EvlModuleDistributedFlink<D extends Serializable> extends 
 				executionEnv.execute();
 			}
 			else {
-				assignDeserializedResults(pipeline.collect().parallelStream());
+				deserializeLazy(pipeline.collect());
 			}
 		}
 		catch (Exception ex) {

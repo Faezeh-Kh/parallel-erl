@@ -9,8 +9,9 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.launch;
 
-import org.eclipse.epsilon.eol.cli.EolConfigParser;
-import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
+import org.eclipse.epsilon.common.util.StringProperties;
+import org.eclipse.epsilon.emc.emf.DistributableEmfModel;
+import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedMasterFlink;
 import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
 import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
@@ -23,33 +24,52 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  */
 public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 
-	public static void main(String[] args) throws ClassNotFoundException {
-		String modelPath = args[1].contains("://") ? args[1] : "file:///"+args[1];
-		String metamodelPath = args[2].contains("://") ? args[2] : "file:///"+args[2];
-		
-		EolConfigParser.main(new String[] {
-			"CONFIG:"+DistributedEvlRunConfigurationMaster.class.getName(),
-			args[0],
-			"-models",
-				"\"emf.DistributableEmfModel#"
-				+ "concurrent=true,cached=true,readOnLoad=true,storeOnDisposal=false,"
-				+ "modelUri="+modelPath+",fileBasedMetamodelUri="+metamodelPath+"\"",
-			args.length > 5 ? "-outfile" : "",
-			args.length > 5 ? args[5] : "",
-			"-module",
-				(args.length > 4 && (
-					args[4].toLowerCase().contains("batch")  || args[4].toLowerCase().contains("subset")
-				) ? EvlModuleDistributedFlinkSubset.class : EvlModuleDistributedFlinkAtoms.class).getName().substring(20),
-			"int="+(args.length > 3 ? args[3] : "-1")
-		});
+	public static Builder<FlinkRunner, ?> Builder() {
+		return new Builder<>(FlinkRunner.class);
 	}
 	
-	public FlinkRunner(DistributedEvlRunConfiguration.Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
+	public static void main(String[] args) throws ClassNotFoundException {
+		String basePath = args[0];
+		String scriptPath = args[1];
+		String modelPath = args[2].contains("://") ? args[1] : "file:///"+args[2];
+		String metamodelPath = args[3].contains("://") ? args[2] : "file:///"+args[3];
+		int parallelism = args.length > 4 ? Integer.valueOf(args[4]) : -1;
+		
+		StringProperties modelProperties = new StringProperties();
+		modelProperties.put(DistributableEmfModel.PROPERTY_CONCURRENT, true);
+		modelProperties.put(DistributableEmfModel.PROPERTY_CACHED, true);
+		modelProperties.put(DistributableEmfModel.PROPERTY_MODEL_URI, modelPath);
+		modelProperties.put(DistributableEmfModel.PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
+		
+		Builder<FlinkRunner, ?> builder = (Builder<FlinkRunner, ?>) Builder()
+			.withBasePath(basePath)
+			.withScript(scriptPath)
+			.withModel(new DistributableEmfModel(), modelProperties);
+		
+		EvlModuleDistributedMasterFlink<?> module = null;
+		
+		if (args.length > 5) {
+			String moduleImplName = args[5].toLowerCase();
+			if (moduleImplName.contains("batch") || moduleImplName.contains("subset")) {
+				module = new EvlModuleDistributedFlinkSubset(parallelism);
+			}
+		}
+		if (module == null) {
+			module = new EvlModuleDistributedFlinkAtoms(parallelism);
+		}
+		if (args.length > 6) {
+			builder = builder.withOutputFile(args[6]);
+		}
+		
+		builder.build().run();
+	}
+	
+	public FlinkRunner(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
 		super(builder);
 	}
 
 	@Override
-	protected EvlModuleDistributedMaster getDefaultModule() {
+	protected EvlModuleDistributedMasterFlink<?> getDefaultModule() {
 		return new EvlModuleDistributedFlinkAtoms();
 	}
 }

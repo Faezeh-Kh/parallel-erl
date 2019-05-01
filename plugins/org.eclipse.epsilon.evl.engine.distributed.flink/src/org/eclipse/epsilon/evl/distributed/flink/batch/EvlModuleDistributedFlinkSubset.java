@@ -13,7 +13,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
-import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedFlink;
+import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedMasterFlink;
 import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
 /**
@@ -27,7 +27,7 @@ import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedFlink<DistributedEvlBatch> {
+public class EvlModuleDistributedFlinkSubset extends EvlModuleDistributedMasterFlink<DistributedEvlBatch> {
 
 	public EvlModuleDistributedFlinkSubset() {
 		super();

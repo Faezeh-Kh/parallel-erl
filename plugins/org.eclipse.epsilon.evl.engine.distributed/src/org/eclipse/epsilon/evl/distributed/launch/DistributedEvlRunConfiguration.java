@@ -33,7 +33,7 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 	public static class Builder<D extends DistributedEvlRunConfiguration, B extends Builder<D, B>> extends EvlRunConfiguration.Builder<D, B> {
 		public String basePath;
 		
-		protected Builder(Class<D> runConfigClass) {
+		public Builder(Class<D> runConfigClass) {
 			super(runConfigClass);
 		}
 		
