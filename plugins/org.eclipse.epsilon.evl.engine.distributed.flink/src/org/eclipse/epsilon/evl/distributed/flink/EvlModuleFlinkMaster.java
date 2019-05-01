@@ -10,8 +10,6 @@
 package org.eclipse.epsilon.evl.distributed.flink;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -19,9 +17,11 @@ import org.apache.flink.api.java.operators.DataSource;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
+import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.flink.execute.context.EvlContextFlinkMaster;
 
 /**
  * Convenience base class for Flink EVL modules.
@@ -31,16 +31,17 @@ import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedMasterFlink<D extends Serializable> extends EvlModuleDistributedMaster {
+public abstract class EvlModuleFlinkMaster<D extends Serializable> extends EvlModuleDistributedMaster {
 
 	private ExecutionEnvironment executionEnv;
 	
-	public EvlModuleDistributedMasterFlink() {
+	public EvlModuleFlinkMaster() {
 		this(-1);
 	}
 	
-	public EvlModuleDistributedMasterFlink(int parallelism) {
+	public EvlModuleFlinkMaster(int parallelism) {
 		super(parallelism);
+		setContext(new EvlContextFlinkMaster(parallelism));
 	}
 	
 	@Override
@@ -61,7 +62,7 @@ public abstract class EvlModuleDistributedMasterFlink<D extends Serializable> ex
 	@Override
 	protected final void checkConstraints() throws EolRuntimeException {
 		try {
-			Configuration config = getJobConfiguration();
+			Configuration config = getContext().getJobConfiguration();
 			String outputPath = getContext().getOutputPath();
 			executionEnv.getConfig().setGlobalJobParameters(config);
 			DataSet<SerializableEvlResultAtom> pipeline = getProcessingPipeline(executionEnv)
@@ -80,34 +81,15 @@ public abstract class EvlModuleDistributedMasterFlink<D extends Serializable> ex
 		}
 	}
 
-	private Configuration getJobConfiguration() {
-		Configuration configuration = new Configuration();
-		
-		for (Map.Entry<String, ?> entry : getContext().getJobParameters().entrySet()) {
-			String key = entry.getKey();
-			Object value = entry.getValue();
-			
-			if (value instanceof Boolean) {
-				configuration.setBoolean(key, (boolean) value);
-			}
-			else if (value instanceof Integer) {
-				configuration.setInteger(key, (int) value);
-			}
-			else if (value instanceof Long) {
-				configuration.setLong(key, (long) value);
-			}
-			else if (value instanceof Float) {
-				configuration.setFloat(key, (float) value);
-			}
-			else if (value instanceof Double) {
-				configuration.setDouble(key, (double) value);
-			}
-			else {
-				configuration.setString(key, Objects.toString(value));
-			}
+	@Override
+	public void setContext(IEolContext context) {
+		if (context instanceof EvlContextFlinkMaster) {
+			super.setContext(context);
 		}
-		
-		return configuration;
 	}
-
+	
+	@Override
+	public EvlContextFlinkMaster getContext() {
+		return (EvlContextFlinkMaster) super.getContext();
+	}
 }

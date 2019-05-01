@@ -20,17 +20,17 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  * @param <B>
  */
 @SuppressWarnings("unchecked")
-public class JMSMasterBuilder<J extends JMSMasterRunner, B extends JMSMasterBuilder<J, B>> extends DistributedEvlRunConfiguration.Builder<J, B> {
+public class JmsMasterBuilder<J extends JmsMasterRunner, B extends JmsMasterBuilder<J, B>> extends DistributedEvlRunConfiguration.Builder<J, B> {
 	
 	public String brokerHost = "tcp://localhost:61616";
 	public int expectedWorkers, sessionID;
 	public double batchFactor = -1;
 	public boolean shuffle;
 	
-	public JMSMasterBuilder() {
-		this((Class<J>) JMSMasterRunner.class);
+	public JmsMasterBuilder() {
+		this((Class<J>) JmsMasterRunner.class);
 	}
-	public JMSMasterBuilder(Class<J> runConfigClass) {
+	public JmsMasterBuilder(Class<J> runConfigClass) {
 		super(runConfigClass);
 	}
 	

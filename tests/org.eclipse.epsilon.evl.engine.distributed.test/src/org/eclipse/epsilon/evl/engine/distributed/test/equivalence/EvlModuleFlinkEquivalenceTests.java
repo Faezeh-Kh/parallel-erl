@@ -11,8 +11,8 @@ package org.eclipse.epsilon.evl.engine.distributed.test.equivalence;
 
 import java.util.Collection;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
-import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
+import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleFlinkAtoms;
+import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleFlinkSubset;
 import org.eclipse.epsilon.evl.engine.test.acceptance.EvlAcceptanceTestUtil;
 import org.eclipse.epsilon.evl.engine.test.acceptance.equivalence.EvlModuleEquivalenceTests;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
@@ -32,8 +32,8 @@ public class EvlModuleFlinkEquivalenceTests extends EvlModuleEquivalenceTests {
 	@Parameters//(name = "0")	Don't use this as the Eclipse JUnit view won't show failures!
 	public static Collection<EvlRunConfiguration> configurations() {
 		return EvlAcceptanceTestUtil.getScenarios(
-			() -> new EvlModuleDistributedFlinkAtoms(4),
-			() -> new EvlModuleDistributedFlinkSubset(4)
+			() -> new EvlModuleFlinkAtoms(4),
+			() -> new EvlModuleFlinkSubset(4)
 		);
 	}
 	

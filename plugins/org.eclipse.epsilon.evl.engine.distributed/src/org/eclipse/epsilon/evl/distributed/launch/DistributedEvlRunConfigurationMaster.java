@@ -11,7 +11,7 @@ package org.eclipse.epsilon.evl.distributed.launch;
 
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
 
 /**
  * 

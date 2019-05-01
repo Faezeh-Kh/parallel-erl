@@ -11,8 +11,8 @@ package org.eclipse.epsilon.evl.distributed.jms.launch;
 
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
-import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleDistributedMasterJMSAtomic;
-import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJMSBatch;
+import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleJmsMasterAtomic;
+import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleJmsMasterBatch;
 
 /**
  * 
@@ -22,10 +22,10 @@ import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleDistributedMasterJ
  * @param <J>
  * @param <B>
  */
-public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMasterBuilder<J, B>> extends EolConfigParser<J, B> {
+public class JmsMasterConfigParser<J extends JmsMasterRunner, B extends JmsMasterBuilder<J, B>> extends EolConfigParser<J, B> {
 
 	public static void main(String... args) {
-		new JMSMasterConfigParser<>().parseAndRun(args);
+		new JmsMasterConfigParser<>().parseAndRun(args);
 	}
 	
 	private final String
@@ -37,11 +37,11 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		sessionIdOpt = "session";
 	
 	@SuppressWarnings("unchecked")
-	public JMSMasterConfigParser() {
-		this((B) new JMSMasterBuilder<>());
+	public JmsMasterConfigParser() {
+		this((B) new JmsMasterBuilder<>());
 	}
 	
-	public JMSMasterConfigParser(B builder) {
+	public JmsMasterConfigParser(B builder) {
 		super(builder);		
 		options.addOption(Option.builder("bf")
 			.longOpt(batchesOpt)
@@ -86,12 +86,12 @@ public class JMSMasterConfigParser<J extends JMSMasterRunner, B extends JMSMaste
 		builder.batchFactor = tryParse(batchesOpt, builder.batchFactor);
 		
 		if (builder.batchFactor > 0) {
-			builder.module = new EvlModuleDistributedMasterJMSBatch(
+			builder.module = new EvlModuleJmsMasterBatch(
 				builder.expectedWorkers, builder.batchFactor, builder.shuffle, builder.brokerHost, builder.sessionID
 			);
 		}
 		else {
-			builder.module = new EvlModuleDistributedMasterJMSAtomic(
+			builder.module = new EvlModuleJmsMasterAtomic(
 				builder.expectedWorkers, builder.shuffle, builder.brokerHost, builder.sessionID
 			);
 		}

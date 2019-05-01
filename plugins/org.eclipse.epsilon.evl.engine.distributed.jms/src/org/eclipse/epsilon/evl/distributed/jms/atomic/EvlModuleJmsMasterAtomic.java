@@ -7,32 +7,32 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.jms.batch;
+package org.eclipse.epsilon.evl.distributed.jms.atomic;
 
 import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
-import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
+import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
+import org.eclipse.epsilon.evl.distributed.jms.EvlModuleJmsMaster;
 import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
 
 /**
- * Batch-based approach, requiring only indices of the deterministic
- * jobs created from ConstraintContext and element pairs.
+ * Atom-based approach, sending the Serializable ConstraintContext and model element
+ * pairs to workers.
  * 
+ * @see SerializableEvlInputAtom
  * @see ConstraintContextAtom
- * @see DistributedEvlBatch
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSBatch extends EvlModuleDistributedMasterJMS {
+public class EvlModuleJmsMasterAtomic extends EvlModuleJmsMaster {
+
+	protected final AtomicJobSplitter splitter;
 	
-	protected final BatchJobSplitter splitter;
-	
-	public EvlModuleDistributedMasterJMSBatch(int expectedWorkers, double batchFactor, boolean shuffle, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleJmsMasterAtomic(int expectedWorkers, boolean shuffle, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
-		splitter = new BatchJobSplitter(1 / (1 + expectedSlaves), shuffle, batchFactor);
+		splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
 	}
-	
+
 	@Override
 	protected void processJobs(AtomicInteger workersReady) throws Exception {
 		waitForWorkersToConnect(workersReady);

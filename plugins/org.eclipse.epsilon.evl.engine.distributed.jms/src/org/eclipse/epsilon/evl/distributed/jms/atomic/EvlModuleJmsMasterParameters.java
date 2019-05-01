@@ -13,9 +13,9 @@ import java.io.Serializable;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputParametersAtom;
-import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.jms.EvlModuleJmsMaster;
 
 /**
  * 
@@ -23,16 +23,16 @@ import org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedMasterJMSAtomicParameters extends EvlModuleDistributedMasterJMS {
+public class EvlModuleJmsMasterParameters extends EvlModuleJmsMaster {
 	
-	public EvlModuleDistributedMasterJMSAtomicParameters(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleJmsMasterParameters(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
 		
 		EvlContextDistributedMaster context = getContext();
 		context = new EvlContextDistributedMaster(context.getParallelism(), context.getDistributedParallelism()) {
 			@Override
-			public HashMap<String, Serializable> getJobParameters() {
-				HashMap<String, Serializable> jobParams = super.getJobParameters();
+			public HashMap<String, Serializable> getJobParameters(boolean stripBasePath) {
+				HashMap<String, Serializable> jobParams = super.getJobParameters(stripBasePath);
 				jobParams.put(IGNORE_MODELS, true);
 				return jobParams;
 			}

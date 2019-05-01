@@ -18,8 +18,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Collector;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 
 /**

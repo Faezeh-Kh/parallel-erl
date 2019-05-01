@@ -9,7 +9,7 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.jms;
 
-import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleDistributedMasterJMS.*;
+import static org.eclipse.epsilon.evl.distributed.jms.EvlModuleJmsMaster.*;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,18 +22,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.jms.*;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedSlave;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**
  * Reactive slave worker.
  * 
  * @see EvlModuleDistributedSlave
- * @see EvlModuleDistributedMasterJMS
+ * @see EvlModuleJmsMaster
  * @author Sina Madani
  * @since 1.6
  */
-public final class EvlJMSWorker implements Runnable, AutoCloseable {
+public final class EvlJmsWorker implements Runnable, AutoCloseable {
 
 	public static void main(String... args) throws Exception {
 		if (args.length < 2) throw new java.lang.IllegalStateException(
@@ -51,7 +51,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 			System.err.println("Using default "+host);
 		}
 		
-		try (EvlJMSWorker worker = new EvlJMSWorker(host, basePath, sessionID)) {
+		try (EvlJmsWorker worker = new EvlJmsWorker(host, basePath, sessionID)) {
 			System.out.println("Worker started for session "+sessionID);
 			worker.run();
 		}
@@ -68,7 +68,7 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	volatile Serializable stopBody;
 	volatile boolean jobIsInProgress;
 
-	public EvlJMSWorker(String host, String basePath, int sessionID) {
+	public EvlJmsWorker(String host, String basePath, int sessionID) {
 		connectionFactory = new org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory(host);
 		this.basePath = basePath;
 		this.sessionID = sessionID;
@@ -304,8 +304,8 @@ public final class EvlJMSWorker implements Runnable, AutoCloseable {
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
-		if (!(obj instanceof EvlJMSWorker)) return false;
-		EvlJMSWorker other = (EvlJMSWorker) obj;
+		if (!(obj instanceof EvlJmsWorker)) return false;
+		EvlJmsWorker other = (EvlJmsWorker) obj;
 		return
 			Objects.equals(this.workerID, other.workerID) &&
 			Objects.equals(this.sessionID, other.sessionID);

@@ -11,9 +11,9 @@ package org.eclipse.epsilon.evl.distributed.flink.launch;
 
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.emc.emf.DistributableEmfModel;
-import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedMasterFlink;
-import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleDistributedFlinkAtoms;
-import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleDistributedFlinkSubset;
+import org.eclipse.epsilon.evl.distributed.flink.EvlModuleFlinkMaster;
+import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleFlinkAtoms;
+import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleFlinkSubset;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationMaster;
 
@@ -46,16 +46,16 @@ public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 			.withScript(scriptPath)
 			.withModel(new DistributableEmfModel(), modelProperties);
 		
-		EvlModuleDistributedMasterFlink<?> module = null;
+		EvlModuleFlinkMaster<?> module = null;
 		
 		if (args.length > 5) {
 			String moduleImplName = args[5].toLowerCase();
 			if (moduleImplName.contains("batch") || moduleImplName.contains("subset")) {
-				module = new EvlModuleDistributedFlinkSubset(parallelism);
+				module = new EvlModuleFlinkSubset(parallelism);
 			}
 		}
 		if (module == null) {
-			module = new EvlModuleDistributedFlinkAtoms(parallelism);
+			module = new EvlModuleFlinkAtoms(parallelism);
 		}
 		if (args.length > 6) {
 			builder = builder.withOutputFile(args[6]);
@@ -69,7 +69,7 @@ public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 	}
 
 	@Override
-	protected EvlModuleDistributedMasterFlink<?> getDefaultModule() {
-		return new EvlModuleDistributedFlinkAtoms();
+	protected EvlModuleFlinkMaster<?> getDefaultModule() {
+		return new EvlModuleFlinkAtoms();
 	}
 }

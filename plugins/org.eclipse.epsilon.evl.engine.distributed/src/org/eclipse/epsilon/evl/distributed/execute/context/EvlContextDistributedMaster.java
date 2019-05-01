@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.context;
+package org.eclipse.epsilon.evl.distributed.execute.context;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
@@ -37,6 +37,15 @@ public class EvlContextDistributedMaster extends EvlContextDistributed {
 	protected Collection<Variable> initialVariables;
 	protected int distributedParallelism;
 	protected String outputDir, basePath;
+	
+	public EvlContextDistributedMaster(EvlContextDistributedMaster other) {
+		super(other);
+		this.modelProperties = other.modelProperties;
+		this.initialVariables = other.initialVariables;
+		this.distributedParallelism = other.distributedParallelism;
+		this.outputDir = other.outputDir;
+		this.basePath = other.basePath;
+	}
 	
 	public EvlContextDistributedMaster(int localParallelism, int distributedParallelism) {
 		super(localParallelism);
@@ -117,16 +126,18 @@ public class EvlContextDistributedMaster extends EvlContextDistributed {
 	 * can then be used by slave modules to re-build an equivalent state. Such information
 	 * includes the parallelism, path to the script, models and variables in the frame stack.
 	 * 
+	 * @param stripBasePath Whether to anonymise / normalise paths containing the basePath.
 	 * @return The configuration properties.
 	 */
-	public HashMap<String, Serializable> getJobParameters() {
+	public HashMap<String, Serializable> getJobParameters(boolean stripBasePath) {
 		HashMap<String, Serializable> config = new HashMap<>();
 		
-		config.put(BASE_PATH, BASE_PATH_SUBSTITUTE);
+		if (stripBasePath) config.put(BASE_PATH, BASE_PATH_SUBSTITUTE);
 		config.put(LOCAL_PARALLELISM, numThreads);
 		config.put(DISTRIBUTED_PARALLELISM, distributedParallelism);
-		config.put(EVL_SCRIPT, removeBasePath(getModule().getFile().toPath().toString()));
-		config.put(OUTPUT_DIR, outputDir);
+		String scriptPath = getModule().getFile().toPath().toString();
+		config.put(EVL_SCRIPT, stripBasePath ? removeBasePath(scriptPath) : scriptPath);
+		config.put(OUTPUT_DIR, stripBasePath ? removeBasePath(outputDir) : outputDir);
 		
 		List<IModel> models = getModelRepository().getModels();
 		int numModels = models.size();
@@ -141,7 +152,7 @@ public class EvlContextDistributedMaster extends EvlContextDistributed {
 				config.put(MODEL_PREFIX+i,
 					models.get(i).getClass().getName().replace("org.eclipse.epsilon.emc.", "")+"#"+
 					modelPropertiesIter.next().entrySet().stream()
-						.map(entry -> entry.getKey()+"="+removeBasePath(entry.getValue()))
+						.map(entry -> entry.getKey() + "=" + (stripBasePath ? removeBasePath(entry.getValue()) : entry.getValue()))
 						.collect(Collectors.joining(","))
 				);
 			}

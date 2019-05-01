@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.context;
+package org.eclipse.epsilon.evl.distributed.execute.context;
 
 import java.util.Set;
 import org.eclipse.epsilon.common.module.IModule;

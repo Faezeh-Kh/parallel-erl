@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.context;
+package org.eclipse.epsilon.evl.distributed.execute.context;
 
 import static org.eclipse.epsilon.eol.cli.EolConfigParser.*;
 import java.io.Serializable;
@@ -77,12 +77,22 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	}
 	
 	public static DistributedEvlRunConfigurationSlave parseJobParameters(Map<String, ? extends Serializable> config, String basePath) throws Exception {
-		String normBasePath = basePath.replace("\\", "/");
-		if (!normBasePath.endsWith("/")) normBasePath += "/";
-		String masterBasePath = Objects.toString(config.get(BASE_PATH), null);
+		String masterBasePath, normBasePath;
+		masterBasePath = Objects.toString(config.get(BASE_PATH), null);
+		boolean replaceBasePath = masterBasePath != null;
+		if (basePath != null) {
+			normBasePath = basePath.replace("\\", "/");
+			if (!normBasePath.endsWith("/")) {
+				normBasePath += "/";
+			}
+		}
+		else {
+			normBasePath = masterBasePath;
+		}
+		
 		String evlScriptPath = Objects.toString(config.get(EVL_SCRIPT), null);
 		if (evlScriptPath == null) throw new IllegalStateException("No script path!");
-		evlScriptPath = evlScriptPath.replace(masterBasePath, normBasePath);
+		if (replaceBasePath) evlScriptPath = evlScriptPath.replace(masterBasePath, normBasePath);
 		
 		Map<IModel, StringProperties> localModelsAndProperties;
 		if (config.containsKey(IGNORE_MODELS)) {
@@ -94,7 +104,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 			for (int i = 0; i < numModels; i++) {
 				String modelConfig = Objects.toString(config.get(MODEL_PREFIX+i), null);
 				if (modelConfig != null) {
-					modelsConfig[i] = modelConfig.replace(masterBasePath, normBasePath);
+					modelsConfig[i] = replaceBasePath ? modelConfig.replace(masterBasePath, normBasePath) : modelConfig;
 				}
 			}
 			localModelsAndProperties = parseModelParameters(modelsConfig);

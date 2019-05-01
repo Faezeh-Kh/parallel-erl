@@ -26,8 +26,8 @@ import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.common.function.ExceptionContainer;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.context.EvlContextDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>
@@ -69,11 +69,11 @@ import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
  * them during execution to avoid unnecessary duplicate processing. <br/>
  * It should also be noted that the {@link #failedJobs} is not thread-safe, so manual synchronization is required.
  * 
- * @see EvlJMSWorker
+ * @see EvlJmsWorker
  * @author Sina Madani
  * @since 1.6
  */
-public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributedMaster {
+public abstract class EvlModuleJmsMaster extends EvlModuleDistributedMaster {
 	
 	public static final String
 		JOBS_QUEUE = "worker_jobs",
@@ -100,7 +100,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 	private CheckedRunnable<JMSException> completionSender;
 	private Thread jobSenderThread;
 	
-	public EvlModuleDistributedMasterJMS(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleJmsMaster(int expectedWorkers, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers);
 		this.host = host;
 		this.sessionID = sessionID;
@@ -129,7 +129,7 @@ public abstract class EvlModuleDistributedMasterJMS extends EvlModuleDistributed
 			final Destination tempDest = regContext.createTemporaryQueue();
 			final JMSProducer regProducer = regContext.createProducer();
 			regProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
-			final Serializable config = getContext().getJobParameters();
+			final Serializable config = getContext().getJobParameters(true);
 			final int configHash = config.hashCode();
 			final AtomicInteger registeredWorkers = new AtomicInteger();
 			

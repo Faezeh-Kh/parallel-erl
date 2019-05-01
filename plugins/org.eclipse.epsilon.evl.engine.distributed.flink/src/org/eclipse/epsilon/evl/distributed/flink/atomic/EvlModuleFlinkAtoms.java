@@ -13,7 +13,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
 import org.eclipse.epsilon.evl.distributed.data.SerializableEvlInputAtom;
-import org.eclipse.epsilon.evl.distributed.flink.EvlModuleDistributedMasterFlink;
+import org.eclipse.epsilon.evl.distributed.flink.EvlModuleFlinkMaster;
 import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
 /**
@@ -22,13 +22,13 @@ import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
  * @author Sina Madani
  * @since 1.6
  */
-public class EvlModuleDistributedFlinkAtoms extends EvlModuleDistributedMasterFlink<SerializableEvlInputAtom> {
+public class EvlModuleFlinkAtoms extends EvlModuleFlinkMaster<SerializableEvlInputAtom> {
 
-	public EvlModuleDistributedFlinkAtoms() {
+	public EvlModuleFlinkAtoms() {
 		super();
 	}
 	
-	public EvlModuleDistributedFlinkAtoms(int parallelism) {
+	public EvlModuleFlinkAtoms(int parallelism) {
 		super(parallelism);
 	}
 
