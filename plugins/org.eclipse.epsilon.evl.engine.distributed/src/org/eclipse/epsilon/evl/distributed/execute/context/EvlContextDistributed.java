@@ -49,7 +49,7 @@ public class EvlContextDistributed extends EvlContextParallel {
 		this.unsatisfiedConstraints = unsatisfiedConstraints;
 	}
 	
-	@Override
+	/*@Override
 	public boolean isParallelisationLegal() {
 		if (super.isParallelisationLegal()) return true;
 		if (!isParallel) return false;
@@ -58,7 +58,7 @@ public class EvlContextDistributed extends EvlContextParallel {
 			current.startsWith("ForkJoinPool.commonPool-worker") ||
 			current.startsWith("EOL-Worker")
 		);
-	}
+	}*/
 	
 	@Override
 	public void setModule(IModule module) {

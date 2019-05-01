@@ -120,7 +120,8 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 	
 	protected void executeAtom(SerializableEvlInputAtom job) throws EolRuntimeException {
 		EvlContextDistributed context = getContext();
-		getConstraintContext(job.contextName).execute(job.findElement(context), context);
+		Object modelElement = job.findElement(context);
+		getConstraintContext(job.contextName).execute(modelElement, context);
 	}
 	
 	List<ConstraintContextAtom> contextJobsCache;
