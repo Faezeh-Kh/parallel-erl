@@ -65,7 +65,7 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 	String workerID;
 	DistributedEvlRunConfigurationSlave configContainer;
 	EvlModuleDistributedSlave module;
-	volatile Serializable stopBody;
+	Serializable stopBody;
 	volatile boolean jobIsInProgress;
 
 	public EvlJmsWorker(String host, String basePath, int sessionID) {
@@ -138,7 +138,10 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 		catch (Exception ex) {
 			// Tell the master we failed
 			ackSender.run();
-			stopBody = ex;
+			synchronized (finished) {
+				stopBody = ex;
+				finished.notify();
+			}
 			throw ex;
 		}
 	}
@@ -174,10 +177,9 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 		ObjectMessage finishedMsg = session.createObjectMessage();
 		finishedMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
 		finishedMsg.setBooleanProperty(LAST_MESSAGE_PROPERTY, true);
-		finishedMsg.setObject(configContainer.getSerializableRuleExecutionTimes());
-		if (stopBody instanceof Serializable) {	// Null check
-			finishedMsg.setObjectProperty(EXCEPTION_PROPERTY, stopBody);
-		}
+		finishedMsg.setObject(stopBody instanceof Serializable ? stopBody :
+			configContainer.getSerializableRuleExecutionTimes()
+		);
 		session.createProducer().send(session.createQueue(RESULTS_QUEUE_NAME+sessionID), finishedMsg);
 		
 		log("Signalled completion");
@@ -229,8 +231,8 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 					resultsMsg = replyContext.createObjectMessage(resultObj);
 				}
 				catch (EolRuntimeException eox) {
+					eox.printStackTrace();
 					resultsMsg = replyContext.createObjectMessage(currentJob);
-					resultsMsg.setObjectProperty(EXCEPTION_PROPERTY, eox);
 				}
 				
 				resultsMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
@@ -238,8 +240,10 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 				jobIsInProgress = false;
 			}
 			catch (JMSException jmx) {
-				stopBody = jmx;
-				throw new JMSRuntimeException(jmx.getMessage());
+				synchronized (finished) {
+					stopBody = jmx;
+					finished.notify();
+				}
 			}
 			
 			replyContext.close();

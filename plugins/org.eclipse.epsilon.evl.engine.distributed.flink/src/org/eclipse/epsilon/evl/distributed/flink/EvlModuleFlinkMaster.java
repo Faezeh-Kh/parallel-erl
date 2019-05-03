@@ -46,8 +46,7 @@ public abstract class EvlModuleFlinkMaster<D extends Serializable> extends EvlMo
 	
 	@Override
 	protected final void prepareExecution() throws EolRuntimeException {
-		super.prepareExecution();
-		
+		super.prepareExecution();		
 		EvlContextDistributedMaster context = getContext();
 		executionEnv = ExecutionEnvironment.getExecutionEnvironment();
 		int parallelism = context.getDistributedParallelism();

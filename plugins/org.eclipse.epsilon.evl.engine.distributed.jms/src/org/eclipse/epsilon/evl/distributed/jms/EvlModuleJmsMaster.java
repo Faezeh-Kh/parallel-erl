@@ -84,7 +84,6 @@ public abstract class EvlModuleJmsMaster extends EvlModuleDistributedMaster {
 		RESULTS_QUEUE_NAME = "results",
 		WORKER_ID_PREFIX = "EVL_jms",
 		LAST_MESSAGE_PROPERTY = "lastMsg",
-		EXCEPTION_PROPERTY = "exception",
 		WORKER_ID_PROPERTY = "workerID",
 		CONFIG_HASH_PROPERTY = "configChecksum";
 	
@@ -355,14 +354,13 @@ public abstract class EvlModuleJmsMaster extends EvlModuleDistributedMaster {
 				}
 				else if (msg instanceof ObjectMessage) {
 					Serializable contents = ((ObjectMessage)msg).getObject();
-					if (!deserializeResults(contents)) synchronized (failedJobs) {
+					if (contents instanceof Exception) {
+						handleExceptionFromWorker((Exception) contents, msg.getStringProperty(WORKER_ID_PROPERTY));
+					}
+					else if (!deserializeResults(contents)) synchronized (failedJobs) {
 						// Treat anything else (e.g. SerializableEvlInputAtom, DistributedEvlBatch) as a failure
 						if (failedJobs.add(contents)) {
 							failedJobs.notify();
-						}
-						Object exception = msg.getObjectProperty(EXCEPTION_PROPERTY);
-						if (exception instanceof Exception) {
-							handleExceptionFromWorker((Exception) exception, msg.getStringProperty(WORKER_ID_PROPERTY));
 						}
 					}
 				}
