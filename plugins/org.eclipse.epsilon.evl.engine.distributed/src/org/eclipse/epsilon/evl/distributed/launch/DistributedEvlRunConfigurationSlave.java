@@ -79,4 +79,9 @@ public class DistributedEvlRunConfigurationSlave extends DistributedEvlRunConfig
 	protected EvlModuleDistributedSlave getDefaultModule() {
 		return new EvlModuleDistributedSlave();
 	}
+	
+	@Override
+	public void postExecute() throws Exception {
+		// Do nothing
+	}
 }
