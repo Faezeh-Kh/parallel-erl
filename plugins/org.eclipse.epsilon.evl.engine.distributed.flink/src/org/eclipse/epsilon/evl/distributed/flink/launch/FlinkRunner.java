@@ -42,6 +42,7 @@ public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 		modelProperties.put(DistributableEmfModel.PROPERTY_FILE_BASED_METAMODEL_URI, metamodelPath);
 		
 		Builder<FlinkRunner, ?> builder = (Builder<FlinkRunner, ?>) Builder()
+			.withProfiling()
 			.withBasePath(basePath)
 			.withScript(scriptPath)
 			.withModel(new DistributableEmfModel(), modelProperties);
@@ -61,7 +62,7 @@ public class FlinkRunner extends DistributedEvlRunConfigurationMaster {
 			builder = builder.withOutputFile(args[6]);
 		}
 		
-		builder.build().run();
+		builder.withModule(module).build().run();
 	}
 	
 	public FlinkRunner(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {

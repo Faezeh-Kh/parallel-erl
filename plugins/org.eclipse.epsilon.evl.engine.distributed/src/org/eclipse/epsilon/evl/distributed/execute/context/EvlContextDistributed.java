@@ -17,7 +17,9 @@ import org.eclipse.epsilon.evl.execute.context.IEvlContext;
 import org.eclipse.epsilon.evl.execute.context.concurrent.EvlContextParallel;
 
 /**
- * 
+ * Note that {@link #isParallelisationLegal()} returns <code>false</code> by default
+ * since the distribution framework may be doing parallelisation which is difficult to
+ * detect. It's therefore recommended to override this behaviour if this is not the case.
  *
  * @author Sina Madani
  * @since 1.6
@@ -49,16 +51,10 @@ public class EvlContextDistributed extends EvlContextParallel {
 		this.unsatisfiedConstraints = unsatisfiedConstraints;
 	}
 	
-	/*@Override
+	@Override
 	public boolean isParallelisationLegal() {
-		if (super.isParallelisationLegal()) return true;
-		if (!isParallel) return false;
-		String current = Thread.currentThread().getName();
-		return !(
-			current.startsWith("ForkJoinPool.commonPool-worker") ||
-			current.startsWith("EOL-Worker")
-		);
-	}*/
+		return false;
+	}
 	
 	@Override
 	public void setModule(IModule module) {

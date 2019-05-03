@@ -98,12 +98,14 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			executeJobImpl(((Iterable<?>) job).iterator());
 		}
 		else if (job instanceof Iterator) {
-			EolExecutorService executor = getContext().newExecutorService();
+			EvlContextDistributed context = getContext();
+			EolExecutorService executor = context.beginParallelTask();
 			for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
 				final Object nextJob = iter.next();
 				executor.execute(() -> executeJobImpl(nextJob));
 			}
 			executor.awaitCompletion();
+			context.endParallelTask();
 		}
 		else if (job instanceof BaseStream) {
 			executeJobImpl(((BaseStream<?,?>)job).iterator());

@@ -51,7 +51,7 @@ public abstract class EvlModuleFlinkMaster<D extends Serializable> extends EvlMo
 		EvlContextDistributedMaster context = getContext();
 		executionEnv = ExecutionEnvironment.getExecutionEnvironment();
 		int parallelism = context.getDistributedParallelism();
-		if (parallelism < 1) {
+		if (parallelism < 1 && parallelism != ExecutionConfig.PARALLELISM_DEFAULT) {
 			context.setDistributedParallelism(parallelism = ExecutionConfig.PARALLELISM_DEFAULT);
 		}
 		executionEnv.setParallelism(parallelism);
@@ -73,7 +73,8 @@ public abstract class EvlModuleFlinkMaster<D extends Serializable> extends EvlMo
 				executionEnv.execute();
 			}
 			else {
-				deserializeLazy(pipeline.collect());
+				boolean valid = deserializeResults(pipeline.collect());
+				assert valid;
 			}
 		}
 		catch (Exception ex) {
