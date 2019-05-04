@@ -29,18 +29,26 @@ import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
  */
 public class EvlModuleFlinkSubset extends EvlModuleFlinkMaster<DistributedEvlBatch> {
 
+	protected final double batchFactor;
+	
 	public EvlModuleFlinkSubset() {
-		super();
+		this(-1);
 	}
+	
 	public EvlModuleFlinkSubset(int parallelism) {
+		this(parallelism, 0.00825);
+	}
+	
+	public EvlModuleFlinkSubset(int parallelism, double batchFactor) {
 		super(parallelism);
+		this.batchFactor = batchFactor;
 	}
 
 	@Override
 	protected DataSource<DistributedEvlBatch> getProcessingPipeline(ExecutionEnvironment execEnv) throws Exception {
 		return execEnv
 			.createInput(
-				new FlinkInputFormat<>(getBatches(getContext().getDistributedParallelism() * getContext().getParallelism())),
+				new FlinkInputFormat<>(getBatches(batchFactor)),
 				TypeInformation.of(DistributedEvlBatch.class)
 			);
 	}

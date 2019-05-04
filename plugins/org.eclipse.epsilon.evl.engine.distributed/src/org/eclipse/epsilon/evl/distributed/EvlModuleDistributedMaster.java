@@ -41,9 +41,9 @@ import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
  */
 public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 
-	public EvlModuleDistributedMaster(int parallelism) {
-		super(parallelism);
-		setContext(new EvlContextDistributedMaster(0, parallelism));
+	public EvlModuleDistributedMaster(int distributedParallelism) {
+		super(distributedParallelism);
+		setContext(new EvlContextDistributedMaster(0, distributedParallelism));
 	}
 	
 	// Job division

@@ -9,6 +9,8 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.flink.launch;
 
+import org.eclipse.epsilon.evl.distributed.flink.atomic.EvlModuleFlinkAtoms;
+import org.eclipse.epsilon.evl.distributed.flink.batch.EvlModuleFlinkSubset;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlMasterConfigParser;
 
 /**
@@ -31,6 +33,17 @@ public class FlinkEvlMasterConfigParser<R extends FlinkEvlRunConfigurationMaster
 	}
 	
 	public FlinkEvlMasterConfigParser(B builder) {
-		super(builder);		
+		super(builder);
+	}
+	
+	@Override
+	public void parseArgs(String[] args) throws Exception {
+		super.parseArgs(args);
+		if (builder.batchFactor >= 0) {
+			builder.module = new EvlModuleFlinkSubset(builder.distributedParallelism, builder.batchFactor);
+		}
+		else {
+			builder.module = new EvlModuleFlinkAtoms(builder.distributedParallelism, builder.shuffle);
+		}
 	}
 }

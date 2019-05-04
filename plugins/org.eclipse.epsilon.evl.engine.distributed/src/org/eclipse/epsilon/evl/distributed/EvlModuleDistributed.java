@@ -37,9 +37,9 @@ import org.eclipse.epsilon.evl.execute.atoms.*;
  */
 public abstract class EvlModuleDistributed extends EvlModuleParallel {
 
-	public EvlModuleDistributed(int parallelism) {
-		super(parallelism);
-		setContext(new EvlContextDistributed(parallelism));
+	public EvlModuleDistributed(int distributedParallelism) {
+		super(distributedParallelism);
+		setContext(new EvlContextDistributed(distributedParallelism));
 	}
 	
 	/**

@@ -15,7 +15,7 @@ public class ConfigurationSource extends ConfigurationSourceBase {
 	
 	@Override
 	public void produce() throws Exception {
-		sendToConfigTopic(new Config(masterModule.getContext().getJobParameters()));
+		sendToConfigTopic(new Config(masterModule.getContext().getJobParameters(false)));
 	}
 
 }

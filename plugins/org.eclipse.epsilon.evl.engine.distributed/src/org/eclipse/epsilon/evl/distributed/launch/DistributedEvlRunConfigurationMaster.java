@@ -22,12 +22,12 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 	@SuppressWarnings("unchecked")
 	public static class Builder<R extends DistributedEvlRunConfigurationMaster, B extends Builder<R, B>> extends DistributedEvlRunConfiguration.Builder<R, B> {
 		
-		public int expectedWorkers;
-		public double batchFactor;
+		public int distributedParallelism;
+		public double batchFactor = -1;
 		public boolean shuffle;
 		
-		public B withExpectedWorkers(int expected) {
-			this.expectedWorkers = expected;
+		public B withDistributedParallelism(int workers) {
+			this.distributedParallelism = workers;
 			return (B) this;
 		}
 		public B withBatchFactor(double bf) {
@@ -63,7 +63,7 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 	
 	public DistributedEvlRunConfigurationMaster(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
 		super(builder);
-		this.expectedWorkers = builder.expectedWorkers;
+		this.expectedWorkers = builder.distributedParallelism;
 		this.shuffle = builder.shuffle;
 		this.batchFactor = builder.batchFactor;
 		EvlContextDistributedMaster context = getModule().getContext();

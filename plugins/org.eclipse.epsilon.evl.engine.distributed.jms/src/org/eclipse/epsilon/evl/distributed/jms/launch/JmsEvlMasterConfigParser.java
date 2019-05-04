@@ -41,12 +41,12 @@ public class JmsEvlMasterConfigParser<R extends JmsEvlRunConfigurationMaster, B 
 		super.parseArgs(args);
 		if (builder.batchFactor > 0) {
 			builder.module = new EvlModuleJmsMasterBatch(
-				builder.expectedWorkers, builder.batchFactor, builder.shuffle, builder.host, builder.sessionID
+				builder.distributedParallelism, builder.batchFactor, builder.shuffle, builder.host, builder.sessionID
 			);
 		}
 		else {
 			builder.module = new EvlModuleJmsMasterAtomic(
-				builder.expectedWorkers, builder.shuffle, builder.host, builder.sessionID
+				builder.distributedParallelism, builder.shuffle, builder.host, builder.sessionID
 			);
 		}
 	}

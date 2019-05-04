@@ -41,7 +41,7 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 	public void parseArgs(String[] args) throws Exception {
 		super.parseArgs(args);
 		builder.shuffle = cmdLine.hasOption(shuffleOpt);
-		builder.expectedWorkers = tryParse(expectedWorkersOpt, builder.expectedWorkers);
+		builder.distributedParallelism = tryParse(expectedWorkersOpt, builder.distributedParallelism);
 		builder.batchFactor = tryParse(batchesOpt, builder.batchFactor);
 	}
 }

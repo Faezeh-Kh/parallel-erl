@@ -39,9 +39,9 @@ public abstract class EvlModuleFlinkMaster<D extends Serializable> extends EvlMo
 		this(-1);
 	}
 	
-	public EvlModuleFlinkMaster(int parallelism) {
-		super(parallelism);
-		setContext(new EvlContextFlinkMaster(parallelism));
+	public EvlModuleFlinkMaster(int distributedParallelism) {
+		super(distributedParallelism);
+		setContext(new EvlContextFlinkMaster(distributedParallelism));
 	}
 	
 	@Override
