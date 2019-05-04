@@ -5,6 +5,7 @@ Bundle-SymbolicName: org.eclipse.epsilon.evl.engine.distributed.jms
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Epsilon
 Automatic-Module-Name: org.eclipse.epsilon.evl.engine.distributed.jms
+Main-Class: org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfigParser
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: org.eclipse.epsilon.evl.distributed.jms,
  org.eclipse.epsilon.evl.distributed.jms.atomic,
