@@ -25,16 +25,19 @@ import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
  */
 public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration {
 	
-	public static Builder<? extends DistributedEvlRunConfiguration, ?> Builder() {
-		return new Builder<>(DistributedEvlRunConfiguration.class);
-	}
-	
 	@SuppressWarnings("unchecked")
-	public static class Builder<D extends DistributedEvlRunConfiguration, B extends Builder<D, B>> extends EvlRunConfiguration.Builder<D, B> {
-		public String basePath;
+	public static class Builder<R extends DistributedEvlRunConfiguration, B extends Builder<R, B>> extends EvlRunConfiguration.Builder<R, B> {
 		
-		public Builder(Class<D> runConfigClass) {
-			super(runConfigClass);
+		public String basePath, host;
+		public int sessionID;
+		
+		public B withSessionID(int sid) {
+			this.sessionID = sid;
+			return (B) this;
+		}
+		public B withHost(String host) {
+			this.host = host;
+			return (B) this;
 		}
 		
 		public B withBasePath(String base) {
@@ -43,7 +46,7 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 		}
 		
 		@Override
-		public D build() {
+		public R build() {
 			for (StringProperties props : modelsAndProperties.values()) {
 				props.replaceAll((k, v) -> {
 					// TODO better way to determine if there is a path?
@@ -62,22 +65,38 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 			
 			return super.buildReflective(null);
 		}
+		
+		protected Builder() {
+			super();
+		}
+		protected Builder(Class<R> runConfigClass) {
+			super(runConfigClass);
+		}
 	}
 	
-	public static String appendBasePath(String basePath, String relPath) {
+	protected static String appendBasePath(String basePath, String relPath) {
 		return Paths.get(basePath, URI.create(relPath).getPath()).toUri().toString();
 	}
 	
-	protected final String basePath;
-	
-	public DistributedEvlRunConfiguration(EvlRunConfiguration other) {
-		super(other);
-		basePath = "/";
+	public static Builder<? extends DistributedEvlRunConfiguration, ?> Builder() {
+		return new Builder<>(DistributedEvlRunConfiguration.class);
 	}
 	
-	DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
+	protected final String basePath, host;
+	protected final int sessionID;
+	
+	public DistributedEvlRunConfiguration(DistributedEvlRunConfiguration other) {
+		super(other);
+		this.basePath = other.basePath;
+		this.host = other.host;
+		this.sessionID = other.sessionID;
+	}
+	
+	public DistributedEvlRunConfiguration(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
 		super(builder);
+		this.sessionID = builder.sessionID;
 		this.basePath = builder.basePath;
+		this.host = builder.host;
 	}
 	
 	@Override

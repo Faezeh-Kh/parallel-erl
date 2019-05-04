@@ -7,12 +7,10 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.jms.launch;
+package org.eclipse.epsilon.evl.distributed.launch;
 
 import org.apache.commons.cli.Option;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
-import org.eclipse.epsilon.evl.distributed.jms.atomic.EvlModuleJmsMasterAtomic;
-import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleJmsMasterBatch;
 
 /**
  * 
@@ -22,43 +20,26 @@ import org.eclipse.epsilon.evl.distributed.jms.batch.EvlModuleJmsMasterBatch;
  * @param <J>
  * @param <B>
  */
-public class JmsMasterConfigParser<J extends JmsMasterRunner, B extends JmsMasterBuilder<J, B>> extends EolConfigParser<J, B> {
+public class DistributedEvlConfigParser<R extends DistributedEvlRunConfiguration, B extends DistributedEvlRunConfiguration.Builder<R, B>> extends EolConfigParser<R, B> {
 
 	public static void main(String... args) {
-		new JmsMasterConfigParser<>().parseAndRun(args);
+		new DistributedEvlConfigParser<>().parseAndRun(args);
 	}
 	
 	private final String
-		brokerHostOpt = "broker",
+		hostOpt = "host",
 		basePathOpt = "basePath",
-		expectedWorkersOpt = "workers",
-		shuffleOpt = "shuffle",
-		batchesOpt = "batches",
 		sessionIdOpt = "session";
 	
 	@SuppressWarnings("unchecked")
-	public JmsMasterConfigParser() {
-		this((B) new JmsMasterBuilder<>());
+	public DistributedEvlConfigParser() {
+		this((B) new DistributedEvlRunConfiguration.Builder<>());
 	}
 	
-	public JmsMasterConfigParser(B builder) {
+	public DistributedEvlConfigParser(B builder) {
 		super(builder);		
-		options.addOption(Option.builder("bf")
-			.longOpt(batchesOpt)
-			.desc("Granularity of job batches, between 0 and 1 (sets the module to batch-based)")
-			.hasArg()
-			.build()
-		).addOption(Option.builder()
-			.longOpt(shuffleOpt)
-			.desc("Whether to randomise the order of jobs")
-			.build()
-		).addOption(Option.builder()
-			.longOpt(expectedWorkersOpt)
-			.desc("The expected number of slave workers")
-			.hasArg()
-			.build()
-		).addOption(Option.builder()
-			.longOpt(brokerHostOpt)
+		options.addOption(Option.builder()
+			.longOpt(hostOpt)
 			.desc("Address of the JMS broker host")
 			.hasArg()
 			.build()
@@ -78,23 +59,9 @@ public class JmsMasterConfigParser<J extends JmsMasterRunner, B extends JmsMaste
 	@Override
 	public void parseArgs(String[] args) throws Exception {
 		super.parseArgs(args);
-		builder.brokerHost = cmdLine.getOptionValue(brokerHostOpt);
+		builder.host = cmdLine.getOptionValue(hostOpt);
 		builder.basePath = cmdLine.getOptionValue(basePathOpt);
 		builder.sessionID = tryParse(sessionIdOpt, builder.sessionID);
-		builder.shuffle = cmdLine.hasOption(shuffleOpt);
-		builder.expectedWorkers = tryParse(expectedWorkersOpt, builder.expectedWorkers);
-		builder.batchFactor = tryParse(batchesOpt, builder.batchFactor);
-		
-		if (builder.batchFactor > 0) {
-			builder.module = new EvlModuleJmsMasterBatch(
-				builder.expectedWorkers, builder.batchFactor, builder.shuffle, builder.brokerHost, builder.sessionID
-			);
-		}
-		else {
-			builder.module = new EvlModuleJmsMasterAtomic(
-				builder.expectedWorkers, builder.shuffle, builder.brokerHost, builder.sessionID
-			);
-		}
 	}
 
 	protected double tryParse(String opt, double absentDefault) throws IllegalArgumentException {
