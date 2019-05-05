@@ -16,7 +16,8 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 	private final String
 		expectedWorkersOpt = "workers",
 		shuffleOpt = "shuffle",
-		batchesOpt = "batches";
+		batchesOpt = "batches",
+		masterProportionOpt = "masterPercent";
 	
 	public DistributedEvlMasterConfigParser(B builder) {
 		super(builder);
@@ -34,6 +35,10 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 			.desc("The expected number of slave workers")
 			.hasArg()
 			.build()
+		).addOption(Option.builder("mp")
+			.longOpt(masterProportionOpt)
+			.desc("Fraction of jobs to assign to the master (between 0 and 1)")
+			.build()
 		);
 	}
 	
@@ -43,5 +48,6 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 		builder.shuffle = cmdLine.hasOption(shuffleOpt);
 		builder.distributedParallelism = tryParse(expectedWorkersOpt, builder.distributedParallelism);
 		builder.batchFactor = tryParse(batchesOpt, builder.batchFactor);
+		builder.masterProportion = tryParse(masterProportionOpt, builder.masterProportion);
 	}
 }

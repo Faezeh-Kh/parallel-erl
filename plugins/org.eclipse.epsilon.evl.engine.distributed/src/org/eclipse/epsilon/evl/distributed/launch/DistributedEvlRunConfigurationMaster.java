@@ -23,7 +23,7 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 	public static class Builder<R extends DistributedEvlRunConfigurationMaster, B extends Builder<R, B>> extends DistributedEvlRunConfiguration.Builder<R, B> {
 		
 		public int distributedParallelism;
-		public double batchFactor = -1;
+		public double batchFactor = -1, masterProportion = -1;
 		public boolean shuffle;
 		
 		public B withDistributedParallelism(int workers) {
@@ -51,7 +51,7 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 	}
 	
 	protected final int expectedWorkers;
-	protected final double batchFactor;
+	protected final double batchFactor, masterProportion;
 	protected final boolean shuffle;
 	
 	public DistributedEvlRunConfigurationMaster(DistributedEvlRunConfigurationMaster other) {
@@ -59,6 +59,7 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 		this.shuffle = other.shuffle;
 		this.batchFactor = other.batchFactor;
 		this.expectedWorkers = other.expectedWorkers;
+		this.masterProportion = other.masterProportion;
 	}
 	
 	public DistributedEvlRunConfigurationMaster(Builder<? extends DistributedEvlRunConfiguration, ?> builder) {
@@ -66,6 +67,7 @@ public abstract class DistributedEvlRunConfigurationMaster extends DistributedEv
 		this.expectedWorkers = builder.distributedParallelism;
 		this.shuffle = builder.shuffle;
 		this.batchFactor = builder.batchFactor;
+		this.masterProportion = builder.masterProportion;
 		EvlContextDistributedMaster context = getModule().getContext();
 		context.setModelProperties(modelsAndProperties.values());
 		context.setBasePath(basePath);

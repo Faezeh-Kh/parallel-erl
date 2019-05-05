@@ -44,7 +44,7 @@ public class JmsEvlRunConfigurationMaster extends DistributedEvlRunConfiguration
 	@Override
 	protected EvlModuleJmsMaster getDefaultModule() {
 		try {
-			return new EvlModuleJmsMasterBatch(expectedWorkers, batchFactor, shuffle, host, sessionID);
+			return new EvlModuleJmsMasterBatch(expectedWorkers, masterProportion, batchFactor, shuffle, host, sessionID);
 		}
 		catch (URISyntaxException ex) {
 			throw new IllegalArgumentException(ex);

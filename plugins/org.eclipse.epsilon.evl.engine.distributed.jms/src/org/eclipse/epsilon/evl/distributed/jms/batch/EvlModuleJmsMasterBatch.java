@@ -28,9 +28,10 @@ public class EvlModuleJmsMasterBatch extends EvlModuleJmsMaster {
 	
 	protected final BatchJobSplitter splitter;
 	
-	public EvlModuleJmsMasterBatch(int expectedWorkers, double batchFactor, boolean shuffle, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleJmsMasterBatch(int expectedWorkers, double masterProportion, double batchFactor, boolean shuffle, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
-		splitter = new BatchJobSplitter(1 / (1 + expectedSlaves), shuffle, batchFactor);
+		double mp = masterProportion >= 0 && masterProportion <= 1 ? masterProportion : 1 / (1 + expectedSlaves);
+		splitter = new BatchJobSplitter(mp, shuffle, batchFactor);
 	}
 	
 	@Override

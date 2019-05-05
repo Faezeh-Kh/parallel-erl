@@ -28,9 +28,10 @@ public class EvlModuleJmsMasterAtomic extends EvlModuleJmsMaster {
 
 	protected final AtomicJobSplitter splitter;
 	
-	public EvlModuleJmsMasterAtomic(int expectedWorkers, boolean shuffle, String host, int sessionID) throws URISyntaxException {
+	public EvlModuleJmsMasterAtomic(int expectedWorkers, double masterProportion, boolean shuffle, String host, int sessionID) throws URISyntaxException {
 		super(expectedWorkers, host, sessionID);
-		splitter = new AtomicJobSplitter(1 / (1 + expectedSlaves), true);
+		double mp = masterProportion >= 0 && masterProportion <= 1 ? masterProportion : 1 / (1 + expectedSlaves);
+		splitter = new AtomicJobSplitter(mp, shuffle);
 	}
 
 	@Override

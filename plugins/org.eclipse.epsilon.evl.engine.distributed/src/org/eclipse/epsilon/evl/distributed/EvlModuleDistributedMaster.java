@@ -49,7 +49,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	// Job division
 
 	protected abstract class JobSplitter<T, S extends Serializable> {
-		protected final float masterProportion;
+		protected final double masterProportion;
 		protected final boolean shuffle;
 		protected ArrayList<S> workerJobs;
 		protected List<T> masterJobs;
@@ -60,7 +60,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 		 * @param shuffle Whether to randomise thr order of jobs.
 		 * @throws IllegalArgumentException If the percentage is out of bounds.
 		 */
-		public JobSplitter(float masterProportion, boolean shuffle) {
+		public JobSplitter(double masterProportion, boolean shuffle) {
 			if ((this.masterProportion = masterProportion) > 1 || masterProportion < 0)
 				throw new IllegalArgumentException("Percentage of master jobs must be a valid percentage");
 			this.shuffle = shuffle;
@@ -104,7 +104,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	}
 	
 	public class AtomicJobSplitter extends JobSplitter<ConstraintContextAtom, SerializableEvlInputAtom> {
-		public AtomicJobSplitter(float masterProportion, boolean shuffle) {
+		public AtomicJobSplitter(double masterProportion, boolean shuffle) {
 			super(masterProportion, shuffle);
 		}
 
@@ -122,7 +122,7 @@ public abstract class EvlModuleDistributedMaster extends EvlModuleDistributed {
 	public class BatchJobSplitter extends JobSplitter<DistributedEvlBatch, DistributedEvlBatch> {
 		protected final double granularity;
 		
-		public BatchJobSplitter(float masterProportion, boolean shuffle, double granularity) {
+		public BatchJobSplitter(double masterProportion, boolean shuffle, double granularity) {
 			super(masterProportion, shuffle);
 			if ((this.granularity = granularity) < 0 || granularity > 1)
 				throw new IllegalArgumentException("Granularity must be a valid percentage");
