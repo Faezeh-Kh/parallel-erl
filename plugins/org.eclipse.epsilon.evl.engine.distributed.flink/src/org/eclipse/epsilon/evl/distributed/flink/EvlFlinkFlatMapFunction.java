@@ -32,7 +32,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  */
 public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMapFunction<IN, SerializableEvlResultAtom> {
 	
-	private static final long serialVersionUID = -9011432964023365634L;
+	private static final long serialVersionUID = 4605327252632042575L;
 	
 	protected transient EvlModuleDistributedSlave localModule;
 	protected transient DistributedEvlRunConfigurationSlave configContainer;
@@ -61,7 +61,6 @@ public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMa
 	
 	@Override
 	public void open(Configuration additionalParameters) throws Exception {
-		
 		configContainer = EvlContextDistributedSlave.parseJobParameters(
 			getParameters(getRuntimeContext(), additionalParameters).toMap(), null
 		);
@@ -69,11 +68,5 @@ public class EvlFlinkFlatMapFunction<IN extends Serializable> extends RichFlatMa
 		
 		configContainer.preExecute();
 		localModule.prepareExecution();
-	}
-	
-	@Override
-	public void close() throws Exception {
-		localModule.postExecution();
-		configContainer.postExecute();
 	}
 }
