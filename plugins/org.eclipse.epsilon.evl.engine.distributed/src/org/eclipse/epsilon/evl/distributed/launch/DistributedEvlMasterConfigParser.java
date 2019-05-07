@@ -38,6 +38,7 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 		).addOption(Option.builder("mp")
 			.longOpt(masterProportionOpt)
 			.desc("Fraction of jobs to assign to the master (between 0 and 1)")
+			.hasArg()
 			.build()
 		);
 	}
