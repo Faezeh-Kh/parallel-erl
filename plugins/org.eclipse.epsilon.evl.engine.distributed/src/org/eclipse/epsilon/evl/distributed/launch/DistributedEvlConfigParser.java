@@ -67,8 +67,8 @@ public class DistributedEvlConfigParser<R extends DistributedEvlRunConfiguration
 	protected double tryParse(String opt, double absentDefault) throws IllegalArgumentException {
 		if (cmdLine.hasOption(opt)) {
 			String value = cmdLine.getOptionValue(opt);
-			try {
-				return Double.valueOf(value);
+			if (value != null && !value.isEmpty()) try {
+				return Double.parseDouble(value);
 			}
 			catch (NumberFormatException nan) {
 				throw new IllegalArgumentException(
@@ -77,14 +77,14 @@ public class DistributedEvlConfigParser<R extends DistributedEvlRunConfiguration
 				);
 			}
 		}
-		else return absentDefault;
+		return absentDefault;
 	}
 	
 	protected int tryParse(String opt, int absentDefault) throws IllegalArgumentException {
 		if (cmdLine.hasOption(opt)) {
 			String value = cmdLine.getOptionValue(opt);
-			try {
-				return Integer.valueOf(value);
+			if (value != null && !value.isEmpty()) try {
+				return Integer.parseInt(value);
 			}
 			catch (NumberFormatException nan) {
 				throw new IllegalArgumentException(
@@ -93,7 +93,7 @@ public class DistributedEvlConfigParser<R extends DistributedEvlRunConfiguration
 				);
 			}
 		}
-		else return absentDefault;
+		return absentDefault;
 	}
 	
 }
