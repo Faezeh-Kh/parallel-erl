@@ -323,10 +323,12 @@ if isGenerate:
                                 scriptPath = 'scripts/'+script
                                 metamodelPath = 'metamodels/'+metamodel
                                 modelPath = 'models/'+model
+                                outputPath = 'output/'+fileName
                             else:
                                 scriptPath = scriptDir+script
                                 metamodelPath = metamodelDir+metamodel
                                 modelPath = modelDir+model
+                                outputPath = stdDir + fileName
                             command += '"'+scriptPath+'" -models "emf.'
                             if isDistributed:
                                 command += 'Distributable'
@@ -340,7 +342,7 @@ if isGenerate:
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
-                            command +=  ' -outfile "' + stdDir + fileName + intermediateExt + '"'
+                            command +=  ' -outfile "' + outputPath + intermediateExt + '"'
 
                         write_generated_file(fileName, [command])
                         modelSubset.append(subCmdPrefix +'"'+ fileName + fileExt + '"'+ subCmdSuffix)
