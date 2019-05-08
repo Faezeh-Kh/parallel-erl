@@ -17,9 +17,13 @@ import java.time.LocalTime;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.jms.*;
+import org.eclipse.epsilon.common.concurrent.ConcurrentExecutionStatus;
+import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
@@ -33,7 +37,7 @@ import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfiguration
  * @author Sina Madani
  * @since 1.6
  */
-public final class EvlJmsWorker implements Runnable, AutoCloseable {
+public final class EvlJmsWorker implements CheckedRunnable<Exception>, AutoCloseable {
 
 	public static void main(String... args) throws Exception {
 		if (args.length < 2) throw new java.lang.IllegalStateException(
@@ -57,16 +61,14 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 		}
 	}
 	
-	final BlockingQueue<Serializable> jobsInProgress = new LinkedBlockingQueue<>();
-	final AtomicBoolean finished = new AtomicBoolean(false);
 	final ConnectionFactory connectionFactory;
 	final String basePath;
 	final int sessionID;
+	boolean finished;
 	String workerID;
 	DistributedEvlRunConfigurationSlave configContainer;
 	EvlModuleDistributedSlave module;
 	Serializable stopBody;
-	volatile boolean jobIsInProgress;
 
 	public EvlJmsWorker(String host, String basePath, int sessionID) {
 		connectionFactory = new org.apache.activemq.artemis.jms.client.ActiveMQJMSConnectionFactory(host);
@@ -75,33 +77,38 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 	}
 	
 	@Override
-	public void run() {
+	public void runThrows() throws Exception {
 		try (JMSContext regContext = connectionFactory.createContext()) {
 			Runnable ackSender = setup(regContext);
 			
 			try (JMSContext resultContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
 				try (JMSContext jobContext = regContext.createContext(JMSContext.AUTO_ACKNOWLEDGE)) {
-					Thread jobThread = prepareToProcessJobs(jobContext, resultContext);
-					// Start the job processing loop
-					jobThread.start();
+					resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID)).setMessageListener(msg -> {
+						log("Stopping execution!");
+						try {
+							stopBody = msg.getBody(Serializable.class);
+						}
+						catch (JMSException ex) {
+							stopBody = ex;
+						}
+						finished = true;
+					});
+				
+					jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
+						log("Acknowledged end of jobs");
+						finished = true;
+					});
+					
+					JMSConsumer jobConsumer = jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID));
 					
 					// Tell the master we're setup and ready to work. We need to send the message here
 					// because if the master is fast we may receive jobs before we have even created the listener!
 					ackSender.run();
 					
-					// Park main thread
-					awaitCompletion();
-					
-					// Destroy job processor
-					jobThread.interrupt();
-					
-					// Tell the master we've finished
-					onCompletion(jobContext);
+					processJobs(jobConsumer, resultContext);
+					onCompletion(resultContext);
 				}
 			}
-		}
-		catch (Exception ex) {
-			throw new RuntimeException(ex);
 		}
 	}
 	
@@ -138,36 +145,49 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 		catch (Exception ex) {
 			// Tell the master we failed
 			ackSender.run();
-			synchronized (finished) {
-				stopBody = ex;
-				finished.notify();
-			}
 			throw ex;
 		}
 	}
 	
-	Thread prepareToProcessJobs(JMSContext jobContext, JMSContext resultContext) throws JMSException {
-		Thread resultsProcessor = new Thread(
-			getJopProcessor(resultContext.createContext(JMSContext.CLIENT_ACKNOWLEDGE))
-		);
-		resultsProcessor.setName("job-processor");
-		resultsProcessor.setDaemon(false);
+	void processJobs(JMSConsumer jobConsumer, JMSContext replyContext) throws Exception {
+		JMSProducer resultSender = replyContext.createProducer().setAsync(null);
+		Destination resultDest = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
+		log("Began processing jobs");
 		
-		resultContext.createConsumer(resultContext.createTopic(STOP_TOPIC+sessionID))
-			.setMessageListener(getTerminationListener());
-		
-		jobContext.createConsumer(jobContext.createQueue(JOBS_QUEUE+sessionID))
-			.setMessageListener(getJobListener());
-		
-		jobContext.createConsumer(jobContext.createTopic(END_JOBS_TOPIC+sessionID)).setMessageListener(msg -> {
-			finished.set(true);
-			if (jobsInProgress.isEmpty()) synchronized (finished) {
-				finished.notify();
+		Message msg;
+		while ((msg = finished ? jobConsumer.receiveNoWait() : jobConsumer.receive()) != null) try {
+			if (msg instanceof ObjectMessage)  {
+				Serializable currentJob = ((ObjectMessage) msg).getObject();
+				ObjectMessage resultsMsg = null;
+				try {
+					Serializable resultObj = (Serializable) module.executeJob(currentJob);
+					resultsMsg = replyContext.createObjectMessage(resultObj);
+				}
+				catch (EolRuntimeException eox) {
+					onFail(eox, msg);
+					resultsMsg = replyContext.createObjectMessage(currentJob);
+				}
+				
+				if (resultsMsg != null) {
+					resultsMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
+					resultSender.send(resultDest, resultsMsg);
+				}
 			}
-			log("Acknowledged end of jobs");
-		});
-		
-		return resultsProcessor;
+			
+			if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
+				finished = true;
+			}
+			else if (!(msg instanceof ObjectMessage)) {
+				log("Received unexpected message of type "+msg.getClass().getName());
+			}
+		}
+		catch (JMSException jmx) {
+			onFail(jmx, msg);
+			stopBody = jmx;
+		}
+		finally {
+			if (stopBody != null) return;
+		}
 	}
 	
 	void onCompletion(JMSContext session) throws Exception {
@@ -188,112 +208,7 @@ public final class EvlJmsWorker implements Runnable, AutoCloseable {
 	void onFail(Exception ex, Message msg) {
 		System.err.println("Failed job '"+msg+"': "+ex);
 	}
-	
-	void awaitCompletion() {
-		log("Awaiting completion");
-		while (isActiveCondition()) synchronized (finished) {
-			try {
-				finished.wait();
-			}
-			catch (InterruptedException ie) {}
-		}
-		if (stopBody == null) {
-			log("Finished all jobs");
-		}
-		else {
-			// Exception!
-			log(stopBody);
-		}
-	}
-	
-	boolean isActiveCondition() {
-		return stopBody == null && (jobIsInProgress || !finished.get() || !jobsInProgress.isEmpty());
-	}
-	
-	Runnable getJopProcessor(JMSContext replyContext) {
-		return () -> {
-			JMSProducer resultSender = replyContext.createProducer().setAsync(null);
-			Queue resultQueue = replyContext.createQueue(RESULTS_QUEUE_NAME+sessionID);
-			
-			while (isActiveCondition()) try {
-				Serializable currentJob = null;
-				try {
-					currentJob = jobsInProgress.take();
-					jobIsInProgress = true;
-				}
-				catch (InterruptedException ie) {
-					break;
-				}
-				
-				ObjectMessage resultsMsg = null;
-				try {
-					Serializable resultObj = (Serializable) module.executeJob(currentJob);
-					resultsMsg = replyContext.createObjectMessage(resultObj);
-				}
-				catch (EolRuntimeException eox) {
-					eox.printStackTrace();
-					resultsMsg = replyContext.createObjectMessage(currentJob);
-				}
-				
-				resultsMsg.setStringProperty(WORKER_ID_PROPERTY, workerID);
-				resultSender.send(resultQueue, resultsMsg);
-				jobIsInProgress = false;
-			}
-			catch (JMSException jmx) {
-				synchronized (finished) {
-					stopBody = jmx;
-					finished.notify();
-				}
-			}
-			
-			replyContext.close();
-			if (finished.get()) synchronized (finished) {
-				finished.notify();
-			}
-		};
-	}
-	
-	MessageListener getJobListener() {
-		return msg -> {
-			if (stopBody != null) return;
-			try {
-				if (msg instanceof ObjectMessage)  {
-					jobsInProgress.add(((ObjectMessage)msg).getObject());
-				}
-				
-				if (msg.getBooleanProperty(LAST_MESSAGE_PROPERTY)) {
-					finished.set(true);
-				}
-				else if (!(msg instanceof ObjectMessage)) {
-					log("Received unexpected message of type "+msg.getClass().getName());
-				}
-			}
-			catch (JMSException jmx) {
-				throw new JMSRuntimeException(jmx.getMessage());
-			}
-			// Wake up the main thread once all jobs have been processed.
-			if (finished.get() && !jobIsInProgress) synchronized (finished) {
-				finished.notify();
-			}
-		};
-	}
 
-	MessageListener getTerminationListener() {
-		return msg -> {
-			log("Stopping execution!");
-			synchronized (finished) {
-				try {
-					stopBody = msg.getBody(Serializable.class);
-				}
-				catch (JMSException ex) {
-					stopBody = ex;
-				}
-				finished.set(true);
-				finished.notify();
-			}
-		};
-	}
-	
 	void log(Object message) {
 		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
 	}

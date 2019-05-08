@@ -105,7 +105,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 					Iterator<?> iter = (Iterator<?>) job;
 					iter.hasNext();
 					executeJobImpl(iter.next(), isInLoop)
-				);
+				) ;
 			}
 			else {
 				assert context.isParallelisationLegal();

@@ -56,7 +56,7 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	
 	@Override
 	public EolThreadPoolExecutor newExecutorService() {
-		return EolThreadPoolExecutor.adaptiveExecutor(numThreads);
+		return EolThreadPoolExecutor.fixedPoolExecutor(numThreads);
 	}
 	
 	@Override
