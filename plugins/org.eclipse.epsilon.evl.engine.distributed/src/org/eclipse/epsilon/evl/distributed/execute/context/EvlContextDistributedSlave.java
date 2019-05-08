@@ -15,7 +15,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import org.eclipse.epsilon.common.module.IModule;
 import org.eclipse.epsilon.common.util.StringProperties;
-import org.eclipse.epsilon.eol.execute.concurrent.executors.EolThreadPoolExecutor;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
@@ -52,11 +51,6 @@ public class EvlContextDistributedSlave extends EvlContextDistributed {
 	
 	public EvlContextDistributedSlave(int localParallelism) {
 		super(localParallelism);
-	}
-	
-	@Override
-	public EolThreadPoolExecutor newExecutorService() {
-		return EolThreadPoolExecutor.fixedPoolExecutor(numThreads);
 	}
 	
 	@Override
