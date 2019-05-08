@@ -19,6 +19,9 @@ parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
 parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
 parser.add_argument('--g1gc', help='Use the default G1 garbage collector.', action='store_true')
+parser.add_argument('--broker', help='Broker URL to use for distributed modules.')
+parser.add_argument('--workers', help='Expected number of workers (parallelism) for distributed modules.')
+parser.add_argument('--batch', help='Batch factor for batch-based distributed modules.')
 args = parser.parse_args()
 
 def defaultPath(parsedArg, defaultValue):
@@ -58,6 +61,13 @@ g1gc = args.g1gc
 jmc = args.jmc
 smt = args.smt
 numa = args.numa
+broker = args.broker if args.broker else 'tcp://localhost:61616'
+workers = args.workers if args.workers else 0
+batchFactor = args.batch if args.batch else '0.00225'
+distributedArgs = '-basePath '+rootDir+ \
+    ' -host '+broker+ \
+    ' -session 746'+ \
+    ' -shuffle'
 logicalCores = 24 if sge else os.cpu_count()
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
 fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
@@ -87,8 +97,10 @@ if numa:
 if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
+lastJavaCmd = ' -Dcom.sun.management.jmxremote -jar "'
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
 subCmdSuffix = nL
+epsilonJar = 'epsilon-engine'
 
 # Author: A.Polino
 def is_power2(num):
@@ -214,7 +226,11 @@ evlParallelModules = [
     'EvlModuleParallelAnnotation',
     'EvlModuleParallelElements'
 ]
-evlModules = ['EvlModule'] + evlParallelModules
+evlDistributedModules = [
+    'EvlModuleJmsMasterBatch',
+    'EvlModuleJmsMasterAtomic'
+]
+evlModules = ['EvlModule'] + evlParallelModules + evlDistributedModules
 evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
 evlParallelModulesAllThreads = [module + str(numThread) for module in evlParallelModules for numThread in threads]
 
@@ -227,12 +243,22 @@ evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append([evlModule+threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
-programs.append(['EVL', evlScenarios, evlModulesAndArgs])
+        evlModulesAndArgs.append([evlModule + threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
+programs.append(['EVL', epsilonJar, evlScenarios, evlModulesAndArgs, ''])
+
+for evlModule in evlDistributedModules:
+    for w in range(0, int(workers)):
+        ws = str(w)
+        evlDistArgs = distributedArgs+ \
+            ' -workers '+ws+ ' -mp '+ \
+            str(1 / (1 + w))
+        if evlModule.endswith('Batch'):
+            evlDistArgs += ' -bf '+batchFactor
+        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios, [[evlModule + ws]], evlDistArgs])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
-programs.append(['OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
-programs.append(['OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]]])
+programs.append(['OCL', 'OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
+programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]], ''])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
@@ -253,25 +279,25 @@ for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr])
 
-programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
-programs.append(['EOL', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
+programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
+programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs])
+    programs.append([javaModule, javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
 for p in imdbParallelJavaFOOPScripts:
-    programs.append([javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs])
+    programs.append([javaModule, javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
 for p in imdbOCLFOOPScripts:
-    programs.append(['OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]]])
-    programs.append(['OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]]])
+    programs.append(['OCL', 'OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
+    programs.append(['OCL_'+p, 'OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
 
 # Generate scenarios
 if isGenerate:
     allSubs = []
-    for program, scenarios, modulesAndArgs in programs:
+    for program, programJar, scenarios, modulesAndArgs, additionalArgs in programs:
         selfContained = '_' in program
         isOCL = program.startswith('OCL')
         isJava = program.startswith('Java')
+        isDistributed = program.startswith('EVL-JMS')
         programName = program if not selfContained else program.partition('_')[0]
-        programCommand = program if isOCL or isJava or selfContained else 'epsilon-engine'
         programSubset = []
         progFilePre = programName+'_run_'
         for metamodel, scripts, models in scenarios:
@@ -288,7 +314,7 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += ' -jar "'+ binDir +programCommand+'.jar" '
+                        command += lastJavaCmd + binDir + programJar+'.jar" '
                         if selfContained:
                             command += '"'+modelDir+model+'"'
                         elif isOCL:
@@ -296,11 +322,24 @@ if isGenerate:
                         else:
                             if isJava and len(margs) > 1 and 'parallel' in margs[1]:
                                 script = normalize_foop(script)
-                            command += '"'+scriptDir+script+'" -models "emf.EmfModel#cached=true,concurrent=true'+ \
-                            ',fileBasedMetamodelUri=file:///'+ metamodelDir+metamodel+ \
-                            ',modelUri=file:///' + modelDir+model+'"'
+                            if isDistributed:
+                                scriptPath = 'scripts/'+script
+                                metamodelPath = 'metamodels/'+metamodel
+                                modelPath = 'models/'+model
+                            else:
+                                scriptPath = scriptDir+script
+                                metamodelPath = metamodelDir+metamodel
+                                modelPath = modelDir+model
+                            command += '"'+scriptPath+'" -models "emf.'
+                            if isDistributed:
+                                command += 'Distributable'
+                            command += 'EmfModel#cached=true,concurrent=true'+ \
+                            ',fileBasedMetamodelUri=file:///'+metamodelPath+ \
+                            ',modelUri=file:///'+modelPath+'"'
                         command += ' -profile'
-                        
+                        if additionalArgs:
+                            command += ' '+additionalArgs
+
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
