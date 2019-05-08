@@ -66,7 +66,7 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 		context.setUnsatisfiedConstraints(tempUc);
 		
 		try {
-			executeJobImpl(job);
+			executeJobImpl(job, false);
 			return serializeResults(tempUc);
 		}
 		finally {
@@ -74,19 +74,20 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			context.setUnsatisfiedConstraints(originalUc);
 		}
 	}
-	
+
 	/**
 	 * Evaluates the job locally, adding the results to the Set of UnsatisfiedConstraint in the context.
-	 * @param job The job (or jobs) to evaluate.
 	 * 
+	 * @param job The job (or jobs) to evaluate.
+	 * @param isInLoop Whether this method is being called recursively from a loop.
 	 * @throws EolRuntimeException If an exception is thrown whilst evaluating the job(s).
 	 */
-	protected void executeJobImpl(Object job) throws EolRuntimeException {
+	protected void executeJobImpl(Object job, boolean isInLoop) throws EolRuntimeException {
 		if (job instanceof SerializableEvlInputAtom) {
 			executeAtom((SerializableEvlInputAtom) job);
 		}
 		else if (job instanceof DistributedEvlBatch) {
-			executeJobImpl(((DistributedEvlBatch) job).split(getContextJobs()));
+			executeJobImpl(((DistributedEvlBatch) job).split(getContextJobs()), isInLoop);
 		}
 		else if (job instanceof ConstraintContextAtom) {
 			((ConstraintContextAtom) job).execute(getContext());
@@ -95,24 +96,34 @@ public abstract class EvlModuleDistributed extends EvlModuleParallel {
 			((ConstraintAtom) job).execute(getContext());
 		}
 		else if (job instanceof Iterable) {
-			executeJobImpl(((Iterable<?>) job).iterator());
+			executeJobImpl(((Iterable<?>) job).iterator(), isInLoop);
 		}
 		else if (job instanceof Iterator) {
 			EvlContextDistributed context = getContext();
-			EolExecutorService executor = context.beginParallelTask();
-			for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
-				final Object nextJob = iter.next();
-				executor.execute(() -> executeJobImpl(nextJob));
+			if (isInLoop) {
+				for (
+					Iterator<?> iter = (Iterator<?>) job;
+					iter.hasNext();
+					executeJobImpl(iter.next(), isInLoop)
+				);
 			}
-			executor.awaitCompletion();
-			context.endParallelTask();
+			else {
+				assert context.isParallelisationLegal();
+				EolExecutorService executor = context.beginParallelTask();
+				for (Iterator<?> iter = (Iterator<?>) job; iter.hasNext();) {
+					final Object nextJob = iter.next();
+					executor.execute(() -> executeJobImpl(nextJob, true));
+				}
+				executor.awaitCompletion();
+				context.endParallelTask();
+			}
 		}
 		else if (job instanceof BaseStream) {
-			executeJobImpl(((BaseStream<?,?>)job).iterator());
+			executeJobImpl(((BaseStream<?,?>)job).iterator(), isInLoop);
 		}
 		else if (job instanceof Spliterator) {
 			executeJobImpl(StreamSupport.stream(
-				(Spliterator<?>) job, getContext().isParallelisationLegal())
+				(Spliterator<?>) job, getContext().isParallelisationLegal()), isInLoop
 			);
 		}
 		else {

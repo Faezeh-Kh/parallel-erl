@@ -17,7 +17,7 @@ public class DistributedEvlMasterConfigParser<R extends DistributedEvlRunConfigu
 		expectedWorkersOpt = "workers",
 		shuffleOpt = "shuffle",
 		batchesOpt = "batches",
-		masterProportionOpt = "masterPercent";
+		masterProportionOpt = "masterProportion";
 	
 	public DistributedEvlMasterConfigParser(B builder) {
 		super(builder);

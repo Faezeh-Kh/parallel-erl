@@ -53,7 +53,7 @@ public class EvlContextDistributed extends EvlContextParallel {
 	
 	@Override
 	public boolean isParallelisationLegal() {
-		return false;
+		return super.isParallelisationLegal();
 	}
 	
 	@Override
