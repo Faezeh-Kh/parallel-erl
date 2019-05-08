@@ -64,10 +64,7 @@ numa = args.numa
 broker = args.broker if args.broker else 'tcp://localhost:61616'
 workers = args.workers if args.workers else 0
 batchFactor = args.batch if args.batch else '0.00225'
-distributedArgs = '-basePath '+rootDir+ \
-    ' -host '+broker+ \
-    ' -session 746'+ \
-    ' -shuffle'
+distributedArgs = '-basePath "'+rootDir+'" -host '+broker+' -session 746 -shuffle'
 logicalCores = 24 if sge else os.cpu_count()
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
 fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
