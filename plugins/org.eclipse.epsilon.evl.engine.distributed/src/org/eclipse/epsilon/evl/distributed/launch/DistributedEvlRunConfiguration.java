@@ -11,7 +11,6 @@ package org.eclipse.epsilon.evl.distributed.launch;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.Collection;
 import org.eclipse.epsilon.common.util.StringProperties;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributed;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
@@ -109,11 +108,5 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 	@Override
 	public EvlModuleDistributed getModule() {
 		return (EvlModuleDistributed) super.getModule();
-	}
-	
-	// Visibility
-	@Override
-	public void writeOut(Collection<?> lines) {
-		super.writeOut(lines);
 	}
 }

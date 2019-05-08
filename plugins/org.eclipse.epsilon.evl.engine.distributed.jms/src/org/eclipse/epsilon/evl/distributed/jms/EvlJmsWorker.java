@@ -200,11 +200,11 @@ public final class EvlJmsWorker implements CheckedRunnable<Exception>, AutoClose
 	}
 	
 	void onFail(Exception ex, Message msg) {
-		configContainer.writeOut("Failed job '"+msg+"': ", ex);
+		System.err.println("Failed job '"+msg+"': "+ex);
 	}
 
 	void log(Object message) {
-		configContainer.writeOut("["+workerID+"] "+LocalTime.now()+" "+message);
+		System.out.println("["+workerID+"] "+LocalTime.now()+" "+message);
 	}
 	
 	@Override
