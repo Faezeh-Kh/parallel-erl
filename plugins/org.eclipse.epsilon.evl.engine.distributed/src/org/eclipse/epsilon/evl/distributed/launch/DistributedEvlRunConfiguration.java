@@ -56,10 +56,10 @@ public abstract class DistributedEvlRunConfiguration extends EvlRunConfiguration
 					return v;
 				});
 			}
-			if (script != null) {
+			if (script != null && !script.isAbsolute()) {
 				script = Paths.get(basePath, script.toString());
 			}
-			if (outputFile != null) {
+			if (outputFile != null && !outputFile.isAbsolute()) {
 				outputFile = Paths.get(basePath, outputFile.toString());
 			}
 			
