@@ -69,6 +69,9 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 	 * @return The serialized form of the unsatisfied constraint.
 	 */
 	public static SerializableEvlResultAtom serializeResult(UnsatisfiedConstraint uc, IEvlContext context) {
+		if (uc instanceof LazyUnsatisfiedConstraint) {
+			return ((LazyUnsatisfiedConstraint) uc).proxy;
+		}
 		SerializableEvlResultAtom outputAtom = new SerializableEvlResultAtom();
 		Object modelElement = uc.getInstance();
 		IModel owningModel = context.getModelRepository().getOwningModel(modelElement);
