@@ -65,7 +65,6 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	
 	protected OCL ocl = OCL.newInstance(new ResourceSetImpl());
 	protected EPackage metamodelPackage;
-	protected Resource modelResource;
 	protected EValidator validator;
 	public final URI model, metamodel;
 	Supplier<?> resultExecutor;
@@ -86,7 +85,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	}
 	
 
-	protected void registerAndLoadModel() throws Exception {
+	protected Resource registerAndLoadModel() throws Exception {
 		ResourceSet resourceSet = ocl.getResourceSet();
 		
 		if (metamodelPackage == null) {
@@ -103,21 +102,21 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		}
 		resourceSet.getPackageRegistry().put(metamodelPackage.getNsURI(), metamodelPackage);
 		
-		modelResource = resourceSet.createResource(model);
+		Resource modelResource = resourceSet.createResource(model);
 		modelResource.load(Collections.EMPTY_MAP);
+		return modelResource;
 	}
 	
-	protected EObject getModelElementByType(EClassifier type) throws IllegalStateException {
-		return modelResource.getContents()
-			.stream().filter(type::isInstance).findAny().orElseThrow(() ->
+	protected EObject getModelElementByType(EClassifier type, Stream<EObject> modelContents) throws IllegalStateException {
+		return modelContents.filter(type::isInstance).findAny().orElseThrow(() ->
 				new IllegalStateException("Could not find a model element of type "+type.getName()+" in "+model)
 			);
 	}
 	
-	protected Supplier<?> checkForQuery(ASResource scriptResource) throws ParserException {
+	protected Supplier<?> checkForQuery(ASResource scriptResource, Resource modelResource) throws ParserException {
 		final Function<EObject, Stream<EObject>> flatMapper = e -> e.eContents().stream();
 		org.eclipse.ocl.pivot.Operation queryOp = scriptResource
-			.getContents().stream()
+			.getContents().stream().parallel()
 			.flatMap(flatMapper)
 			.filter(e -> e instanceof org.eclipse.ocl.pivot.Package)
 			.flatMap(flatMapper)
@@ -134,7 +133,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			String typeName = fullyQualifiedType.substring(pkgIndex+2);
 			
 			EClassifier targetType = metamodelPackage.getEClassifier(typeName);
-			EObject contextElement = getModelElementByType(targetType);
+			EObject contextElement = getModelElementByType(targetType, modelResource.getContents().stream());
 			
 			ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), queryOp.getBodyExpression().getBody());
 			return () -> ocl.evaluate(contextElement, asQuery);
@@ -161,24 +160,20 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		EValidator.Registry.INSTANCE.put(metamodelPackage, validator);
 	}
 	
-	protected ConstraintDiagnostician createDiagnostician() {
+	protected ConstraintDiagnostician createDiagnostician(Resource modelResource) {
 		return new ConstraintDiagnostician(modelResource);
 	}
 	
 	@Override
 	protected void preExecute() throws Exception {
 		super.preExecute();
-		
-		if (profileExecution) {
-			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel);
-		}
-		else {
+		final Resource modelResource = profileExecution ?
+			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
 			registerAndLoadModel();
-		}
 		
 		if (script != null) {
 			final Supplier<ASResource> scriptParser = () -> ocl.parse(URI.createURI(script.toUri().toString()));
-			final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
+			final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = sr -> checkForQuery(sr, modelResource);
 			if (profileExecution) {
 				profileExecutionStage(profiledStages, "setup",
 					org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup::doSetup
@@ -206,16 +201,16 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 
 		// Assume this is a validation exercise
 		if (resultExecutor == null) {
-			ConstraintDiagnostician diagnostician = createDiagnostician();
-			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
-			resultExecutor = diagnostician::validate;
-			
 			if (profileExecution) {
 				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator);
 			}
 			else {
 				registerValidator();
 			}
+			
+			ConstraintDiagnostician diagnostician = createDiagnostician(modelResource);
+			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
+			resultExecutor = diagnostician::validate;
 		}
 	}
 

@@ -83,6 +83,6 @@ public class UnsatisfiedOclConstraint {
             .entrySet()
             .stream()
             .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a + b, LinkedHashMap::new));
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, Integer::sum, LinkedHashMap::new));
 	}
 }
