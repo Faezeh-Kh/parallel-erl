@@ -19,8 +19,8 @@ import org.apache.flink.core.fs.FileSystem.WriteMode;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.flink.execute.context.EvlContextFlinkMaster;
 
 /**

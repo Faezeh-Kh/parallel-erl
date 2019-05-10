@@ -12,9 +12,9 @@ package org.eclipse.epsilon.evl.distributed;
 import java.util.Collection;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
-import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributed;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
+import org.eclipse.epsilon.evl.distributed.execute.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 
 /**

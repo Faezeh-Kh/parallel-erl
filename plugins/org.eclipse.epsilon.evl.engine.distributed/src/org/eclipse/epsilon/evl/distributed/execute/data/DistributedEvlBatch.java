@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.data;
+package org.eclipse.epsilon.evl.distributed.execute.data;
 
 import java.util.ArrayList;
 import java.util.Arrays;

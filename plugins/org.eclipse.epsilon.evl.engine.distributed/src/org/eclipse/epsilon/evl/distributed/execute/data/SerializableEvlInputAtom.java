@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.data;
+package org.eclipse.epsilon.evl.distributed.execute.data;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,7 +28,7 @@ import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
  */
 public class SerializableEvlInputAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = -196776296963767472L;
+	private static final long serialVersionUID = -5175915914665990769L;
 
 	@Override
 	protected SerializableEvlInputAtom clone() {

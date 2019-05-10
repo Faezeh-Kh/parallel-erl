@@ -11,22 +11,22 @@ public class ValidationResult extends Job  {
 	
 	public ValidationResult() {}
 	
-	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms) {
+	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom> atoms) {
 		this.atoms = atoms;
 	}
 	
-	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms, Job correlation) {
+	public ValidationResult(java.util.Collection<org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom> atoms, Job correlation) {
 		this.atoms = atoms;
 		this.correlationId = correlation.getId();
 	}
 		
-	protected java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms;
+	protected java.util.Collection<org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom> atoms;
 	
-	public void setAtoms(java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> atoms) {
+	public void setAtoms(java.util.Collection<org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom> atoms) {
 		this.atoms = atoms;
 	}
 	
-	public java.util.Collection<org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom> getAtoms() {
+	public java.util.Collection<org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom> getAtoms() {
 		return atoms;
 	}
 	

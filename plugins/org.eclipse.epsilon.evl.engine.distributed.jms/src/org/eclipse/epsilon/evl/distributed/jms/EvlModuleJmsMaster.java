@@ -26,8 +26,8 @@ import org.eclipse.epsilon.common.function.CheckedRunnable;
 import org.eclipse.epsilon.common.function.ExceptionContainer;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedMaster;
+import org.eclipse.epsilon.evl.distributed.execute.data.DistributedEvlBatch;
 
 /**
  * This module co-ordinates a message-based architecture. The workflow is as follows: <br/>

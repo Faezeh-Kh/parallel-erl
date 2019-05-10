@@ -24,8 +24,8 @@ import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.concurrent.executors.EolExecutorService;
 import org.eclipse.epsilon.eol.execute.context.IEolContext;
 import org.eclipse.epsilon.evl.concurrent.EvlModuleParallel;
-import org.eclipse.epsilon.evl.distributed.data.*;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributed;
+import org.eclipse.epsilon.evl.distributed.execute.data.*;
 import org.eclipse.epsilon.evl.execute.UnsatisfiedConstraint;
 import org.eclipse.epsilon.evl.execute.atoms.*;
 

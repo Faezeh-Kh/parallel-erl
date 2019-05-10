@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.data;
+package org.eclipse.epsilon.evl.distributed.execute.data;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -26,8 +26,8 @@ import org.eclipse.epsilon.eol.execute.context.IEolContext;
  * @since 1.6
  */
 public abstract class SerializableEvlAtom implements java.io.Serializable, Cloneable {
-	
-	private static final long serialVersionUID = 8319572468387196852L;
+
+	private static final long serialVersionUID = 4500436500647882020L;
 	
 	public String modelElementID, modelName, contextName;
 

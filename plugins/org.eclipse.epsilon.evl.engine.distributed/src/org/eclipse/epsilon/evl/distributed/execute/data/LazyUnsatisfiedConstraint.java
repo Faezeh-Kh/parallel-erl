@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.data;
+package org.eclipse.epsilon.evl.distributed.execute.data;
 
 import java.util.Deque;
 import java.util.Map;
@@ -31,7 +31,8 @@ public class LazyUnsatisfiedConstraint extends UnsatisfiedConstraint {
 	protected transient IEvlModule module;
 	
 	public LazyUnsatisfiedConstraint(SerializableEvlResultAtom proxy, IEvlModule module) {
-		this.proxy = proxy;
+		Objects.requireNonNull(this.proxy = proxy);
+		this.module = module;
 		this.message = proxy.message;
 	}
 

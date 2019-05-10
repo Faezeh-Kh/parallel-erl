@@ -11,7 +11,7 @@ package org.eclipse.epsilon.evl.distributed.jms.batch;
 
 import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.execute.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.jms.EvlModuleJmsMaster;
 import org.eclipse.epsilon.evl.execute.atoms.ConstraintContextAtom;
 

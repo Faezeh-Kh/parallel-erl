@@ -11,7 +11,7 @@ package org.eclipse.epsilon.evl.distributed.crossflow;
 
 import java.util.List;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.execute.data.DistributedEvlBatch;
 
 public class JobDistributor extends JobDistributorBase {
 	

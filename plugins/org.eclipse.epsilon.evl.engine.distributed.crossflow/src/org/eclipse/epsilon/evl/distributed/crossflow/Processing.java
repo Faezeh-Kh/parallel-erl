@@ -11,8 +11,8 @@ package org.eclipse.epsilon.evl.distributed.crossflow;
 
 import java.util.Collection;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedSlave;
-import org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.execute.context.EvlContextDistributedSlave;
+import org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom;
 import org.eclipse.epsilon.evl.distributed.launch.DistributedEvlRunConfigurationSlave;
 
 /**

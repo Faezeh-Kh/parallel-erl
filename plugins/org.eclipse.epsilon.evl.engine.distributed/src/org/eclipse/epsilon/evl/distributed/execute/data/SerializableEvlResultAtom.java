@@ -7,11 +7,9 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.epsilon.evl.distributed.data;
+package org.eclipse.epsilon.evl.distributed.execute.data;
 
-import java.util.Collection;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.models.IModel;
 import org.eclipse.epsilon.evl.IEvlModule;
@@ -28,7 +26,7 @@ import org.eclipse.epsilon.evl.execute.exceptions.EvlConstraintNotFoundException
  */
 public class SerializableEvlResultAtom extends SerializableEvlAtom {
 
-	private static final long serialVersionUID = 6633651795817751005L;
+	private static final long serialVersionUID = 8866819399226925799L;
 	
 	public String constraintName, message;
 	
@@ -81,19 +79,6 @@ public class SerializableEvlResultAtom extends SerializableEvlAtom {
 		outputAtom.constraintName = uc.getConstraint().getName();
 		outputAtom.message = uc.getMessage();
 		return outputAtom;
-	}
-	
-	/**
-	 * Calls {@link #serializeResult(UnsatisfiedConstraint, IEvlContext)} in parallel.
-	 * 
-	 * @param context
-	 * @return The serialized {@linkplain UnsatisfiedConstraint} instances.
-	 */
-	public static Collection<SerializableEvlResultAtom> serializeResults(IEvlContext context) {
-		return context.getUnsatisfiedConstraints()
-			.parallelStream()
-			.map(uc -> serializeResult(uc, context))
-			.collect(Collectors.toList());
 	}
 	
 	// TODO: support fixes and 'extras'

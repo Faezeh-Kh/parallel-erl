@@ -12,7 +12,7 @@ package org.eclipse.epsilon.evl.distributed.flink.batch;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.operators.DataSource;
-import org.eclipse.epsilon.evl.distributed.data.DistributedEvlBatch;
+import org.eclipse.epsilon.evl.distributed.execute.data.DistributedEvlBatch;
 import org.eclipse.epsilon.evl.distributed.flink.EvlModuleFlinkMaster;
 import org.eclipse.epsilon.evl.distributed.flink.format.FlinkInputFormat;
 
