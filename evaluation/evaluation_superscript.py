@@ -85,8 +85,8 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_vmem='''+str(60/logicalCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -Xms768m -XX:MaxRAM'
-jvmFlags += 'Fraction=1' if sge else 'Percentage=90'
+jvmFlags = 'java -XX:MaxRAM'
+jvmFlags += 'Fraction=1 -Xms800m' if sge else 'Percentage=90 -XX:InitialRAMPercentage=25'
 jvmFlags += ' -XX:'
 jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
 if numa:
@@ -312,23 +312,24 @@ if isGenerate:
                         if jmc:
                             command += stdDir + fileName + '.jfr'
                         command += lastJavaCmd + binDir + programJar+'.jar" '
-                        if selfContained:
-                            command += '"'+modelDir+model+'"'
-                        elif isOCL:
-                            command += '"'+scriptDir+script+'" "'+modelDir+model+'" "'+ metamodelDir+metamodel+'"'
-                        else:
-                            if isJava and len(margs) > 1 and 'parallel' in margs[1]:
+                        if isJava and len(margs) > 1 and 'parallel' in margs[1]:
                                 script = normalize_foop(script)
-                            if isDistributed:
-                                scriptPath = 'scripts/'+script
-                                metamodelPath = 'metamodels/'+metamodel
-                                modelPath = 'models/'+model
-                                outputPath = 'output/'+fileName
-                            else:
-                                scriptPath = scriptDir+script
-                                metamodelPath = metamodelDir+metamodel
-                                modelPath = modelDir+model
-                                outputPath = stdDir + fileName
+                        if isDistributed:
+                            scriptPath = 'scripts/'+script
+                            metamodelPath = 'metamodels/'+metamodel
+                            modelPath = 'models/'+model
+                            outputPath = 'output/'+fileName
+                        else:
+                            scriptPath = scriptDir+script
+                            metamodelPath = metamodelDir+metamodel
+                            modelPath = modelDir+model
+                            outputPath = stdDir+fileName
+
+                        if selfContained:
+                            command += '"'+modelPath+'"'
+                        elif isOCL:
+                            command += '"'+scriptPath+'" "'+modelPath+'" "'+ metamodelPath+'"'
+                        else:
                             command += '"'+scriptPath+'" -models "emf.'
                             if isDistributed:
                                 command += 'Distributable'
@@ -338,7 +339,6 @@ if isGenerate:
                         command += ' -profile'
                         if additionalArgs:
                             command += ' '+additionalArgs
-
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
