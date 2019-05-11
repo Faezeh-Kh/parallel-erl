@@ -9,6 +9,7 @@
 **********************************************************************/
 package org.eclipse.ocl.standalone;
 
+import org.apache.commons.cli.Option;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.epsilon.common.cli.ConfigParser;
@@ -21,12 +22,15 @@ public class StandaloneOclConfigParser extends ConfigParser<StandaloneOcl, Stand
 	
 	final boolean isInterpreted;
 	
+	final String isQueryOpt = "query";
+	
 	protected StandaloneOclConfigParser(boolean checkArgs) {
 		super(new StandaloneOclBuilder());
 		this.isInterpreted = checkArgs;
+		options.addOption(Option.builder().longOpt(isQueryOpt).desc("Whether this is a query operation").build());
 		
 		requiredUsage = "Must provide absolute path to "+nL
-		  + "  [Complete OCL Document] (if metamodel doesn't contain constraints) "+nL
+		  + "  [Complete OCL Document] (if metamodel doesn't contain constraints, use null) "+nL
 		  + "  [XMI model file] "+nL
 		  + "  [Ecore metamodel file] ";
 	}
@@ -38,8 +42,11 @@ public class StandaloneOclConfigParser extends ConfigParser<StandaloneOcl, Stand
 			if (args.length > 1) builder.withModel(args[1]);
 			if (args.length > 2) builder.withMetamodel(args[2]);
 		}
+		
 		super.parseArgs(args);
-		if (!isInterpreted) {
+		
+		builder.isQuery = cmdLine.hasOption(isQueryOpt);
+		if (!isInterpreted || (builder.script != null && !builder.script.toFile().exists())) {
 			builder.script = null;
 		}
 	}

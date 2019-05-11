@@ -25,7 +25,15 @@ public class StandaloneOclBuilder extends ProfilableRunConfiguration.Builder<Sta
 	public URI modelUri, metamodelUri;
 	public EPackage rootPackage;
 	public EValidator customValidator;
+	public boolean isQuery;
 	
+	public StandaloneOclBuilder asQuery() {
+		return isQuery(true);
+	}
+	public StandaloneOclBuilder isQuery(boolean query) {
+		this.isQuery = query;
+		return this;
+	}
 	public StandaloneOclBuilder withModel(URI uri) {
 		this.modelUri = uri;
 		return this;

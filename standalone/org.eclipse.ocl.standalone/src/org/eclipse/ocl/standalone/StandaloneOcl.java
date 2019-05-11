@@ -66,18 +66,21 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	protected OCL ocl = OCL.newInstance(new ResourceSetImpl());
 	protected EPackage metamodelPackage;
 	protected EValidator validator;
-	public final URI model, metamodel;
+	public final URI modelUri, metamodelUri, scriptUri;
+	protected final boolean isQuery;
 	Supplier<?> resultExecutor;
 	
 	public StandaloneOcl(StandaloneOclBuilder builder) {
 		super(builder);
-		this.model = builder.modelUri;
-		this.metamodel = builder.metamodelUri;
+		this.modelUri = builder.modelUri;
+		this.metamodelUri = builder.metamodelUri;
+		this.scriptUri = script != null ? URI.createURI(script.toUri().toString()) : null;
+		this.isQuery = builder.isQuery;
 		this.id = Optional.ofNullable(builder.id).orElseGet(() ->
 			Objects.hash(super.id,
 				Objects.toString(ocl),
-				Objects.toString(model),
-				Objects.toString(metamodel)
+				Objects.toString(modelUri),
+				Objects.toString(metamodelUri)
 			)
 		);
 		this.metamodelPackage = builder.rootPackage;
@@ -89,7 +92,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		ResourceSet resourceSet = ocl.getResourceSet();
 		
 		if (metamodelPackage == null) {
-			Resource metamodelResource = resourceSet.createResource(metamodel);
+			Resource metamodelResource = resourceSet.createResource(metamodelUri);
 			metamodelResource.load(Collections.EMPTY_MAP);
 			metamodelPackage = metamodelResource.getContents()
 				.stream()
@@ -97,19 +100,19 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 				.map(EPackage.class::cast)
 				.findFirst()
 				.orElseThrow(() -> new IllegalArgumentException(
-					"Metamodel '"+metamodel.path()+"' does not contain an EPackage!")
+					"Metamodel '"+metamodelUri.path()+"' does not contain an EPackage!")
 				);
 		}
 		resourceSet.getPackageRegistry().put(metamodelPackage.getNsURI(), metamodelPackage);
 		
-		Resource modelResource = resourceSet.createResource(model);
+		Resource modelResource = resourceSet.createResource(modelUri);
 		modelResource.load(Collections.EMPTY_MAP);
 		return modelResource;
 	}
 	
 	protected EObject getModelElementByType(EClassifier type, Stream<EObject> modelContents) throws IllegalStateException {
 		return modelContents.filter(type::isInstance).findAny().orElseThrow(() ->
-				new IllegalStateException("Could not find a model element of type "+type.getName()+" in "+model)
+				new IllegalStateException("Could not find a model element of type "+type.getName()+" in "+modelUri)
 			);
 	}
 	
@@ -147,7 +150,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			if (script != null) {
 				validator = new CompleteOCLEObjectValidator(
 					metamodelPackage,
-					URI.createURI(script.toUri().toString()),
+					scriptUri,
 					ocl.getEnvironmentFactory()
 				);
 			}
@@ -172,21 +175,28 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			registerAndLoadModel();
 		
 		if (script != null) {
-			final Supplier<ASResource> scriptParser = () -> ocl.parse(URI.createURI(script.toUri().toString()));
-			final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = sr -> checkForQuery(sr, modelResource);
 			if (profileExecution) {
 				profileExecutionStage(profiledStages, "setup",
 					org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup::doSetup
 				);
-				ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser);
-				resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
 			}
 			else {
 				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
-				resultExecutor = queryEvaluatorGetter.apply(scriptParser.get());
+			}
+			
+			if (isQuery) {
+				final Supplier<ASResource> scriptParser = () -> ocl.parse(scriptUri);
+				final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = sr -> checkForQuery(sr, modelResource);
+				if (profileExecution) {
+					ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser);
+					resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
+				}
+				else {
+					resultExecutor = queryEvaluatorGetter.apply(scriptParser.get());
+				}
 			}
 		}
-		else  {
+		else {
 			if (profileExecution) {
 				profileExecutionStage(profiledStages, "setup", 
 					org.eclipse.ocl.xtext.oclinecore.OCLinEcoreStandaloneSetup::doSetup
@@ -200,7 +210,10 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		}
 
 		// Assume this is a validation exercise
-		if (resultExecutor == null) {
+		if (resultExecutor == null && isQuery) {
+			throw new IllegalStateException("No query found in "+scriptUri);
+		}
+		else {
 			if (profileExecution) {
 				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator);
 			}
@@ -212,6 +225,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
 			resultExecutor = diagnostician::validate;
 		}
+		assert resultExecutor != null;
 	}
 
 	@Override
@@ -261,8 +275,10 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	 */
 	public StandaloneOcl(StandaloneOcl other) {
 		super(other);
-		this.model = other.model;
-		this.metamodel = other.metamodel;
+		this.modelUri = other.modelUri;
+		this.metamodelUri = other.metamodelUri;
+		this.scriptUri = other.scriptUri;
+		this.isQuery = other.isQuery;
 		this.ocl = other.ocl;
 		this.validator = other.validator;
 		this.metamodelPackage = other.metamodelPackage;
