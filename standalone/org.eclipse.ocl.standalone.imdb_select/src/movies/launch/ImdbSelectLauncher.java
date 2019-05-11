@@ -28,7 +28,7 @@ public class ImdbSelectLauncher {
 			protected java.math.BigInteger executeImpl() {
 				Person element = (Person) getModelElementByType(MoviesPackage.eINSTANCE.getEClassifier("Person"));
 				if (element == null) {
-					throw new IllegalStateException("Could not find Person in "+modelResource);
+					throw new IllegalStateException("Could not find Person in "+modelUri);
 				}
 				return element.QUERY();
 			}

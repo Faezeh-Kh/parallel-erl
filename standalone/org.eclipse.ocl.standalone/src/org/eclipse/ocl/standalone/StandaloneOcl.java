@@ -66,6 +66,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	protected OCL ocl = OCL.newInstance(new ResourceSetImpl());
 	protected EPackage metamodelPackage;
 	protected EValidator validator;
+	protected Resource modelResource;
 	public final URI modelUri, metamodelUri, scriptUri;
 	protected final boolean isQuery;
 	Supplier<?> resultExecutor;
@@ -110,13 +111,13 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		return modelResource;
 	}
 	
-	protected EObject getModelElementByType(EClassifier type, Stream<EObject> modelContents) throws IllegalStateException {
-		return modelContents.filter(type::isInstance).findAny().orElseThrow(() ->
+	protected EObject getModelElementByType(EClassifier type) throws IllegalStateException {
+		return modelResource.getContents().stream().filter(type::isInstance).findAny().orElseThrow(() ->
 				new IllegalStateException("Could not find a model element of type "+type.getName()+" in "+modelUri)
 			);
 	}
 	
-	protected Supplier<?> checkForQuery(ASResource scriptResource, Resource modelResource) throws ParserException {
+	protected Supplier<?> checkForQuery(ASResource scriptResource) throws ParserException {
 		final Function<EObject, Stream<EObject>> flatMapper = e -> e.eContents().stream();
 		org.eclipse.ocl.pivot.Operation queryOp = scriptResource
 			.getContents().stream().parallel()
@@ -136,7 +137,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			String typeName = fullyQualifiedType.substring(pkgIndex+2);
 			
 			EClassifier targetType = metamodelPackage.getEClassifier(typeName);
-			EObject contextElement = getModelElementByType(targetType, modelResource.getContents().stream());
+			EObject contextElement = getModelElementByType(targetType);
 			
 			ExpressionInOCL asQuery = ocl.createQuery(contextElement.eClass(), queryOp.getBodyExpression().getBody());
 			return () -> ocl.evaluate(contextElement, asQuery);
@@ -170,7 +171,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	@Override
 	protected void preExecute() throws Exception {
 		super.preExecute();
-		final Resource modelResource = profileExecution ?
+		modelResource = profileExecution ?
 			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
 			registerAndLoadModel();
 		
@@ -186,7 +187,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			
 			if (isQuery) {
 				final Supplier<ASResource> scriptParser = () -> ocl.parse(scriptUri);
-				final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = sr -> checkForQuery(sr, modelResource);
+				final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
 				if (profileExecution) {
 					ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser);
 					resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
