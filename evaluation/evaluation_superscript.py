@@ -71,7 +71,7 @@ fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by me
 resultsFile = open(resultsFileName, 'w') if not isGenerate else None
 writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else None
 rows = []
-columns = ['MODULE', 'THREADS', 'SCRIPT', 'MODEL', 'TIME', 'TIME_STDEV', 'SPEEDUP', 'EFFICIENCY', 'MEMORY', 'MEMORY_STDEV', 'MEMORY_DELTA']
+columns = ['MODULE', 'THREADS', 'SCRIPT', 'MODEL', 'EXEC_TIME', 'EXEC_TIME_STDEV', 'SPEEDUP', 'EFFICIENCY', 'EXEC_MEMORY', 'EXEC_MEMORY_STDEV', 'MODEL_TIME', 'MODEL_TIME_STDEV', 'MODEL_MEMORY', 'MODEL_MEMORY_STDEV']
 
 sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -cwd
@@ -428,6 +428,18 @@ else:
     if (not os.path.isfile(resultsFileName) or os.stat(resultsFileName).st_size == 0):
         writer.writerow(columns)
 
+    def compute_stats(stageName, regexObj, rawStr):
+        times = []
+        memories = []
+        for resultMatch in re.findall(r'(?im)^(?:'+stageName+r'(?:\(\))?)(.*?)([0-9]+).?(?:ms|(?:millis(?:econds)?)).*?([0-9]+).{2,3}', rawStr):
+            if resultMatch[1]:
+                times.append(int(resultMatch[1]))
+            if resultMatch[2]:
+                memories.append(int(resultMatch[2]))
+        timeStats = compute_descriptive_stats(times)
+        memoryStats = compute_descriptive_stats(memories)
+        return (timeStats, memoryStats)
+
     # First pass - transformation from multiple text files into CSV
     # Also computes mean and standard deviation from duplicates
     for dirpath, dirnames, filenames in os.walk(inDir):
@@ -456,37 +468,29 @@ else:
                 numThread = 1 if not numThread else int(numThread)
             
             row = [module, numThread, script, model]
-            times = []
-            memories = []
 
             with open(os.path.join(dirpath, filename), 'r') as inFile:
                 raw = inFile.read()
             
-            for resultMatch in re.findall(r'(?im)^(?:execute(?:\(\))?)(.*?)([0-9]+).?(?:ms|(?:millis(?:econds)?)).*?([0-9]+).{2,3}', raw):
-                if resultMatch[1]:
-                    times.append(int(resultMatch[1]))
-                if resultMatch[2]:
-                    memories.append(int(resultMatch[2]))
-
-            timeStats = compute_descriptive_stats(times)
-            memoryStats = compute_descriptive_stats(memories)
-
-            row.extend(timeStats)
-            row.extend(memoryStats)
+            execStats = compute_stats('execute', re, raw)
+            modelStats = compute_stats('Parsing model', re, raw)
+            row.extend(execStats[0])
+            row.extend(execStats[1])
+            row.extend(modelStats[0])
+            row.extend(modelStats[1])
             row.append(program)
-            
+
             rows.append(row)
         break   # Non-recursive
 
-    # For reference, each row = [module, threads, script, model, timeMean, timeStdev, memoryMean, memoryStdev, memoryDelta, program]
+    # For reference, each row will eventually = [module, threads, script, model, execTimeMean, execTimeStdev, execSpeedup, execEfficiency, execMemoryMean, execMemoryStdev, modelTimeMean, modelTimeStdev, modelMemoryMean, modelMemoryStdev, program]
     def compute_metrics_closure(currentMetrics, relModule, row, filterCondition, relScript = row[2], decimalPlaces = 3):
         if (filterCondition):
             for nestedRow in rows:
                 if (nestedRow[0] == relModule and (nestedRow[2] == relScript or nestedRow[2] == row[2]) and nestedRow[3] == row[3]):
                     speedup = round(nestedRow[4]/row[4], decimalPlaces) if nestedRow[4] and row[4] else None
                     efficiency = round(speedup/row[1], decimalPlaces) if speedup else None
-                    memDelta = round(nestedRow[6]/row[6], decimalPlaces) if nestedRow[6] and row[6] else None
-                    return (speedup, efficiency, memDelta)
+                    return (speedup, efficiency)
         return currentMetrics
     
     # Second pass - compute performance metrics, update rows and write to CSV file
@@ -494,7 +498,7 @@ else:
         row = rows[i]
         rowResults = row[:-1]
         # This is a nested for loop but with repetition factored out into a function
-        metrics = (None, None, None)
+        metrics = (None, None)
         # Only one of the following calls will change the value in this iteration!
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[-1].upper() == 'EVL' or row[0] == oclModules[0])
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[0] == oclModules[1])
@@ -507,7 +511,6 @@ else:
         
         rowResults.insert(6, metrics[0])
         rowResults.insert(7, metrics[1])
-        rowResults.insert(10, metrics[2])
         
         writer.writerow(rowResults)
         rows[i] = rowResults
