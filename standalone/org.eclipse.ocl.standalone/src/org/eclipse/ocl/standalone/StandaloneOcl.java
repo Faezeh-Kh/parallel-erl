@@ -21,11 +21,9 @@ import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.epsilon.common.function.CheckedFunction;
 import org.eclipse.epsilon.common.launch.ProfilableRunConfiguration;
 import static org.eclipse.epsilon.common.util.profiling.BenchmarkUtils.profileExecutionStage;
 import org.eclipse.ocl.pivot.ExpressionInOCL;
-import org.eclipse.ocl.pivot.resource.ASResource;
 import org.eclipse.ocl.pivot.utilities.OCL;
 import org.eclipse.ocl.pivot.utilities.ParserException;
 import org.eclipse.ocl.xtext.completeocl.validation.CompleteOCLEObjectValidator;
@@ -69,7 +67,6 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	protected Resource modelResource;
 	public final URI modelUri, metamodelUri, scriptUri;
 	protected final boolean isQuery;
-	Supplier<?> resultExecutor;
 	
 	public StandaloneOcl(StandaloneOclBuilder builder) {
 		super(builder);
@@ -117,9 +114,9 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			);
 	}
 	
-	protected Supplier<?> checkForQuery(ASResource scriptResource) throws ParserException {
+	protected Supplier<?> checkForQuery() throws ParserException {
 		final Function<EObject, Stream<EObject>> flatMapper = e -> e.eContents().stream();
-		org.eclipse.ocl.pivot.Operation queryOp = scriptResource
+		org.eclipse.ocl.pivot.Operation queryOp = ocl.parse(scriptUri)
 			.getContents().stream().parallel()
 			.flatMap(flatMapper)
 			.filter(e -> e instanceof org.eclipse.ocl.pivot.Package)
@@ -184,18 +181,6 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			else {
 				org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup.doSetup();
 			}
-			
-			if (isQuery) {
-				final Supplier<ASResource> scriptParser = () -> ocl.parse(scriptUri);
-				final CheckedFunction<ASResource, Supplier<?>, ParserException> queryEvaluatorGetter = this::checkForQuery;
-				if (profileExecution) {
-					ASResource scriptResource = profileExecutionStage(profiledStages, "Parse script", scriptParser);
-					resultExecutor = profileExecutionStage(profiledStages, "Check for query", queryEvaluatorGetter, scriptResource);
-				}
-				else {
-					resultExecutor = queryEvaluatorGetter.apply(scriptParser.get());
-				}
-			}
 		}
 		else {
 			if (profileExecution) {
@@ -209,10 +194,25 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			
 			// TODO support queries written in OCLinEcore
 		}
+	}
 
-		// Assume this is a validation exercise
-		if (resultExecutor == null && isQuery) {
-			throw new IllegalStateException("No query found in "+scriptUri);
+	@Override
+	protected final Object execute() throws Exception {
+		return result = profileExecution ? 
+			profileExecutionStage(profiledStages, "execute", this::executeImpl) :
+			executeImpl();
+	}
+	
+	protected Object executeImpl() throws Exception {
+		if (isQuery) {
+			Supplier<?> resultExecutor = profileExecution ?
+				profileExecutionStage(profiledStages, "Check for query", this::checkForQuery) :
+				checkForQuery();
+			
+			if (resultExecutor == null) {
+				throw new IllegalStateException("No query found in "+scriptUri);
+			}
+			else return resultExecutor.get();
 		}
 		else {
 			if (profileExecution) {
@@ -224,23 +224,8 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			
 			ConstraintDiagnostician diagnostician = createDiagnostician(modelResource);
 			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
-			resultExecutor = diagnostician::validate;
+			return diagnostician.validate();
 		}
-		assert resultExecutor != null;
-	}
-
-	@Override
-	protected final Object execute() throws Exception {
-		return result = profileExecution ? 
-			profileExecutionStage(profiledStages, "execute", this::executeImpl) :
-			executeImpl();
-	}
-	
-	protected Object executeImpl() throws Exception {
-		if (resultExecutor == null) {
-			throw new IllegalStateException("Cannot execute without a provided query or script!");
-		}
-		return resultExecutor.get();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -255,7 +240,7 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 		
 		super.postExecute();
 		
-		if (result instanceof Collection && (profileExecution || showResults)) {
+		if (!isQuery && result instanceof Collection && (profileExecution || showResults)) {
 			Collection<UnsatisfiedOclConstraint> unsatisfiedConstraints = (Collection<UnsatisfiedOclConstraint>) result;
 			
 			if (unsatisfiedConstraints.isEmpty()) {
