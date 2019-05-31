@@ -8,11 +8,13 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import org.apache.activemq.broker.BrokerFactory;
 import org.apache.activemq.broker.BrokerService;
-import org.eclipse.scava.crossflow.runtime.utils.ParallelList;
+import org.eclipse.scava.crossflow.runtime.utils.ParallelTaskList;
 import org.eclipse.scava.crossflow.runtime.utils.ControlSignal;
 import org.eclipse.scava.crossflow.runtime.utils.ControlSignal.ControlSignals;
+import org.eclipse.scava.crossflow.runtime.utils.CrossflowLogger.SEVERITY;
 import org.eclipse.scava.crossflow.runtime.Workflow;
 import org.eclipse.scava.crossflow.runtime.Mode;
+import org.eclipse.scava.crossflow.runtime.BuiltinStream;
 
 public class DistributedEVL extends Workflow {
 
@@ -38,17 +40,17 @@ public class DistributedEVL extends Workflow {
 	
 	
 	// streams
-	protected ConfigTopic configTopic;
 	protected ValidationDataQueue validationDataQueue;
 	protected ValidationOutput validationOutput;
+	protected ConfigTopic configTopic;
 	
 	// tasks
 
-	protected ConfigurationSource configurationSource;
 	protected ResultSink resultSink;
+	protected ConfigConfigSource configConfigSource;
 
-	protected ParallelList<JobDistributor> jobDistributors = new ParallelList<>();
-	protected ParallelList<Processing> processings = new ParallelList<>();
+	protected ParallelTaskList<JobDistributor> jobDistributors = new ParallelTaskList<>();
+	protected ParallelTaskList<Processing> processings = new ParallelTaskList<>();
 
 	//
 
@@ -69,15 +71,18 @@ public class DistributedEVL extends Workflow {
 		this.mode = mode;
 		
 		if (isMaster()) {
-			configurationSource = new ConfigurationSource();
-			configurationSource.setWorkflow(this);
 			for(int i=1;i<=parallelization;i++){
 				JobDistributor task = new JobDistributor();
 				task.setWorkflow(this);
+				tasks.add(task);
 				jobDistributors.add(task);
 			}
 			resultSink = new ResultSink();
 			resultSink.setWorkflow(this);
+			tasks.add(resultSink);
+			configConfigSource = new ConfigConfigSource();
+			configConfigSource.setWorkflow(this);
+			tasks.add(configConfigSource);
 		}
 		
 		if (isWorker()) {
@@ -85,6 +90,7 @@ public class DistributedEVL extends Workflow {
 				for(int i=1;i<=parallelization;i++){
 					Processing task = new Processing();
 					task.setWorkflow(this);
+					tasks.add(task);
 					processings.add(task);
 				}
 			}
@@ -119,6 +125,10 @@ public class DistributedEVL extends Workflow {
 				//activeMqConfig
 				brokerService.setUseJmx(true);
 				brokerService.addConnector(getBroker());
+				if(enableStomp)
+					brokerService.addConnector(getStompBroker());
+				if(enableWS)	
+					brokerService.addConnector(getWSBroker());
 				brokerService.start();
 			}
 		}
@@ -127,16 +137,14 @@ public class DistributedEVL extends Workflow {
 
 		Thread.sleep(delay);
 		
-		configTopic = new ConfigTopic(DistributedEVL.this, enablePrefetch);
-		activeStreams.add(configTopic);
 		validationDataQueue = new ValidationDataQueue(DistributedEVL.this, enablePrefetch);
 		activeStreams.add(validationDataQueue);
 		validationOutput = new ValidationOutput(DistributedEVL.this, enablePrefetch);
 		activeStreams.add(validationOutput);
+		configTopic = new ConfigTopic(DistributedEVL.this, enablePrefetch);
+		activeStreams.add(configTopic);
 		
 			if (isMaster()) {
-					configurationSource.setResultsTopic(resultsTopic);
-					configurationSource.setConfigTopic(configTopic);
 					for(int i = 1; i <=jobDistributors.size(); i++){
 						JobDistributor task = jobDistributors.get(i-1);
 						task.setResultsTopic(resultsTopic);
@@ -145,6 +153,8 @@ public class DistributedEVL extends Workflow {
 					}
 					resultSink.setResultsTopic(resultsTopic);
 					validationOutput.addConsumer(resultSink, "ResultSink");			
+					configConfigSource.setResultsTopic(resultsTopic);
+					configConfigSource.setConfigTopic(configTopic);
 			}
 			
 			if (isWorker()) {
@@ -152,20 +162,20 @@ public class DistributedEVL extends Workflow {
 						for(int i = 1; i <=processings.size(); i++){
 							Processing task = processings.get(i-1);
 							task.setResultsTopic(resultsTopic);
-							configTopic.addConsumer(task, "Processing");			
 							validationDataQueue.addConsumer(task, "Processing");			
+							configTopic.addConsumer(task, "Processing");			
 							task.setValidationOutput(validationOutput);
 						}
 				}
 			}
 			
-			if (isMaster()) {
+			if (isMaster()){
 				// run all sources in parallel threads
 				new Thread(() -> {
 					try {
-						setTaskInProgess(configurationSource);
-						configurationSource.produce();
-						setTaskWaiting(configurationSource);
+						setTaskInProgess(configConfigSource);
+						configConfigSource.produce();
+						setTaskWaiting(configConfigSource);
 					} catch (Exception ex) {
 						reportInternalException(ex);
 						terminate();
@@ -182,30 +192,27 @@ public class DistributedEVL extends Workflow {
 			}	
 					
 		} catch (Exception e) {
-			e.printStackTrace();
+			log(SEVERITY.ERROR, e.getMessage());
 		}
 	}				
 	
-	public ConfigTopic getConfigTopic() {
-		return configTopic;
-	}
 	public ValidationDataQueue getValidationDataQueue() {
 		return validationDataQueue;
 	}
 	public ValidationOutput getValidationOutput() {
 		return validationOutput;
 	}
-	
-	public ConfigurationSource getConfigurationSource() {
-		return configurationSource;
+	public ConfigTopic getConfigTopic() {
+		return configTopic;
 	}
+	
 	public JobDistributor getJobDistributor() {
 		if(jobDistributors.size()>0)
 			return jobDistributors.get(0);
 		else 
 			return null;
 	}
-	public ParallelList<JobDistributor> getJobDistributors() {
+	public ParallelTaskList<JobDistributor> getJobDistributors() {
 		return jobDistributors;	
 	}	
 	public Processing getProcessing() {
@@ -214,11 +221,14 @@ public class DistributedEVL extends Workflow {
 		else 
 			return null;
 	}
-	public ParallelList<Processing> getProcessings() {
+	public ParallelTaskList<Processing> getProcessings() {
 		return processings;	
 	}	
 	public ResultSink getResultSink() {
 		return resultSink;
+	}
+	public ConfigConfigSource getConfigConfigSource() {
+		return configConfigSource;
 	}
 	
 }	

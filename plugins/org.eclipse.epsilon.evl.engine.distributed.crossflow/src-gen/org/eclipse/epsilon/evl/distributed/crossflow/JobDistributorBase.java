@@ -39,32 +39,17 @@ public abstract class JobDistributorBase extends Task  implements ConfigTopicCon
 	
 	boolean hasSentToValidationDataQueue = false;
 	
+	
+	boolean hasProcessedConfigTopic = false;
+	
+	
 	@Override
 	public final void consumeConfigTopicWithNotifications(Config config) {
 		
-		try {
-			workflow.getJobDistributors().getSemaphore().acquire();
-		} catch (Exception e) {
-			workflow.reportInternalException(e);
-		}
-				
-		hasSentToValidationDataQueue = false;
-				
-		Runnable consumer = () -> {		
 			try {
 				workflow.setTaskInProgess(this);
 
 				consumeConfigTopic(config);
-
-				ValidationData conf = new ValidationData();
-				conf.setCorrelationId(config.getId());
-				conf.setIsTransactionSuccessMessage(true);
-				conf.setTotalOutputs((hasSentToValidationDataQueue ? 1 : 0));
-				if (hasSentToValidationDataQueue) {
-					sendToValidationDataQueue(conf);
-				}
-		
-
 
 			} catch (Exception ex) {
 				try {
@@ -75,16 +60,12 @@ public abstract class JobDistributorBase extends Task  implements ConfigTopicCon
 				}
 			} finally {
 				try {
-					workflow.getJobDistributors().getSemaphore().release();
+					hasProcessedConfigTopic = true;
 					workflow.setTaskWaiting(this);
 				} catch (Exception e) {
 					workflow.reportInternalException(e);
 				}
 			}
-		
-		};
-
-		workflow.getJobDistributors().getExecutor().submit(consumer);
 	}
 	
 	public abstract void consumeConfigTopic(Config config) throws Exception;

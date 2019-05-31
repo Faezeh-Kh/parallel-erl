@@ -13,6 +13,8 @@ import org.apache.activemq.command.ActiveMQDestination;
 import org.eclipse.scava.crossflow.runtime.Workflow;
 import org.eclipse.scava.crossflow.runtime.Job;
 import org.eclipse.scava.crossflow.runtime.JobStream;
+import org.apache.activemq.command.ActiveMQTextMessage;
+import org.apache.activemq.command.ActiveMQBytesMessage;
 
 public class ValidationDataQueue extends JobStream<ValidationData> {
 		
@@ -40,7 +42,17 @@ public class ValidationDataQueue extends JobStream<ValidationData> {
 					public void onMessage(Message message) {
 						try {
 							workflow.cancelTermination();
-							Job job = (Job) workflow.getSerializer().toObject(((TextMessage) message).getText());
+							String messageText = "";
+							if (message instanceof ActiveMQTextMessage) {
+    							ActiveMQTextMessage amqMessage = (ActiveMQTextMessage) message;
+    							messageText = amqMessage.getText();
+							} else {
+    							ActiveMQBytesMessage bm = (ActiveMQBytesMessage) message;
+    							byte data[] = new byte[(int) bm.getBodyLength()];
+    							bm.readBytes(data);
+    							messageText = new String(data);
+							}
+							Job job = (Job) workflow.getSerializer().toObject(messageText);
 							
 							if (workflow.getCache() != null && workflow.getCache().hasCachedOutputs(job)) {
 								
@@ -82,8 +94,18 @@ public class ValidationDataQueue extends JobStream<ValidationData> {
 					public void onMessage(Message message) {
 						try {
 							workflow.cancelTermination();
-							TextMessage textMessage = (TextMessage) message;
-							Job job = (Job) workflow.getSerializer().toObject(textMessage.getText());
+							String messageText = "";
+							if (message instanceof ActiveMQTextMessage) {
+    							ActiveMQTextMessage amqMessage = (ActiveMQTextMessage) message;
+    							messageText = amqMessage.getText();
+							} else {
+    							ActiveMQBytesMessage bm = (ActiveMQBytesMessage) message;
+    							byte data[] = new byte[(int) bm.getBodyLength()];
+    							bm.readBytes(data);
+    							messageText = new String(data);
+							}
+							
+							Job job = (Job) workflow.getSerializer().toObject(messageText);
 							if (workflow.getCache() != null && !job.isCached())
 								if(job.isTransactional())
 									workflow.getCache().cacheTransactionally(job);
@@ -124,9 +146,18 @@ public class ValidationDataQueue extends JobStream<ValidationData> {
 		
 				@Override
 				public void onMessage(Message message) {
-					TextMessage textMessage = (TextMessage) message;
+					String messageText = "";
 					try {
-						ValidationData validationData = (ValidationData) workflow.getSerializer().toObject(textMessage.getText());
+						if (message instanceof ActiveMQTextMessage) {
+							ActiveMQTextMessage amqMessage = (ActiveMQTextMessage) message;
+							messageText = amqMessage.getText();
+						} else {
+							ActiveMQBytesMessage bm = (ActiveMQBytesMessage) message;
+							byte data[] = new byte[(int) bm.getBodyLength()];
+							bm.readBytes(data);
+							messageText = new String(data);
+						}
+						ValidationData validationData = (ValidationData) workflow.getSerializer().toObject(messageText);
 						consumer.consumeValidationDataQueueWithNotifications(validationData);
 					} catch (Exception ex) {
 						workflow.reportInternalException(ex);

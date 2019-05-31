@@ -4,7 +4,7 @@ import org.eclipse.scava.crossflow.runtime.FailedJob;
 import org.eclipse.scava.crossflow.runtime.Task;
 import org.eclipse.scava.crossflow.runtime.Workflow;
 
-public abstract class ProcessingBase extends Task  implements ConfigTopicConsumer,ValidationDataQueueConsumer{
+public abstract class ProcessingBase extends Task  implements ValidationDataQueueConsumer,ConfigTopicConsumer{
 		
 	protected DistributedEVL workflow;
 	
@@ -39,60 +39,18 @@ public abstract class ProcessingBase extends Task  implements ConfigTopicConsume
 	
 	boolean hasSentToValidationOutput = false;
 	
-	@Override
-	public final void consumeConfigTopicWithNotifications(Config config) {
-		
-		try {
-			workflow.getProcessings().getSemaphore().acquire();
-		} catch (Exception e) {
-			workflow.reportInternalException(e);
-		}
-				
-		hasSentToValidationOutput = false;
-				
-		Runnable consumer = () -> {		
-			try {
-				workflow.setTaskInProgess(this);
-
-				consumeConfigTopic(config);
-
-				ValidationResult conf = new ValidationResult();
-				conf.setCorrelationId(config.getId());
-				conf.setIsTransactionSuccessMessage(true);
-				conf.setTotalOutputs((hasSentToValidationOutput ? 1 : 0));
-				if (hasSentToValidationOutput) {
-					sendToValidationOutput(conf);
-				}
-		
-
-
-			} catch (Exception ex) {
-				try {
-					config.setFailures(config.getFailures()+1);
-					workflow.getFailedJobsQueue().send(new FailedJob(config, ex, workflow.getName(), "Processing"));
-				} catch (Exception e) {
-					workflow.reportInternalException(e);
-				}
-			} finally {
-				try {
-					workflow.getProcessings().getSemaphore().release();
-					workflow.setTaskWaiting(this);
-				} catch (Exception e) {
-					workflow.reportInternalException(e);
-				}
-			}
-		
-		};
-
-		workflow.getProcessings().getExecutor().submit(consumer);
-	}
 	
-	public abstract void consumeConfigTopic(Config config) throws Exception;
 	
-
+	
 	@Override
 	public final void consumeValidationDataQueueWithNotifications(ValidationData validationData) {
 		
+		while(!hasProcessedConfigTopic)
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			workflow.reportInternalException(e);
+		}
 		try {
 			workflow.getProcessings().getSemaphore().acquire();
 		} catch (Exception e) {
@@ -139,6 +97,38 @@ public abstract class ProcessingBase extends Task  implements ConfigTopicConsume
 	}
 	
 	public abstract void consumeValidationDataQueue(ValidationData validationData) throws Exception;
+	
+
+	
+	boolean hasProcessedConfigTopic = false;
+	
+	
+	@Override
+	public final void consumeConfigTopicWithNotifications(Config config) {
+		
+			try {
+				workflow.setTaskInProgess(this);
+
+				consumeConfigTopic(config);
+
+			} catch (Exception ex) {
+				try {
+					config.setFailures(config.getFailures()+1);
+					workflow.getFailedJobsQueue().send(new FailedJob(config, ex, workflow.getName(), "Processing"));
+				} catch (Exception e) {
+					workflow.reportInternalException(e);
+				}
+			} finally {
+				try {
+					hasProcessedConfigTopic = true;
+					workflow.setTaskWaiting(this);
+				} catch (Exception e) {
+					workflow.reportInternalException(e);
+				}
+			}
+	}
+	
+	public abstract void consumeConfigTopic(Config config) throws Exception;
 	
 
 	

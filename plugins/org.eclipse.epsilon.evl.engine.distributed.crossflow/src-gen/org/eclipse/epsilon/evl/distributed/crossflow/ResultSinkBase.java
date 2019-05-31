@@ -22,6 +22,9 @@ public abstract class ResultSinkBase extends Task  implements ValidationOutputCo
 	}
 	
 	
+	
+	
+	
 	@Override
 	public void consumeValidationOutputWithNotifications(ValidationResult validationResult) {
 		

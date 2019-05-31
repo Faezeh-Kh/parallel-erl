@@ -1,16 +1,12 @@
 <?nsuri org.eclipse.scava.crossflow?>
 <_>
-	<workflow name="DistributedEVL" package="org.eclipse.epsilon.evl.distributed.crossflow">
-
-		<source name="ConfigurationSource" out="ConfigTopic"/>
+	<workflow name="DistributedEVL">
 		
-		<topic name="ConfigTopic" type="Config"/>
-		
-		<task masterOnly="true" multipleOutputs="true" name="JobDistributor" in="ConfigTopic" out="ValidationDataQueue"/>
+		<task configurations="Config" masterOnly="true" multipleOutputs="true" name="JobDistributor" out="ValidationDataQueue"/>
 		
 		<queue name="ValidationDataQueue" type="ValidationData"/>
 		
-		<task name="Processing" in="ConfigTopic, ValidationDataQueue" out="ValidationOutput" multipleOutputs="true"/>
+		<task name="Processing" configurations="Config" in="ValidationDataQueue" out="ValidationOutput" multipleOutputs="true"/>
 		
 		<queue name="ValidationOutput" type="ValidationResult"/> 
 		
@@ -25,9 +21,11 @@
 		</type>
 		
 		<type name="ValidationResult">
-			<field name="atoms" type="java.util.Collection&lt;org.eclipse.epsilon.evl.distributed.data.SerializableEvlResultAtom&gt;"/>
-		</type>	
-		
+			<field isMany="true" name="atoms" type="org.eclipse.epsilon.evl.distributed.execute.data.SerializableEvlResultAtom"/>
+		</type>
+
+	<language name="Java" package="org.eclipse.epsilon.evl.distributed.crossflow"/>
+
 	</workflow> 
 	
 </_>

@@ -4,7 +4,7 @@ import org.eclipse.scava.crossflow.runtime.FailedJob;
 import org.eclipse.scava.crossflow.runtime.Task;
 import org.eclipse.scava.crossflow.runtime.Workflow;
 
-public abstract class ConfigurationSourceBase extends Task {
+public abstract class ConfigConfigSourceBase extends Task {
 		
 	protected DistributedEVL workflow;
 	
@@ -18,7 +18,7 @@ public abstract class ConfigurationSourceBase extends Task {
 	
 	
 	public String getId(){
-		return "ConfigurationSource:"+workflow.getName();
+		return "ConfigConfigSource:"+workflow.getName();
 	}
 	
 	protected ConfigTopic configTopic;

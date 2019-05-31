@@ -25,14 +25,11 @@ public class EvlModuleDistributedMasterCrossflow extends EvlModuleDistributedMas
 			DistributedEVL crossflow = new DistributedEVL(Mode.MASTER_BARE);
 			crossflow.setInstanceId("DistributedEVL");
 			//
-			crossflow.getConfigurationSource().masterModule = this;
+			crossflow.getConfigConfigSource().masterModule = this;
 			//
-			crossflow.run();
+			crossflow.run(5000L);
 			
-			// TODO proper condition
-			while (!crossflow.hasTerminated()) {
-				Thread.sleep(1000);
-			}
+			crossflow.awaitTermination();
 
 			//
 			crossflow.getResultSink();

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.io.Serializable;
 
-public class Config extends Job  {
+public class Config extends Job {
 	
 	public Config() {}
 	
@@ -31,7 +31,7 @@ public class Config extends Job  {
 	}
 	
 	
-	public Object[] toObjectArray(){
+	public Object[] toObjectArray() {
 		Object[] ret = new Object[1];
 	 	ret[0] = getData();
 		return ret;

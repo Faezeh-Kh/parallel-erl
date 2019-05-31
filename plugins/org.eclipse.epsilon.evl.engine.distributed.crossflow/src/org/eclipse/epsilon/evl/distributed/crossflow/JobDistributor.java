@@ -9,7 +9,6 @@
 **********************************************************************/
 package org.eclipse.epsilon.evl.distributed.crossflow;
 
-import java.util.List;
 import org.eclipse.epsilon.evl.distributed.EvlModuleDistributedMaster;
 import org.eclipse.epsilon.evl.distributed.execute.data.DistributedEvlBatch;
 
@@ -17,11 +16,10 @@ public class JobDistributor extends JobDistributorBase {
 	
 	@Override
 	public void consumeConfigTopic(Config config) throws Exception {
-		final EvlModuleDistributedMaster module = workflow.getConfigurationSource().masterModule;
-		final int batchSize = 100;
-		final List<DistributedEvlBatch> batches = module.getBatches(batchSize);
 		
-		for (DistributedEvlBatch batch : batches.subList(0, batchSize-1)) {
+		final EvlModuleDistributedMaster module = workflow.getConfigConfigSource().masterModule;
+		
+		for (DistributedEvlBatch batch : module.getBatches(0.000975d)) {
 			sendToValidationDataQueue(new ValidationData(batch));
 		}
 	}
