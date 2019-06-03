@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:cf="org.eclipse.scava.crossflow" xmlns:notation="http://www.eclipse.org/gmf/runtime/1.0.2/notation">
-  <cf:Workflow xmi:id="_x06ccIPDEemVDMQdDG1muQ"/>
-  <notation:Diagram xmi:id="_x20g8IPDEemVDMQdDG1muQ" type="Crossflow" element="_x06ccIPDEemVDMQdDG1muQ" name="distributedEVL.crossflow_diagram" measurementUnit="Pixel">
-    <styles xmi:type="notation:DiagramStyle" xmi:id="_x20g8YPDEemVDMQdDG1muQ"/>
-  </notation:Diagram>
-</xmi:XMI>
