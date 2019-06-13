@@ -330,10 +330,8 @@ if isGenerate:
                         elif isOCL:
                             command += '"'+scriptPath+'" "'+modelPath+'" "'+ metamodelPath+'"'
                         else:
-                            command += '"'+scriptPath+'" -models "emf.'
-                            if isDistributed:
-                                command += 'Distributable'
-                            command += 'EmfModel#cached=true,concurrent=true'+ \
+                            command += '"'+scriptPath+'" -models "'+ \
+                            'emf.EmfModel#cached=true,concurrent=true'+ \
                             ',fileBasedMetamodelUri=file:///'+metamodelPath+ \
                             ',modelUri=file:///'+modelPath+'"'
                         command += ' -profile'
@@ -473,7 +471,7 @@ else:
                 raw = inFile.read()
             
             execStats = compute_stats('execute', re, raw)
-            modelStats = compute_stats('Parsing model', re, raw)
+            modelStats = compute_stats('P.* model', re, raw)
             row.extend(execStats[0])
             row.extend(execStats[1])
             row.extend(modelStats[0])
