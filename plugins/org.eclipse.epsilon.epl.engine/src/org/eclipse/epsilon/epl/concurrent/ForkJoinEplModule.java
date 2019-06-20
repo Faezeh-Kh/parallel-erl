@@ -27,25 +27,13 @@ import org.eclipse.epsilon.erl.execute.context.concurrent.IErlContextParallel;
 public class ForkJoinEplModule extends AbstractEplModule {
 
 	public ForkJoinEplModule() {
-		this.context = new EplContextParallel();
+		this(0);
 	}
 
 	public ForkJoinEplModule(int parallelism) {
 		this.context = new EplContextParallel(parallelism);
 	}
-	
-	@Override
-	protected void prepareExecution() throws EolRuntimeException {
-		super.prepareExecution();
-		getContext().goParallel();
-	}
-	
-	@Override
-	protected void postExecution() throws EolRuntimeException {
-		getContext().endParallel();
-		super.postExecution();
-	}
-	
+
 	@Override
 	public IErlContextParallel getContext() {
 		return (IErlContextParallel) context;

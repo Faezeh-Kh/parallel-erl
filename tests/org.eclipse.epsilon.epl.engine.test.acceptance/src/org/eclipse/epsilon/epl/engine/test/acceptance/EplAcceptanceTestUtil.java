@@ -13,7 +13,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 import static org.eclipse.epsilon.eol.engine.test.acceptance.util.EolAcceptanceTestUtil.*;
-import static org.eclipse.epsilon.test.util.EpsilonTestUtil.*;
 import org.eclipse.epsilon.common.util.CollectionUtil;
 import org.eclipse.epsilon.eol.engine.test.acceptance.util.EolAcceptanceTestUtil;
 import org.eclipse.epsilon.eol.launch.IEolRunConfiguration;

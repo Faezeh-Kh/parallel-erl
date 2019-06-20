@@ -43,7 +43,9 @@ public class PatternMatch {
 	
 	@Override
 	public String toString() {
-		return "Pattern '"+pattern+"':\r\n\t"+
-		roleBindings.entrySet().stream().map(Object::toString).collect(Collectors.joining("\r\n"));
+		return "Pattern '"+pattern+"':"+System.lineSeparator()+"\t"+
+			roleBindings.entrySet().stream()
+				.map(Object::toString)
+				.collect(Collectors.joining(System.lineSeparator()));
 	}
 }

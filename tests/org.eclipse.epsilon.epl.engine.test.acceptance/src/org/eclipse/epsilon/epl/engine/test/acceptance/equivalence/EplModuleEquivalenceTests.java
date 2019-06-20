@@ -29,8 +29,7 @@ public class EplModuleEquivalenceTests extends EolEquivalenceTests<EplRunConfigu
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		expectedConfigs = getScenarios(allInputs, true, Collections.singleton(DynamicEplModule::new));
-		setUpEquivalenceTest();
+		setUpEquivalenceTest(getScenarios(allInputs, true, Collections.singleton(DynamicEplModule::new)));
 	}
 	
 	/**
