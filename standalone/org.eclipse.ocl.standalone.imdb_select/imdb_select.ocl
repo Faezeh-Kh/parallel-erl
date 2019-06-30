@@ -1,0 +1,14 @@
+import imdb : 'http://movies/1.0'
+
+package movies
+
+context Person
+	def: coactors : Set(Person) = self.movies->collect(persons)->flatten()->asSet()
+	
+	def: areCouple(p : Person) : Boolean = self.movies->excludingAll(p.movies)->size() <= (self.movies->size() - 3)
+	
+	def: areCoupleCoactors(co : Person) : Boolean = self.name < co.name and co.movies->size() >= 3 and self.areCouple(co)
+	
+	def: QUERY() : Integer = Person.allInstances()->select(a | a.coactors->exists(areCoupleCoactors(a)))->size()
+
+endpackage
