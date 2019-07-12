@@ -221,7 +221,9 @@ javaValidationScripts = [
 
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
-    'EvlModuleParallelElements'
+    'EvlModuleParallelElements',
+    'EvlModuleParallelContextAtoms',
+    'EvlModuleParallelConstraintAtoms'
 ]
 evlDistributedModules = [
     'EvlModuleJmsMasterBatch',
@@ -238,9 +240,12 @@ evlScenarios = [
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
+    modulePkg = '-module evl.concurrent.'
+    if evlModule.endswith('Atoms'):
+        modulePkg += 'atomic.'
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append([evlModule + threadStr, '-module evl.concurrent.'+evlModule+' int='+threadStr])
+        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' int='+threadStr])
 programs.append(['EVL', epsilonJar, evlScenarios, evlModulesAndArgs, ''])
 
 for evlModule in evlDistributedModules:
@@ -263,12 +268,13 @@ validationModulesDefault = evlModulesDefault + oclModules
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
-imdbParallelJavaFOOPScripts = ['imdb_parallelFilter', 'imdb_parallelAtLeastN']
 imdbParallelFOOPScripts = ['imdb_parallelSelect', 'imdb_parallelCount', 'imdb_parallelAtLeastN', 'imdb_parallelFilter']
 eolModule = 'EolModule'
-javaModule = 'JavaQuery'
+javaJar = 'JavaQuery'
+javaModule = javaJar
+javaModuleParallel = javaModule+'Parallel'
 standardJavaModulesAndArgs = [[javaModule]]
-parallelJavaModulesAndArgs = [[javaModule, '-parallel']]
+parallelJavaModulesAndArgs = [[javaModuleParallel, '-parallel']]
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
@@ -279,9 +285,8 @@ for numThread in threads:
 programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
 programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, javaModule, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
-for p in imdbParallelJavaFOOPScripts:
-    programs.append([javaModule, javaModule, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
+    programs.append([javaModule, javaJar, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
+    programs.append([javaModuleParallel, javaJar, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', 'OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
     programs.append(['OCL_'+p, 'OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
