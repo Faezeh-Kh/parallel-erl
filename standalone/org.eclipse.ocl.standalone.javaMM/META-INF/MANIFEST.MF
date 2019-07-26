@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
-Bundle-SymbolicName: org.eclipse.ocl.standalone.javaMM;singleton:=true
+Bundle-SymbolicName: uk.ac.york.ocl.standalone.javaMM;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: .
 Bundle-Vendor: %providerName
@@ -11,7 +11,7 @@ Export-Package: javaMM,
  javaMM.impl,
  javaMM.util
 Bundle-ActivationPolicy: lazy
-Require-Bundle: org.eclipse.ocl.standalone,
+Require-Bundle: uk.ac.york.ocl.standalone,
  org.eclipse.core.runtime,
  org.eclipse.emf.ecore;visibility:=reexport,
  org.eclipse.ocl.pivot;visibility:=reexport,

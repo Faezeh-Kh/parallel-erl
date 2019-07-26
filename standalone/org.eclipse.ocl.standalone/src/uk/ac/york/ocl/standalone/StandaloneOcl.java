@@ -7,7 +7,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
 **********************************************************************/
-package org.eclipse.ocl.standalone;
+package uk.ac.york.ocl.standalone;
 
 import java.util.*;
 import java.util.function.Function;

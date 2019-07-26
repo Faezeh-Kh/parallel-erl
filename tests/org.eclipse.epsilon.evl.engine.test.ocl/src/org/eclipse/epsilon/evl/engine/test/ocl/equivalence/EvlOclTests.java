@@ -17,7 +17,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.epsilon.evl.launch.EvlRunConfiguration;
-import org.eclipse.ocl.standalone.*;
 import org.junit.BeforeClass;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
@@ -25,6 +24,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.MethodSorters;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import uk.ac.york.ocl.standalone.*;
 
 /**
  * Evaluates the correctness of EvlModule implementations against

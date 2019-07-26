@@ -8,7 +8,7 @@ Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.epsilon.evl.engine.test.acceptance,
  org.eclipse.epsilon.eol.engine.test.acceptance,
  org.eclipse.epsilon.test.dependencies,
- org.eclipse.ocl.standalone,
+ uk.ac.york.ocl.standalone,
  org.eclipse.epsilon.evl.engine
 Import-Package: org.junit
 Automatic-Module-Name: org.eclipse.epsilon.evl.engine.test.ocl

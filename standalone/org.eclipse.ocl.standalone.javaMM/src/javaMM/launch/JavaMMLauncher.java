@@ -9,9 +9,9 @@
 **********************************************************************/
 package javaMM.launch;
 
-import org.eclipse.ocl.standalone.*;
 import javaMM.JavaMMPackage;
 import javaMM.util.JavaMMValidator;
+import uk.ac.york.ocl.standalone.*;
 
 /**
  * Entry point for evaluating compiled version of java_simple.ocl

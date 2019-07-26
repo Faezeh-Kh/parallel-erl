@@ -9,9 +9,9 @@
 **********************************************************************/
 package movies.launch;
 
-import org.eclipse.ocl.standalone.*;
 import movies.MoviesPackage;
 import movies.Person;
+import uk.ac.york.ocl.standalone.*;
 
 /**
  * Entry point for evaluating compiled version of imdb_select.ocl

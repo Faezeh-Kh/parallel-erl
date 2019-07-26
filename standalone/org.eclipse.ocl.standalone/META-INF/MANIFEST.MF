@@ -1,12 +1,12 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Standalone OCL
-Bundle-SymbolicName: org.eclipse.ocl.standalone
+Bundle-SymbolicName: uk.ac.york.ocl.standalone
 Automatic-Module-Name: org.eclipse.ocl.standalone
 Bundle-Version: 1.0.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
-Export-Package: org.eclipse.ocl.standalone
+Export-Package: uk.ac.york.ocl.standalone
 Require-Bundle: org.eclipse.epsilon.common,
  org.eclipse.epsilon.common.cli;visibility:=reexport,
  org.eclipse.emf.edit.ui;visibility:=reexport,
