@@ -201,6 +201,7 @@ def normalize_foop(script):
 javaMM = 'java.ecore'
 imdbMM = 'movies.ecore'
 dblpMM = 'dblp.ecore'
+simulinkMM = 'simulink.ecore'
 eclipsePrefix = 'eclipseModel-'
 imdbPrefix = 'imdb-'
 imdbRanges = ['all', '0.1', '0.2'] + [str(round(i/10, 1)) for i in range(5, 35, 5)]
@@ -217,6 +218,10 @@ javaValidationScripts = [
     'java_1Constraint',
     'java_equals'
     #'java_noguard'
+]
+
+simulinkModels = [
+    'darkd0', 'darksc2', 'darkd3', 'darkd4', 'darkd6', 'darktriad3'
 ]
 
 evlParallelModules = [
@@ -236,7 +241,9 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
-    (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi'])
+    (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi']),
+    (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
+    (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
@@ -331,15 +338,18 @@ if isGenerate:
                             outputPath = stdDir+fileName
 
                         if selfContained:
-                            command += '"'+modelPath+'"'
+                            command += '"'+modelPath
                         elif isOCL:
-                            command += '"'+scriptPath+'" "'+modelPath+'" "'+ metamodelPath+'"'
+                            command += '"'+scriptPath+'" "'+modelPath+'" "'+ metamodelPath
                         else:
-                            command += '"'+scriptPath+'" -models "'+ \
-                            'emf.EmfModel#cached=true,concurrent=true'+ \
-                            ',fileBasedMetamodelUri=file:///'+metamodelPath+ \
-                            ',modelUri=file:///'+modelPath+'"'
-                        command += ' -profile'
+                            command += '"'+scriptPath+'" -models "'
+                            if modelPath.endswith('.slx'):
+                                command += 'simulink.model.SimulinkModel#cached=true,file='+modelPath
+                            else:
+                                command += 'emf.EmfModel#cached=true,concurrent=true'+ \
+                                    ',fileBasedMetamodelUri=file:///'+metamodelPath+ \
+                                    ',modelUri=file:///'+modelPath
+                        command += '" -profile'
                         if additionalArgs:
                             command += ' '+additionalArgs
                         if (len(margs) > 1 and margs[1]):
