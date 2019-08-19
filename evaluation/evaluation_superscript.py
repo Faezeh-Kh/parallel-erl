@@ -256,7 +256,7 @@ for evlModule in evlParallelModules:
         modulePkg += 'atomic.'
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' int='+threadStr])
+        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' -parallelism '+threadStr])
 programs.append(['EVL', epsilonJar, evlScenarios, evlModulesAndArgs, ''])
 
 for evlModule in evlDistributedModules:
@@ -267,7 +267,8 @@ for evlModule in evlDistributedModules:
             str(1 / (1 + w))
         if evlModule.endswith('Batch'):
             evlDistArgs += ' -bf '+batchFactor
-        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios, [[evlModule + ws]], evlDistArgs])
+        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios[:3], [[evlModule + ws]], evlDistArgs])
+        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios[3:], [[evlModule + ws]], evlDistArgs + ' -parallelism 1'])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
@@ -291,7 +292,7 @@ eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThrea
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' int='+threadStr])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' -parallelism '+threadStr])
 
 programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
 programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
