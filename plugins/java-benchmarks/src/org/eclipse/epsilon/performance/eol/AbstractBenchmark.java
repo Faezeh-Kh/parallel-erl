@@ -38,6 +38,11 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 
 		boolean parallel = false;
 		
+		@Override
+		public boolean isParallel() {
+			return parallel;
+		}
+		
 		public Builder<C, B> parallel() {
 			return parallel(true);
 		}
@@ -59,6 +64,20 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 				| InvocationTargetException | SecurityException | ClassNotFoundException ex) {
 				throw new IllegalStateException(ex);
 			}
+		}
+
+		@Override
+		protected IEolModule createModule() {
+			return new EolModule() {
+				@Override
+				public boolean parse(File file) {
+					return true;
+				}
+				@Override
+				public Object execute() throws EolRuntimeException {
+					throw new UnsupportedOperationException();
+				}
+			};
 		}
 	}
 	
@@ -86,20 +105,6 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 	protected final IModel model;
 	protected final IPropertyGetter propertyGetter;
 	protected final boolean parallel;
-
-	@Override
-	protected IEolModule getDefaultModule() {
-		return new EolModule() {
-			@Override
-			public boolean parse(File file) {
-				return true;
-			}
-			@Override
-			public Object execute() throws EolRuntimeException {
-				throw new UnsupportedOperationException();
-			}
-		};
-	}
 	
 	@Override
 	protected void postExecute() throws Exception {

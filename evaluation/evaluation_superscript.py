@@ -16,6 +16,7 @@ parser.add_argument('--genDir', help='The directory to place all generated files
 parser.add_argument('--resultsDir', help='The directory to place analysis results.')
 parser.add_argument('--jmc', help='Enable application profiling using Java Flight Recorder.', action='store_true')
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
+parser.add_argument('--java8', help='Compatibility with Java 8 JVM', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
 parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
 parser.add_argument('--g1gc', help='Use the default G1 garbage collector.', action='store_true')
@@ -56,6 +57,7 @@ if not isGenerate:
     resultsFileName += resultsExt if not resultsFileName.endswith(resultsExt) else ''
     texFileName = defaultPath(args.texFile, resultsDir+'results.tex')[:-1] if args.texFile else None
 
+java8 = args.java8
 sge = args.sge
 g1gc = args.g1gc
 jmc = args.jmc
@@ -86,7 +88,9 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_rt=7:59:59
 '''
 jvmFlags = 'java -XX:MaxRAM'
-jvmFlags += 'Fraction=1 -Xms800m' if sge else 'Percentage=90 -XX:InitialRAMPercentage=25'
+jvmFlags += 'Fraction=1 -Xms800m' if sge or java8 else 'Percentage=90 -XX:InitialRAMPercentage=25'
+if java8 and g1gc:
+    jvmFlags += ' -XX:+UseG1GC'
 jvmFlags += ' -XX:'
 jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
 if numa:
