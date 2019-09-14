@@ -87,7 +87,7 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_vmem='''+str(60/logicalCores)+'''G
 #$ -l h_rt=7:59:59
 '''
-jvmFlags = 'java -XX:MaxRAM'
+jvmFlags = 'java -ea -XX:MaxRAM'
 jvmFlags += 'Fraction=1 -Xms800m' if sge or java8 else 'Percentage=90 -XX:InitialRAMPercentage=25'
 if java8 and g1gc:
     jvmFlags += ' -XX:+UseG1GC'
@@ -98,7 +98,6 @@ if numa:
 if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
-lastJavaCmd = ' -Dcom.sun.management.jmxremote -jar "'
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
 subCmdSuffix = nL
 epsilonJar = 'epsilon-engine'
@@ -257,8 +256,10 @@ for evlModule in evlParallelModules:
     for numThread in threads:
         threadStr = str(numThread)
         evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' -parallelism '+threadStr])
-programs.append(['EVL', epsilonJar, evlScenarios, evlModulesAndArgs, ''])
+programs.append(['EVL', epsilonJar, '', evlScenarios, evlModulesAndArgs, ''])
 
+evlJmsJar = 'EVL-JMS'
+evlJmsMaster = 'org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfigParser'
 for evlModule in evlDistributedModules:
     for w in range(0, int(workers)):
         ws = str(w)
@@ -266,13 +267,13 @@ for evlModule in evlDistributedModules:
             ' -workers '+ws+ ' -mp '+ \
             str(1 / (1 + w))
         if evlModule.endswith('Batch'):
-            evlDistArgs += ' -bf '+batchFactor
-        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios[:3], [[evlModule + ws]], evlDistArgs])
-        programs.append(['EVL-JMS', 'EVL-JMS_Master', evlScenarios[3:], [[evlModule + ws]], evlDistArgs + ' -parallelism 1'])
+            evlDistArgs += ' -batches '+batchFactor
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + ws]], evlDistArgs])
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule + ws]], evlDistArgs + ' -parallelism 1'])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
-programs.append(['OCL', 'OCL', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
-programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]], ''])
+programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
+programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], '', [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]], ''])
 
 validationModulesDefault = evlModulesDefault + oclModules
 
@@ -292,25 +293,25 @@ eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThrea
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-module eol.concurrent.'+eolModuleParallel+' -parallelism '+threadStr])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, ' -parallelism '+threadStr])
 
-programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
-programs.append(['EOL', epsilonJar, [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbParallelFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, javaJar, [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
-    programs.append([javaModuleParallel, javaJar, [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
+    programs.append([javaModule, javaJar, '', [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
+    programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
 for p in imdbOCLFOOPScripts:
-    programs.append(['OCL', 'OCL', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
-    programs.append(['OCL_'+p, 'OCL_'+p, [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
+    programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
+    programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
 
 # Generate scenarios
 if isGenerate:
     allSubs = []
-    for program, programJar, scenarios, modulesAndArgs, additionalArgs in programs:
+    for program, programJar, classpath, scenarios, modulesAndArgs, additionalArgs in programs:
         selfContained = '_' in program
         isOCL = program.startswith('OCL')
         isJava = program.startswith('Java')
-        isDistributed = program.startswith('EVL-JMS')
+        isJms = program.startswith(evlJmsJar)
         programName = program if not selfContained else program.partition('_')[0]
         programSubset = []
         progFilePre = programName+'_run_'
@@ -328,20 +329,24 @@ if isGenerate:
                         command += jvmFlags
                         if jmc:
                             command += stdDir + fileName + '.jfr'
-                        command += lastJavaCmd + binDir + programJar+'.jar" '
                         if isJava and len(margs) > 1 and 'parallel' in margs[1]:
-                                script = normalize_foop(script)
-                        if isDistributed:
+                            script = normalize_foop(script)
+                        if isJms:
+                            basePathSub = '$BASEPATH$/'
                             scriptPath = 'scripts/'+script
-                            metamodelPath = 'metamodels/'+metamodel
-                            modelPath = 'models/'+model
                             outputPath = 'output/'+fileName
+                            metamodelPath = basePathSub+'metamodels/'+metamodel
+                            modelPath = basePathSub+'models/'+model
                         else:
                             scriptPath = scriptDir+script
                             metamodelPath = metamodelDir+metamodel
                             modelPath = modelDir+model
                             outputPath = stdDir+fileName
-
+                        command += ' -Dcom.sun.management.jmxremote -'
+                        command += 'cp' if classpath else 'jar'
+                        command += ' "' + binDir + programJar+'.jar" '
+                        if classpath:
+                            command += classpath + ' '
                         if selfContained:
                             command += '"'+modelPath
                         elif isOCL:
@@ -352,8 +357,8 @@ if isGenerate:
                                 command += 'simulink.model.SimulinkModel#cached=true,file='+modelPath
                             else:
                                 command += 'emf.EmfModel#cached=true,concurrent=true'+ \
-                                    ',fileBasedMetamodelUri=file:///'+metamodelPath+ \
-                                    ',modelUri=file:///'+modelPath
+                                    ',fileBasedMetamodelUri=file://'+metamodelPath+ \
+                                    ',modelUri=file://'+modelPath
                         command += '" -profile'
                         if additionalArgs:
                             command += ' '+additionalArgs
