@@ -88,11 +88,11 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_rt=7:59:59
 '''
 jvmFlags = 'java -ea -XX:MaxRAM'
-jvmFlags += 'Fraction=1 -Xms800m' if sge or java8 else 'Percentage=90 -XX:InitialRAMPercentage=25'
-if java8 and g1gc:
-    jvmFlags += ' -XX:+UseG1GC'
+jvmFlags += 'Fraction=1' if sge or java8 else 'Percentage=92'
 jvmFlags += ' -XX:'
-jvmFlags += 'MaxGCPauseMillis=730' if g1gc else '+UseParallelOldGC'
+jvmFlags += 'MinRAMFraction=4' if sge or java8 else 'InitialRAMPercentage=25'
+jvmFlags += ' -XX:+Use'
+jvmFlags += 'G1GC -XX:MaxGCPauseMillis=730' if g1gc else 'ParallelOldGC'
 if numa:
     jvmFlags += ' -XX:+UseNUMA'
 if jmc:
