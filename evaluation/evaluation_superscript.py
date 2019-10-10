@@ -19,7 +19,7 @@ parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--java8', help='Compatibility with Java 8 JVM', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
 parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
-parser.add_argument('--g1gc', help='Use the default G1 garbage collector.', action='store_true')
+parser.add_argument('--vmargs', help='Additional arguments to the JVM.')
 parser.add_argument('--broker', help='Broker URL to use for distributed modules.')
 parser.add_argument('--workers', help='Expected number of workers (parallelism) for distributed modules.')
 parser.add_argument('--batch', help='Batch factor for batch-based distributed modules.')
@@ -59,10 +59,8 @@ if not isGenerate:
 
 java8 = args.java8
 sge = args.sge
-g1gc = args.g1gc
 jmc = args.jmc
 smt = args.smt
-numa = args.numa
 broker = args.broker if args.broker else 'tcp://localhost:61616'
 workers = args.workers if args.workers else 0
 distributedArgs = '-basePath "'+rootDir+'" -host '+broker+' -session 746'
@@ -89,12 +87,10 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 '''
 jvmFlags = 'java -ea -XX:MaxRAM'
 jvmFlags += 'Fraction=1' if sge or java8 else 'Percentage=92'
-jvmFlags += ' -XX:'
-jvmFlags += 'MinRAMFraction=4' if sge or java8 else 'InitialRAMPercentage=25'
-jvmFlags += ' -XX:+Use'
-jvmFlags += 'G1GC -XX:MaxGCPauseMillis=730' if g1gc else 'ParallelOldGC'
-if numa:
-    jvmFlags += ' -XX:+UseNUMA'
+jvmFlags += ' -XX:InitialRAM'
+jvmFlags += 'Fraction=4' if sge or java8 else 'Percentage=25'
+if args.vmargs:
+    jvmFlags += ' '+args.vmargs
 if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
@@ -220,7 +216,6 @@ javaValidationScripts = [
     'java_manyContext1Constraint',
     'java_1Constraint',
     'java_equals'
-    #'java_noguard'
 ]
 
 simulinkModels = [
@@ -228,10 +223,10 @@ simulinkModels = [
 ]
 
 evlParallelModules = [
-    'EvlModuleParallelAnnotation',
-    'EvlModuleParallelElements',
+    'EvlModuleParallel',
     'EvlModuleParallelContextAtoms',
-    'EvlModuleParallelConstraintAtoms'
+    'EvlModuleParallelConstraintAtoms',
+    'EvlModuleParallelElements'
 ]
 evlDistributedModules = [
     'EvlModuleJmsMasterBatch',
@@ -354,7 +349,8 @@ if isGenerate:
                         else:
                             command += '"'+scriptPath+'" -models "'
                             if modelPath.endswith('.slx'):
-                                command += 'simulink.model.SimulinkModel#cached=true,file='+modelPath
+                                command += 'simulink.model.SimulinkModel#'+ \
+                                    'cached=true,concurrent=false,file='+modelPath
                             else:
                                 command += 'emf.EmfModel#cached=true,concurrent=true'+ \
                                     ',fileBasedMetamodelUri=file://'+metamodelPath+ \
