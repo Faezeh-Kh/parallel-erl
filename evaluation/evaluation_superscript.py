@@ -223,7 +223,7 @@ simulinkModels = [
 ]
 
 evlParallelModules = [
-    'EvlModuleParallel',
+    'EvlModuleParallelAnnotation',
     'EvlModuleParallelContextAtoms',
     'EvlModuleParallelConstraintAtoms',
     'EvlModuleParallelElements'
