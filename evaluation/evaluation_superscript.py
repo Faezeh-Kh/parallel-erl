@@ -89,7 +89,7 @@ jvmFlags += 'Fraction=1' if sge or java8 else 'Percentage=92'
 jvmFlags += ' -XX:InitialRAM'
 jvmFlags += 'Fraction=4' if sge or java8 else 'Percentage=25'
 if args.vmargs:
-    jvmFlags += ' '+args.vmargs
+    jvmFlags += ' '+args.vmargs.replace('"', '').replace("'", '')
 if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
