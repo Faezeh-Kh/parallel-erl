@@ -18,7 +18,6 @@ parser.add_argument('--jmc', help='Enable application profiling using Java Fligh
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--java8', help='Compatibility with Java 8 JVM', action='store_true')
 parser.add_argument('--smt', help='Whether the system uses Hyper-Threading technology.', action='store_true')
-parser.add_argument('--numa', help='Enable Non-uniform memory access option.', action='store_true')
 parser.add_argument('--vmargs', help='Additional arguments to the JVM.')
 parser.add_argument('--broker', help='Broker URL to use for distributed modules.')
 parser.add_argument('--workers', help='Expected number of workers (parallelism) for distributed modules.')
