@@ -14,6 +14,7 @@ parser.add_argument('--metamodelDir', help='The metamodels directory (absolute p
 parser.add_argument('--stdDir', help='The directory to send program output to (absolute path).')
 parser.add_argument('--genDir', help='The directory to place all generated files (absolute path).')
 parser.add_argument('--resultsDir', help='The directory to place analysis results.')
+parser.add_argument('--basePath', help='The basePath argument for distributed modules.')
 parser.add_argument('--jmc', help='Enable application profiling using Java Flight Recorder.', action='store_true')
 parser.add_argument('--sge', help='Output for YARCC.', action='store_true')
 parser.add_argument('--java8', help='Compatibility with Java 8 JVM', action='store_true')
@@ -60,9 +61,10 @@ java8 = args.java8
 sge = args.sge
 jmc = args.jmc
 smt = args.smt
+basePath = args.basePath if args.basePath else rootDir
 broker = args.broker if args.broker else 'tcp://localhost:61616'
 workers = args.workers if args.workers else 0
-distributedArgs = '-basePath "'+rootDir+'" -host '+broker+' -session 746'
+distributedArgs = '-basePath "'+basePath+'" -host '+broker+' -session 746'
 logicalCores = 24 if sge else os.cpu_count()
 batchFactor = args.batch if args.batch else str(logicalCores)
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
@@ -89,7 +91,10 @@ jvmFlags += 'Fraction=1' if sge or java8 else 'Percentage=92'
 jvmFlags += ' -XX:InitialRAM'
 jvmFlags += 'Fraction=4' if sge or java8 else 'Percentage=25'
 if args.vmargs:
-    jvmFlags += ' '+args.vmargs.replace('"', '').replace("'", '')
+    jvmFlags += ' '
+    if not args.vmargs.startswith('-'):
+        jvmFlags += '-'
+    jvmFlags += args.vmargs.replace('"', '').replace("'", '')
 if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
