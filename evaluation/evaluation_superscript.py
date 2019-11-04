@@ -244,7 +244,7 @@ evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
     (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi']),
-    (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
+    #(simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
