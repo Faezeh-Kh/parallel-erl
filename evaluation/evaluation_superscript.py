@@ -496,7 +496,7 @@ else:
                 raw = inFile.read()
             
             execStats = compute_stats('execute', re, raw)
-            modelStats = compute_stats('P.* model', re, raw)
+            modelStats = compute_stats('Loading model*', re, raw)
             row.extend(execStats[0])
             row.extend(execStats[1])
             row.extend(modelStats[0])
