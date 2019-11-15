@@ -512,7 +512,7 @@ else:
             for nestedRow in rows:
                 if (nestedRow[0] == relModule and (nestedRow[2] == relScript or nestedRow[2] == row[2]) and nestedRow[3] == row[3]):
                     speedup = round(nestedRow[4]/row[4], decimalPlaces) if nestedRow[4] and row[4] else None
-                    efficiency = round(speedup/row[1], decimalPlaces) if speedup else None
+                    efficiency = round(speedup/row[1], decimalPlaces) if speedup and row[1] else None
                     return (speedup, efficiency)
         return currentMetrics
     
