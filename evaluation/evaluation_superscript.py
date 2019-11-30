@@ -63,7 +63,7 @@ jmc = args.jmc
 smt = args.smt
 basePath = args.basePath if args.basePath else rootDir
 broker = args.broker if args.broker else 'tcp://localhost:61616'
-workers = args.workers if args.workers else 0
+maxWorkers = int(args.workers) if args.workers else 0
 distributedArgs = '-basePath "'+basePath+'" -host '+broker+' -session 746'
 logicalCores = 24 if sge else os.cpu_count()
 batchFactor = args.batch if args.batch else str(logicalCores)
@@ -132,7 +132,8 @@ if logicalCores >= 4:
             break
         elif not threadCounter in threads:
             threads.append(threadCounter)
-maxThreadsStr = str(round(threads[-1]/2) if smt else threads[-1])
+maxCores = round(threads[-1]/2) if smt else threads[-1]
+maxCoresStr = str(maxCores)
 programs = []
 
 def write_table(colHeadings, tabRows, tabCaption, tabNum = 0, longtable = False):
@@ -199,6 +200,9 @@ def normalize_foop(script):
         normalFOOP = normalFOOP[0:metamodelScriptIndex] + normalFOOP[metamodelScriptIndex].lower() + normalFOOP[metamodelScriptIndex+1:] if normalFOOP else script
         return normalFOOP
 
+def calculate_master_proportion(numWorkers):
+    return 1 / (1 + numWorkers)
+
 # (Meta)Models
 # Java models can be obtained from http://atenea.lcc.uma.es/index.php/Main_Page/Resources/LinTra#Java_Refactoring
 javaMM = 'java.ecore'
@@ -234,17 +238,18 @@ evlParallelModules = [
 ]
 evlDistributedModules = [
     'EvlModuleJmsMasterBatch',
+    'EvlModuleJmsMasterBatchLocal',
     'EvlModuleJmsMasterAtomic'
 ]
 evlModules = ['EvlModule'] + evlParallelModules + evlDistributedModules
-evlModulesDefault = evlModules[0:1] + [module + maxThreadsStr for module in evlParallelModules]
+evlModulesDefault = evlModules[0:1] + [module + maxCoresStr for module in evlParallelModules]
 evlParallelModulesAllThreads = [module + str(numThread) for module in evlParallelModules for numThread in threads]
 
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
     (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi']),
-    #(simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
+    (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
@@ -260,15 +265,29 @@ programs.append(['EVL', epsilonJar, '', evlScenarios, evlModulesAndArgs, ''])
 evlJmsJar = 'EVL-JMS'
 evlJmsMaster = 'org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfigParser'
 for evlModule in evlDistributedModules:
-    for w in range(0, int(workers)):
-        ws = str(w)
-        evlDistArgs = distributedArgs+ \
-            ' -workers '+ws+ ' -mp '+ \
-            str(1 / (1 + w))
-        if evlModule.endswith('Batch'):
-            evlDistArgs += ' -batches '+batchFactor
-        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + ws]], evlDistArgs])
-        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule + ws]], evlDistArgs + ' -parallelism 1'])
+    isLocal = 'Local' in evlModule
+    isBatch = 'Batch' in evlModule
+    if isLocal:
+        for parallelism in threads:
+            numWorker = int(threads[-1] / parallelism)
+            workerStr = str(numWorker)
+            threadStr = str(parallelism)
+            evlDistArgs = distributedArgs +\
+                ' -local -parallelism '+threadStr+' -workers '+workerStr +\
+                ' -masterProportion '+ str(calculate_master_proportion(numWorker))
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + workerStr]], evlDistArgs])
+    else:
+        for numWorker in range(0, maxWorkers):
+            workerStr = str(numWorker)
+            evlDistArgs = distributedArgs+ \
+                ' -workers '+workerStr+' -masterProportion '+ \
+                str(calculate_master_proportion(numWorker))
+            if isLocal:
+                evlDistArgs += ' -local'
+            if isBatch:
+                evlDistArgs += ' -batches '+batchFactor
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + workerStr]], evlDistArgs])
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule + workerStr]], evlDistArgs + ' -parallelism 1'])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
@@ -438,7 +457,7 @@ if isGenerate:
         [(module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault]+
-        [(module.replace(maxThreadsStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault]+
+        [(module.replace(maxCoresStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault]+
         [(module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]]+
         [(module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
         #[(module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
