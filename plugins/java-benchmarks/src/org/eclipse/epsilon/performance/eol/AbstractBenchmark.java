@@ -38,20 +38,6 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 
 		boolean parallel = false;
 		
-		@Override
-		public boolean isParallel() {
-			return parallel;
-		}
-		
-		public Builder<C, B> parallel() {
-			return parallel(true);
-		}
-		
-		public Builder<C, B> parallel(boolean p) {
-			this.parallel = p;
-			return this;
-		}
-		
 		@SuppressWarnings("unchecked")
 		@Override
 		public C build() {
