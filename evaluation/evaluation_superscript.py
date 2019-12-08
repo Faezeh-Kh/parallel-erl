@@ -246,7 +246,7 @@ evlDistributedModules = [
     'EvlModuleJmsMasterAtomic'
 ]
 evlModules = ['EvlModule'] + evlParallelModules + evlDistributedModules
-evlModulesDefault = evlModules[0:1] + [module + maxCoresStr for module in evlParallelModules]
+evlModulesDefault = evlModules[0:1] + [module + maxCoresStr for module in evlParallelModules] + [evlDistributedModules[1]+'1']
 evlParallelModulesAllThreads = [module + str(numThread) for module in evlParallelModules for numThread in threads]
 
 evlScenarios = [
@@ -302,7 +302,7 @@ validationModulesDefault = evlModulesDefault + oclModules
 # First-Order Operations (EOL, OCL, Java)
 imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
-imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN']
+imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN', 'imdb_count']
 eolModule = 'EolModule'
 javaJar = 'JavaQuery'
 javaModule = javaJar
@@ -311,6 +311,7 @@ standardJavaModulesAndArgs = [[javaModule]]
 parallelJavaModulesAndArgs = [[javaModuleParallel, '-parallel']]
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
+queryModulesDefault = [oclModules[0], eolModulesDefault[0], eolModulesDefault[-1]]
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
@@ -429,17 +430,17 @@ if isGenerate:
 
     write_all_operation_benchmark_scenarios()
 
-    write_benchmark_scenarios('select_imdb-2.5',
-        [(module, imdbFOOPScripts[0], 'imdb-2.5') for module in eolModulesAndArgs[1:]]+
+    write_benchmark_scenarios('select_'+imdbModels[7],
+        [(module, imdbFOOPScripts[0], imdbModels[7]) for module in eolModulesAndArgs[1:]]+
         [
-            (eolModulesAndArgs[0], imdbFOOPScripts[0], 'imdb-2.5'),
-            (eolModulesAndArgs[0], imdbFOOPScripts[1], 'imdb-2.5'),
-            (eolModulesAndArgs[-1], imdbFOOPScripts[1], 'imdb-2.5'),
+            (eolModulesAndArgs[0], imdbFOOPScripts[0], imdbModels[7]),
+            (eolModulesAndArgs[0], imdbFOOPScripts[1], imdbModels[7]),
+            (eolModulesAndArgs[-1], imdbFOOPScripts[1], imdbModels[7]),
         ]+
-        [(module, imdbOCLFOOPScripts[0], 'imdb-2.5') for module in oclModules]+
+        [(module, imdbOCLFOOPScripts[0], imdbModels[7]) for module in oclModules]+
         [
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], 'imdb-2.5'),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], 'imdb-2.5')
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModels[7]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModels[7])
         ]
     )
 
@@ -450,9 +451,23 @@ if isGenerate:
             (oclModules[0], imdbOCLFOOPScripts[0], model),
             (oclModules[1], imdbOCLFOOPScripts[0], model),
             (eolModulesDefault[0], imdbFOOPScripts[0], model),
-            (eolModulesDefault[-1], imdbFOOPScripts[0], model)
+            (eolModulesDefault[-1], imdbFOOPScripts[0], model),
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
+
+    write_benchmark_scenarios('atLeastN_'+imdbModels[3],
+        [(module, imdbFOOPScripts[2], imdbModels[3]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3])
+        ]
+    )
+
+    write_benchmark_scenarios('count_'+imdbModels[4],
+        [(module, imdbFOOPScripts[3], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4])
+        ]
+    )
 
     write_benchmark_scenarios('validation',
         [(module, 'dblp_isbn', 'dblp-all') for module in evlModulesDefault]+
@@ -460,12 +475,11 @@ if isGenerate:
         [(module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault]+
         [(module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault]+
-        [(module.replace(maxCoresStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault]+
-        [(module, 'java_findbugs', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]]+
-        [(module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
+        [(module.replace(maxCoresStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]]+
+        [(module, 'java_1Constraint', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]]+
+        #[(module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
         #[(module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
-        [(module, 'java_1Constraint', 'eclipseModel-all') for module in validationModulesDefault[:-1]]+
-        [(module, 'java_findbugs', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]]
+        [(module, 'java_findbugs', 'eclipseModel-all') for module in validationModulesDefault[:-1]]
     )
 
 # Analysis / post-processing results
