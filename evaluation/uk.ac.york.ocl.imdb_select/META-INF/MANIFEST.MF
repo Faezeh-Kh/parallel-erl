@@ -1,15 +1,15 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
-Bundle-SymbolicName: uk.ac.york.ocl.standalone.javaMM;singleton:=true
+Bundle-SymbolicName: uk.ac.york.ocl.imdb_select;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: .
 Bundle-Vendor: %providerName
 Bundle-Localization: plugin
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
-Export-Package: javaMM,
- javaMM.impl,
- javaMM.util
+Export-Package: movies,
+ movies.impl,
+ movies.util
 Bundle-ActivationPolicy: lazy
 Require-Bundle: uk.ac.york.ocl.standalone,
  org.eclipse.core.runtime,
@@ -17,4 +17,4 @@ Require-Bundle: uk.ac.york.ocl.standalone,
  org.eclipse.ocl.pivot;visibility:=reexport,
  org.eclipse.ocl.examples.codegen;visibility:=reexport,
  org.eclipse.emf.ecore.xmi;visibility:=reexport
-Automatic-Module-Name: org.eclipse.ocl.standalone.javaMM
+Automatic-Module-Name: org.eclipse.ocl.standalone.imdb_select
