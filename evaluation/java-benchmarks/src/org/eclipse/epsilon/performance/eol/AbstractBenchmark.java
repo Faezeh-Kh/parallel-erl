@@ -42,6 +42,7 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 		@Override
 		public C build() {
 			try {
+				module = createModule();
 				String scriptName = FileUtil.getFileName(script.getFileName().toString(), false);
 				String className = "org.eclipse.epsilon.performance.eol."+scriptName.split("_")[0]+"."+scriptName;
 				return (C) Class.forName(className).getDeclaredConstructors()[0].newInstance(this);

@@ -300,7 +300,7 @@ programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1
 validationModulesDefault = evlModulesDefault + oclModules
 
 # First-Order Operations (EOL, OCL, Java)
-imdbFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
+imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN', 'imdb_count']
 eolModule = 'EolModule'
@@ -317,10 +317,10 @@ for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, ' -parallelism '+threadStr])
 
-programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, javaJar, '', [(imdbMM, [p], imdbModels)], standardJavaModulesAndArgs, ''])
-    programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p], imdbModels)], parallelJavaModulesAndArgs, ''])
+    programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs, ''])
+    programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], parallelJavaModulesAndArgs, ''])
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
     programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
@@ -339,7 +339,7 @@ if isGenerate:
         for metamodel, scripts, models in scenarios:
             for script in scripts:
                 scriptSubset = []
-                scriptName = os.path.splitext(script)[0]
+                scriptName, scriptExt = os.path.splitext(script)
                 for model in models:
                     modelSubset = []
                     modelName = os.path.splitext(model)[0]
@@ -363,7 +363,9 @@ if isGenerate:
                             metamodelPath = metamodelDir+metamodel
                             modelPath = modelDir+model
                             outputPath = stdDir+fileName
-                        command += ' -Dcom.sun.management.jmxremote -'
+                        if jmc:
+                            command += ' -Dcom.sun.management.jmxremote'
+                        command += ' -'
                         command += 'cp' if classpath else 'jar'
                         command += ' "' + binDir + programJar+'.jar" '
                         if classpath:
@@ -414,12 +416,12 @@ if isGenerate:
         firstOrderScenarios = []
         for modelSize in imdbModels:
             modelName = imdbPrefix+modelSize
-            for foopScript in imdbFOOPScripts:
+            for foopScript in imdbEOLFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
-            for foopScript in imdbFOOPScripts[:2]:
+            for foopScript in imdbEOLFOOPScripts[:2]:
                 for module in eolModulesDefault[1:]:
                     firstOrderScenarios.append((module, foopScript, modelName))
-            for foopScript in imdbFOOPScripts[2:]:
+            for foopScript in imdbEOLFOOPScripts[2:]:
                 firstOrderScenarios.append((eolModulesDefault[-1], foopScript, modelName))
             for foopScript in imdbJavaFOOPScripts:
                 firstOrderScenarios.append((javaModule, foopScript, modelName))
@@ -431,11 +433,11 @@ if isGenerate:
     write_all_operation_benchmark_scenarios()
 
     write_benchmark_scenarios('select_'+imdbModels[7],
-        [(module, imdbFOOPScripts[0], imdbModels[7]) for module in eolModulesAndArgs[1:]]+
+        [(module, imdbEOLFOOPScripts[0], imdbModels[7]) for module in eolModulesAndArgs[1:]]+
         [
-            (eolModulesAndArgs[0], imdbFOOPScripts[0], imdbModels[7]),
-            (eolModulesAndArgs[0], imdbFOOPScripts[1], imdbModels[7]),
-            (eolModulesAndArgs[-1], imdbFOOPScripts[1], imdbModels[7]),
+            (eolModulesAndArgs[0], imdbEOLFOOPScripts[0], imdbModels[7]),
+            (eolModulesAndArgs[0], imdbEOLFOOPScripts[1], imdbModels[7]),
+            (eolModulesAndArgs[-1], imdbEOLFOOPScripts[1], imdbModels[7]),
         ]+
         [(module, imdbOCLFOOPScripts[0], imdbModels[7]) for module in oclModules]+
         [
@@ -450,20 +452,20 @@ if isGenerate:
         eoloclscenarios.extend([
             (oclModules[0], imdbOCLFOOPScripts[0], model),
             (oclModules[1], imdbOCLFOOPScripts[0], model),
-            (eolModulesDefault[0], imdbFOOPScripts[0], model),
-            (eolModulesDefault[-1], imdbFOOPScripts[0], model),
+            (eolModulesDefault[0], imdbEOLFOOPScripts[0], model),
+            (eolModulesDefault[-1], imdbEOLFOOPScripts[0], model),
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
     write_benchmark_scenarios('atLeastN_'+imdbModels[3],
-        [(module, imdbFOOPScripts[2], imdbModels[3]) for module in eolModulesAndArgs[1:]]+[
+        [(module, imdbEOLFOOPScripts[2], imdbModels[3]) for module in eolModulesAndArgs[1:]]+[
             (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3]),
             (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3])
         ]
     )
 
     write_benchmark_scenarios('count_'+imdbModels[4],
-        [(module, imdbFOOPScripts[3], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
+        [(module, imdbEOLFOOPScripts[3], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
             (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4]),
             (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4])
         ]
