@@ -34,7 +34,7 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	
 	protected boolean nestedActors(Object self) {
 		try {
-			ArrayList<?> actors = new ArrayList<>(model.getAllOfKind("Person"));
+			List<?> actors = new IterableOperationContributor(model.getAllOfKind("Person")).asSequence();
 			int n = getN();
 			int toIndex = actors.size() / n;
 			Collection<?> subActors = actors.subList(0, toIndex);
