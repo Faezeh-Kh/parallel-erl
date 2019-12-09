@@ -9,12 +9,10 @@
 **********************************************************************/
 package org.eclipse.epsilon.performance.eol.imdb;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Set;
+import java.util.*;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.operations.contributors.IterableOperationContributor;
-import org.eclipse.epsilon.eol.types.EolSet;
+import org.eclipse.epsilon.eol.types.*;
 import org.eclipse.epsilon.performance.eol.AbstractBenchmark;
 
 /**
@@ -61,19 +59,20 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 	}
 	
 	protected boolean hasCoupleCoactors(Object self) {
-		return coactors(self).stream().anyMatch(co -> areCoupleCoactors(self, co));
+		return coactors(self).stream().anyMatch(co -> areCoupleCoactors(co, self));
 	}
 	
 	protected Set<?> coactors(Object self) {
 		try {
 			Collection<?> movies = (Collection<?>) propertyGetter.invoke(self, "movies");
-			EolSet<Object> results = new EolSet<>();
+			Collection<Object> persons = EolCollectionType.isOrdered(movies) ?
+				new EolSequence<>(movies.size()) : new EolBag<>(movies.size());
+			
 			for (Object movie : movies) {
-				for (Object moviePerson : ((Iterable<?>) propertyGetter.invoke(movie, "persons"))) {
-					results.add(moviePerson);
-				}
+				persons.add(propertyGetter.invoke(movie, "persons"));
 			}
-			return results;
+			Collection<Object> flattened = new IterableOperationContributor(persons).flatten();
+			return new IterableOperationContributor(flattened).asSet();
 		}
 		catch (EolRuntimeException ex) {
 			throw new RuntimeException(ex);
