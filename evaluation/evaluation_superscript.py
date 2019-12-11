@@ -224,10 +224,10 @@ javaModels = [eclipsePrefix + eclipseR + '.xmi' for eclipseR in eclipseRanges]
 javaValidationScripts = [
     'java_findbugs',
     'java_simple',
-    'java_manyConstraint1Context',
-    'java_manyContext1Constraint',
     'java_1Constraint',
-    'java_equals'
+    'java_equals',
+    'java_manyConstraint1Context',
+    'java_manyContext1Constraint'
 ]
 
 simulinkModels = [
@@ -296,8 +296,8 @@ for evlModule in evlDistributedModules:
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
 programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], '', [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]], ''])
-
 validationModulesDefault = evlModulesDefault + oclModules
+validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
 # First-Order Operations (EOL, OCL, Java)
 imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
@@ -470,19 +470,49 @@ if isGenerate:
             (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4])
         ]
     )
+    
+    write_benchmark_scenarios('thesis_query', [
+        # select / filter 3.53m elements with default modules
+        (oclModules[0], imdbOCLFOOPScripts[0], imdbModels[0]),
+        (oclModules[1], imdbOCLFOOPScripts[0], imdbModels[0]),
+        (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModels[0]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[0], imdbModels[0]),
+        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModels[0]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModels[0]),
+        (javaModule, imdbJavaFOOPScripts[0], imdbModels[0]),
+        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModels[0])
+        # select / filter scalability with model size
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:] ]+[
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
+        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
+        (javaModule, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:] ]+[
+        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:]
+        # select / filter scalability with threads
+    ]+[ (eolMod, imdbEOLFOOPScripts[0], imdbModels[0]) for eolMod in eolModulesDefault[1:-1] ]+[
+        (eolMod, imdbEOLFOOPScripts[-1], imdbModels[0]) for eolMod in eolModulesDefault[1:-1]
+        # count with 2m elements
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[1], imdbModels[6]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[1], imdbModels[6]),
+        (javaModule, imdbJavaFOOPScripts[1], imdbModels[6]),
+        (javaModuleParallel, imdbJavaFOOPScripts[1], imdbModels[6])
+        # atLeastN with 500k elements
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[2], imdbModels[3]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModels[3]),
+        (javaModule, imdbJavaFOOPScripts[2], imdbModels[3]),
+        (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModels[3])
+    ])
 
-    write_benchmark_scenarios('validation',
-        [(module, 'dblp_isbn', 'dblp-all') for module in evlModulesDefault]+
-        [(module, 'java_simple', 'eclipseModel-all') for module in validationModulesDefault]+
-        [(module, 'java_simple', 'eclipseModel-2.5') for module in validationModulesDefault]+
-        [(module, 'java_simple', 'eclipseModel-1.0') for module in validationModulesDefault]+
-        [(module, 'java_simple', 'eclipseModel-0.2') for module in validationModulesDefault]+
-        [(module.replace(maxCoresStr, '1'), 'java_simple', 'eclipseModel-3.0') for module in validationModulesDefault[:-1]]+
-        [(module, 'java_1Constraint', 'eclipseModel-2.0') for module in evlParallelModulesAllThreads+oclModules[0:1]]+
-        #[(module, 'java_manyConstraint1Context', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
-        #[(module, 'java_manyContext1Constraint', 'eclipseModel-2.5') for module in validationModulesDefault[:-1]]+
-        [(module, 'java_findbugs', 'eclipseModel-all') for module in validationModulesDefault[:-1]]
-    )
+    # Note: does not include Simulink or distributed EVL as these are dependent on environment, so discretion is required
+    write_benchmark_scenarios('thesis_validation', [
+        (valMod, 'dblp_isbn', 'dblp-all') for valMod in evlModulesDefault
+    ]+[ (valMod, javaValidationScripts[1], 'eclipseModel-all') for valMod in validationModulesDefault
+    ]+[ (valMod, javaValidationScripts[0], javaModels[7]) for valMod in validationModulesDefault
+    ]+[ (evlModulesDefault[0], javaValidationScripts[0], model) for model in javaModels ]+[
+        (evlModulesDefault[-1], javaValidationScripts[0], model) for model in javaModels
+    ]+[
+        (valMod, 'java_1Constraint', 'eclipseModel-2.0') for valMod in validationModulesScalabilityDefault
+    ])
 
 # Analysis / post-processing results
 else:
