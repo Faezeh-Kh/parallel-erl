@@ -496,11 +496,11 @@ if isGenerate:
         (eolModulesDefault[-1], imdbEOLFOOPScripts[1], imdbModels[6]),
         (javaModule, imdbJavaFOOPScripts[1], imdbModels[6]),
         (javaModuleParallel, imdbJavaFOOPScripts[1], imdbModels[6])
-        # atLeastN with 500k elements
-    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[2], imdbModels[3]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModels[3]),
-        (javaModule, imdbJavaFOOPScripts[2], imdbModels[3]),
-        (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModels[3])
+        # atLeastN with 1m elements
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[2], imdbModels[4]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModels[4]),
+        (javaModule, imdbJavaFOOPScripts[2], imdbModels[4]),
+        (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModels[4])
     ])
 
     # Note: does not include Simulink or distributed EVL as these are dependent on environment, so discretion is required
