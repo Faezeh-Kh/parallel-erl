@@ -457,17 +457,17 @@ if isGenerate:
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
-    write_benchmark_scenarios('atLeastN_'+imdbModels[3],
-        [(module, imdbEOLFOOPScripts[2], imdbModels[3]) for module in eolModulesAndArgs[1:]]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[3])
+    write_benchmark_scenarios('atLeastN_'+imdbModels[4],
+        [(module, imdbEOLFOOPScripts[2], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[4]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[4])
         ]
     )
 
-    write_benchmark_scenarios('count_'+imdbModels[4],
-        [(module, imdbEOLFOOPScripts[3], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[4])
+    write_benchmark_scenarios('count_'+imdbModels[5],
+        [(module, imdbEOLFOOPScripts[3], imdbModels[5]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[5]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[5])
         ]
     )
     
