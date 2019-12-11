@@ -3,5 +3,4 @@ import "imdb_foop.eol";
 return Person.allInstances()
 	.stream()
 	.filter(a | a.hasCoupleCoactors())
-	//.collect(toList())
-	./*size()*/count();
+	.count();

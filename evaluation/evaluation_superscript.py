@@ -510,8 +510,8 @@ if isGenerate:
     ]+[ (valMod, javaValidationScripts[0], javaModels[7]) for valMod in validationModulesDefault
     ]+[ (evlModulesDefault[0], javaValidationScripts[0], model) for model in javaModels ]+[
         (evlModulesDefault[-1], javaValidationScripts[0], model) for model in javaModels
-    ]+[
-        (valMod, 'java_1Constraint', 'eclipseModel-2.0') for valMod in validationModulesScalabilityDefault
+    ]+[ (valMod, javaValidationScripts[2], javaModels[6]) for valMod in validationModulesScalabilityDefault ]+[
+        (valMod, javaValidationScripts[3], javaModels[4]) for valMod in validationModulesScalabilityDefault
     ])
 
 # Analysis / post-processing results
