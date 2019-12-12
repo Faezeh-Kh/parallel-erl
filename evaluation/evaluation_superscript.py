@@ -69,6 +69,7 @@ basePath = args.basePath if args.basePath else rootDir
 broker = args.broker if args.broker else 'tcp://localhost:61616'
 maxWorkers = int(args.workers) if args.workers else 0
 distributedArgs = '-basePath "'+basePath+'" -host '+broker+' -session 746'
+# TODO: Set according to environment if sge
 logicalCores = 24 if sge else os.cpu_count()
 batchFactor = args.batch if args.batch else str(logicalCores)
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
@@ -78,6 +79,7 @@ writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else Non
 rows = []
 columns = ['MODULE', 'THREADS', 'SCRIPT', 'MODEL', 'EXEC_TIME', 'EXEC_TIME_STDEV', 'SPEEDUP', 'EFFICIENCY', 'EXEC_MEMORY', 'EXEC_MEMORY_STDEV', 'MODEL_TIME', 'MODEL_TIME_STDEV', 'MODEL_MEMORY', 'MODEL_MEMORY_STDEV']
 
+# TODO: Set these according to the environment
 sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -cwd
 #$ -o ../../stdout
@@ -91,9 +93,9 @@ sgeDirectives = '''export MALLOC_ARENA_MAX='''+str(round(logicalCores/4))+'''
 #$ -l h_rt=7:59:59
 '''
 jvmFlags = 'java -ea -XX:MaxRAM'
-jvmFlags += 'Fraction=1' if sge or java8 else 'Percentage=92'
+jvmFlags += 'Fraction=1' if java8 else 'Percentage=90'
 jvmFlags += ' -XX:InitialRAM'
-jvmFlags += 'Fraction=4' if sge or java8 else 'Percentage=25'
+jvmFlags += 'Fraction=4' if java8 else 'Percentage=25'
 if args.vmargs:
     jvmFlags += ' '
     if not args.vmargs.startswith('-'):
@@ -231,7 +233,7 @@ javaValidationScripts = [
 ]
 
 simulinkModels = [
-    'darkd0', 'darksc2', 'darkd3', 'darkd4', 'darkd6', 'darktriad3'
+    'darkd0'#, 'darksc2', 'darkd3', 'darkd4', 'darkd6', 'darktriad3'
 ]
 
 evlParallelModules = [
