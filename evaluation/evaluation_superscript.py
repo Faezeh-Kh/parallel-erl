@@ -274,8 +274,8 @@ for evlModule in evlDistributedModules:
     isLocal = 'Local' in evlModule
     isBatch = 'Batch' in evlModule
     if isLocal:
-        for parallelism in threads:
-            numWorker = int(threads[-1] / parallelism)
+        for numWorker in [0]+threads[:-1]:
+            parallelism = int(threads[-1] / (numWorker+1))
             workerStr = str(numWorker)
             threadStr = str(parallelism)
             evlDistArgs = distributedArgs +\
