@@ -348,6 +348,7 @@ if isGenerate:
                     for margs in modulesAndArgs:
                         moduleName = margs[0]
                         fileName = get_scenario_name(moduleName, scriptName, modelName)
+                        outputPath = stdDir+fileName
                         command = sgeDirectives if sge else ''
                         command += jvmFlags
                         if jmc:
@@ -357,14 +358,12 @@ if isGenerate:
                         if isJms:
                             basePathSub = '$BASEPATH$/'
                             scriptPath = 'scripts/'+script
-                            outputPath = 'output/'+fileName
                             metamodelPath = basePathSub+'metamodels/'+metamodel
                             modelPath = basePathSub+'models/'+model
                         else:
                             scriptPath = scriptDir+script
                             metamodelPath = metamodelDir+metamodel
                             modelPath = modelDir+model
-                            outputPath = stdDir+fileName
                         if jmc:
                             command += ' -Dcom.sun.management.jmxremote'
                         command += ' -'
