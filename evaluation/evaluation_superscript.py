@@ -69,6 +69,7 @@ basePath = args.basePath if args.basePath else rootDir
 broker = args.broker if args.broker else 'tcp://localhost:61616'
 maxWorkers = int(args.workers) if args.workers else 0
 distributedArgs = '-basePath "'+basePath+'" -host '+broker+' -session 746'
+basePathSub = '$BASEPATH$/'
 # TODO: Set according to environment if sge
 logicalCores = 24 if sge else os.cpu_count()
 batchFactor = args.batch if args.batch else str(logicalCores)
@@ -188,6 +189,7 @@ def compute_descriptive_stats(data, roundToInt = True):
 
 def get_scenario_name(moduleConfig, script, model):
     module = moduleConfig if isinstance(moduleConfig, str) else moduleConfig[0]
+    extIndex = model.rfind('.')
     return module+'_'+script+'_'+model
 
 def write_generated_file(filename, lines):
@@ -195,7 +197,7 @@ def write_generated_file(filename, lines):
         qsbFile.writelines(lines)
 
 def write_benchmark_scenarios(name, scenariosArgs, duplicates = numBenchDuplicates):
-    lines = [subCmdPrefix+get_scenario_name(module, script, model)+fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
+    lines = [subCmdPrefix + get_scenario_name(module, script, model) + fileExt+subCmdSuffix for (module, script, model) in scenariosArgs]
     write_generated_file(name+'_benchmarks', lines*duplicates)
 
 def normalize_foop(script):
@@ -219,8 +221,10 @@ eclipsePrefix = 'eclipseModel-'
 imdbPrefix = 'imdb-'
 imdbRanges = ['all', '0.1', '0.2'] + [str(round(i/10, 1)) for i in range(5, 35, 5)]
 eclipseRanges = imdbRanges + ['3.5', '4.0']
-imdbModels = [imdbPrefix + imdbR + '.xmi' for imdbR in imdbRanges]
-javaModels = [eclipsePrefix + eclipseR + '.xmi' for eclipseR in eclipseRanges]
+imdbModelsNoExt = [imdbPrefix + imdbR for imdbR in imdbRanges]
+imdbModels = [imdbR+'.xmi' for imdbR in imdbModelsNoExt]
+javaModelsNoExt = [eclipsePrefix + eclipseR for eclipseR in eclipseRanges]
+javaModels = [eclipseR+'.xmi' for eclipseR in javaModelsNoExt]
 
 # Validation (EVL, OCL)
 javaValidationScripts = [
@@ -356,7 +360,6 @@ if isGenerate:
                         if isJava and len(margs) > 1 and 'parallel' in margs[1]:
                             script = normalize_foop(script)
                         if isJms:
-                            basePathSub = '$BASEPATH$/'
                             scriptPath = 'scripts/'+script
                             metamodelPath = basePathSub+'metamodels/'+metamodel
                             modelPath = basePathSub+'models/'+model
@@ -433,23 +436,23 @@ if isGenerate:
 
     write_all_operation_benchmark_scenarios()
 
-    write_benchmark_scenarios('select_'+imdbModels[7],
-        [(module, imdbEOLFOOPScripts[0], imdbModels[7]) for module in eolModulesAndArgs[1:]]+
+    write_benchmark_scenarios('select_'+imdbModelsNoExt[7],
+        [(module, imdbEOLFOOPScripts[0], imdbModelsNoExt[7]) for module in eolModulesAndArgs[1:]]+
         [
-            (eolModulesAndArgs[0], imdbEOLFOOPScripts[0], imdbModels[7]),
-            (eolModulesAndArgs[0], imdbEOLFOOPScripts[1], imdbModels[7]),
-            (eolModulesAndArgs[-1], imdbEOLFOOPScripts[1], imdbModels[7]),
+            (eolModulesAndArgs[0], imdbEOLFOOPScripts[0], imdbModelsNoExt[7]),
+            (eolModulesAndArgs[0], imdbEOLFOOPScripts[1], imdbModelsNoExt[7]),
+            (eolModulesAndArgs[-1], imdbEOLFOOPScripts[1], imdbModelsNoExt[7]),
         ]+
-        [(module, imdbOCLFOOPScripts[0], imdbModels[7]) for module in oclModules]+
+        [(module, imdbOCLFOOPScripts[0], imdbModelsNoExt[7]) for module in oclModules]+
         [
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModels[7]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModels[7])
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModelsNoExt[7]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModelsNoExt[7])
         ]
     )
 
     eoloclscenarios = []
     for i in [0, 2, 3, 5, 8]:
-        model = imdbModels[i].replace('.xmi', '')
+        model = imdbModelsNoExt[i]
         eoloclscenarios.extend([
             (oclModules[0], imdbOCLFOOPScripts[0], model),
             (oclModules[1], imdbOCLFOOPScripts[0], model),
@@ -458,61 +461,61 @@ if isGenerate:
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
-    write_benchmark_scenarios('atLeastN_'+imdbModels[4],
-        [(module, imdbEOLFOOPScripts[2], imdbModels[4]) for module in eolModulesAndArgs[1:]]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[4]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModels[4])
+    write_benchmark_scenarios('atLeastN_'+imdbModelsNoExt[4],
+        [(module, imdbEOLFOOPScripts[2], imdbModelsNoExt[4]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModelsNoExt[4]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModelsNoExt[4])
         ]
     )
 
-    write_benchmark_scenarios('count_'+imdbModels[5],
-        [(module, imdbEOLFOOPScripts[3], imdbModels[5]) for module in eolModulesAndArgs[1:]]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[5]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModels[5])
+    write_benchmark_scenarios('count_'+imdbModelsNoExt[5],
+        [(module, imdbEOLFOOPScripts[3], imdbModelsNoExt[5]) for module in eolModulesAndArgs[1:]]+[
+            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5]),
+            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5])
         ]
     )
     
     write_benchmark_scenarios('thesis_query', [
         # select / filter 3.53m elements with default modules
-        (oclModules[0], imdbOCLFOOPScripts[0], imdbModels[0]),
-        (oclModules[1], imdbOCLFOOPScripts[0], imdbModels[0]),
-        (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModels[0]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[0], imdbModels[0]),
-        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModels[0]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModels[0]),
-        (javaModule, imdbJavaFOOPScripts[0], imdbModels[0]),
-        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModels[0])
+        (oclModules[0], imdbOCLFOOPScripts[0], imdbModelsNoExt[0]),
+        (oclModules[1], imdbOCLFOOPScripts[0], imdbModelsNoExt[0]),
+        (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModelsNoExt[0]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[0], imdbModelsNoExt[0]),
+        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]),
+        (javaModule, imdbJavaFOOPScripts[0], imdbModelsNoExt[0]),
+        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModelsNoExt[0])
         # select / filter scalability with model size
-    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:] ]+[
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
-        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModels[1:] ]+[
-        (javaModule, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:] ]+[
-        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModels[1:]
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (javaModule, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:]
         # select / filter scalability with threads
-    ]+[ (eolMod, imdbEOLFOOPScripts[0], imdbModels[0]) for eolMod in eolModulesDefault[1:-1] ]+[
-        (eolMod, imdbEOLFOOPScripts[-1], imdbModels[0]) for eolMod in eolModulesDefault[1:-1]
+    ]+[ (eolMod, imdbEOLFOOPScripts[0], imdbModelsNoExt[0]) for eolMod in eolModulesDefault[1:-1] ]+[
+        (eolMod, imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]) for eolMod in eolModulesDefault[1:-1]
         # count with 2m elements
-    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[1], imdbModels[6]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[1], imdbModels[6]),
-        (javaModule, imdbJavaFOOPScripts[1], imdbModels[6]),
-        (javaModuleParallel, imdbJavaFOOPScripts[1], imdbModels[6])
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[1], imdbModelsNoExt[6]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[1], imdbModelsNoExt[6]),
+        (javaModule, imdbJavaFOOPScripts[1], imdbModelsNoExt[6]),
+        (javaModuleParallel, imdbJavaFOOPScripts[1], imdbModelsNoExt[6])
         # atLeastN with 1m elements
-    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[2], imdbModels[4]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModels[4]),
-        (javaModule, imdbJavaFOOPScripts[2], imdbModels[4]),
-        (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModels[4])
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[2], imdbModelsNoExt[4]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModelsNoExt[4]),
+        (javaModule, imdbJavaFOOPScripts[2], imdbModelsNoExt[4]),
+        (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModelsNoExt[4])
     ])
 
     # Note: does not include Simulink or distributed EVL as these are dependent on environment, so discretion is required
     write_benchmark_scenarios('thesis_validation', [
         (valMod, 'dblp_isbn', 'dblp-all') for valMod in evlModulesDefault
     ]+[ (valMod, javaValidationScripts[1], 'eclipseModel-all') for valMod in validationModulesDefault
-    ]+[ (valMod, javaValidationScripts[0], javaModels[7]) for valMod in validationModulesDefault
-    ]+[ (evlModulesDefault[0], javaValidationScripts[0], model) for model in javaModels ]+[
-        (evlModulesDefault[-1], javaValidationScripts[0], model) for model in javaModels
-    ]+[ (valMod, javaValidationScripts[2], javaModels[6]) for valMod in validationModulesScalabilityDefault ]+[
-        (valMod, javaValidationScripts[3], javaModels[4]) for valMod in validationModulesScalabilityDefault
+    ]+[ (valMod, javaValidationScripts[0], javaModelsNoExt[7]) for valMod in validationModulesDefault
+    ]+[ (evlModulesDefault[0], javaValidationScripts[0], model) for model in javaModelsNoExt ]+[
+        (evlModulesDefault[-1], javaValidationScripts[0], model) for model in javaModelsNoExt
+    ]+[ (valMod, javaValidationScripts[2], javaModelsNoExt[6]) for valMod in validationModulesScalabilityDefault ]+[
+        (valMod, javaValidationScripts[3], javaModelsNoExt[4]) for valMod in validationModulesScalabilityDefault
     ])
 
 # Analysis / post-processing results
