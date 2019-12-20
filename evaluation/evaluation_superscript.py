@@ -469,7 +469,7 @@ if isGenerate:
     )
 
     write_benchmark_scenarios('count_'+imdbModelsNoExt[5],
-        [(module, imdbEOLFOOPScripts[3], imdbModelsNoExt[5]) for module in eolModulesAndArgs[1:]]+[
+        [(module, imdbEOLFOOPScripts[1], imdbModelsNoExt[5]) for module in eolModulesAndArgs[1:]]+[
             (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5]),
             (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5])
         ]
