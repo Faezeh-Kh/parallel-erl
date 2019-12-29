@@ -598,8 +598,9 @@ else:
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[-1].upper() == 'EVL' or row[0] == oclModules[0])
         metrics = compute_metrics_closure(metrics, evlModules[0], row, row[0] == oclModules[1])
         metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
-        metrics = compute_metrics_closure(metrics, javaModule, row, row[0] == eolModule, normalize_foop(row[2]))
-        metrics = compute_metrics_closure(metrics, javaModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
+        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModule, normalize_foop(row[2]))
+        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModuleParallel, normalize_foop(row[2]))
+        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
         for oclModule in oclModules:
             metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
             metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModule, normalize_foop(row[2]))
