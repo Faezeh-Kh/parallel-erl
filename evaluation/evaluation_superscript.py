@@ -328,8 +328,8 @@ for p in imdbJavaFOOPScripts:
     programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs, ''])
     programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], parallelJavaModulesAndArgs, ''])
 for p in imdbOCLFOOPScripts:
-    programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], ''])
-    programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], ''])
+    programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], '-query'])
+    programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], '-query'])
 
 # Generate scenarios
 if isGenerate:

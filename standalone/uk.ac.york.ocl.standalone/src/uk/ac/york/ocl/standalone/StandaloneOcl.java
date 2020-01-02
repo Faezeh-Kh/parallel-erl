@@ -168,6 +168,8 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 	@Override
 	protected void preExecute() throws Exception {
 		super.preExecute();
+		if (!isFirstRepeat()) return;
+		
 		modelResource = profileExecution ?
 			profileExecutionStage(profiledStages, "Prepare model", this::registerAndLoadModel) :
 			registerAndLoadModel();
@@ -215,27 +217,29 @@ public class StandaloneOcl extends ProfilableRunConfiguration {
 			else return resultExecutor.get();
 		}
 		else {
-			if (profileExecution) {
-				profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator);
-			}
-			else {
-				registerValidator();
+			if (isFirstRepeat()) {
+				if (profileExecution) {
+					profileExecutionStage(profiledStages, "Prepare validator", this::registerValidator);
+				}
+				else {
+					registerValidator();
+				}
 			}
 			
-			ConstraintDiagnostician diagnostician = createDiagnostician(modelResource);
-			Objects.requireNonNull(diagnostician, "Diagnostician must be set!");
-			return diagnostician.validate();
+			return Objects.requireNonNull(createDiagnostician(modelResource), "Diagnostician must be set!").validate();
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void postExecute() throws Exception {
-		if (profileExecution) {
-			profileExecutionStage(profiledStages, "dispose", ocl::dispose);
-		}
-		else {
-			ocl.dispose();
+		if (isLastRepeat()) {
+			if (profileExecution) {
+				profileExecutionStage(profiledStages, "dispose", ocl::dispose);
+			}
+			else {
+				ocl.dispose();
+			}
 		}
 		
 		super.postExecute();
