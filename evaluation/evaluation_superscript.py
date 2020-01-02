@@ -435,20 +435,6 @@ if isGenerate:
 
     write_all_operation_benchmark_scenarios()
 
-    write_benchmark_scenarios('select_'+imdbModelsNoExt[7],
-        [(module, imdbEOLFOOPScripts[0], imdbModelsNoExt[7]) for module in eolModulesAndArgs[1:]]+
-        [
-            (eolModulesAndArgs[0], imdbEOLFOOPScripts[0], imdbModelsNoExt[7]),
-            (eolModulesAndArgs[0], imdbEOLFOOPScripts[1], imdbModelsNoExt[7]),
-            (eolModulesAndArgs[-1], imdbEOLFOOPScripts[1], imdbModelsNoExt[7]),
-        ]+
-        [(module, imdbOCLFOOPScripts[0], imdbModelsNoExt[7]) for module in oclModules]+
-        [
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModelsNoExt[7]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], imdbModelsNoExt[7])
-        ]
-    )
-
     eoloclscenarios = []
     for i in [0, 2, 3, 5, 8]:
         model = imdbModelsNoExt[i]
@@ -459,6 +445,22 @@ if isGenerate:
             (eolModulesDefault[-1], imdbEOLFOOPScripts[0], model),
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
+
+   
+    for modelName in imdbModelsNoExt:
+        write_benchmark_scenarios('select_'+modelName,
+            [(module, imdbEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs[1:]]+
+            [
+                (eolModulesAndArgs[0], imdbEOLFOOPScripts[0], modelName),
+                (eolModulesAndArgs[0], imdbEOLFOOPScripts[1], modelName),
+                (eolModulesAndArgs[-1], imdbEOLFOOPScripts[1], modelName),
+            ]+
+            [(module, imdbOCLFOOPScripts[0], modelName) for module in oclModules]+
+            [
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], modelName)
+            ]
+        )
 
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('atLeastN_'+modelName,
