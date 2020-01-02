@@ -418,8 +418,7 @@ if isGenerate:
 
     def write_all_operation_benchmark_scenarios(name = 'firstorder_all'):
         firstOrderScenarios = []
-        for modelSize in imdbModels:
-            modelName = imdbPrefix+modelSize
+        for modelName in imdbModelsNoExt:
             for foopScript in imdbEOLFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
             for foopScript in imdbEOLFOOPScripts[:2]:
@@ -461,19 +460,21 @@ if isGenerate:
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
-    write_benchmark_scenarios('atLeastN_'+imdbModelsNoExt[4],
-        [(module, imdbEOLFOOPScripts[2], imdbModelsNoExt[4]) for module in eolModulesAndArgs]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModelsNoExt[4]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], imdbModelsNoExt[4])
-        ]
-    )
+    for modelName in imdbModelsNoExt:
+        write_benchmark_scenarios('atLeastN_'+modelName,
+            [(module, imdbEOLFOOPScripts[2], modelName) for module in eolModulesAndArgs]+[
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName)
+            ]
+        )
 
-    write_benchmark_scenarios('count_'+imdbModelsNoExt[5],
-        [(module, imdbEOLFOOPScripts[1], imdbModelsNoExt[5]) for module in eolModulesAndArgs]+[
-            (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5]),
-            (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], imdbModelsNoExt[5])
-        ]
-    )
+    for modelName in imdbModelsNoExt:
+        write_benchmark_scenarios('count_'+modelName,
+            [(module, imdbEOLFOOPScripts[1], modelName) for module in eolModulesAndArgs]+[
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName)
+            ]
+        )
     
     write_benchmark_scenarios('thesis_query', [
         # select / filter 3.53m elements with default modules
