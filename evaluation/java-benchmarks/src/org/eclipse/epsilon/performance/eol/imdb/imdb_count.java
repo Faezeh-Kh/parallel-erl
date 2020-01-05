@@ -27,7 +27,7 @@ public class imdb_count extends AbstractIMDBQuery {
 	protected Number execute() throws EolRuntimeException {
 		return BenchmarkUtils.profileExecutionStage(profiledStages, "execute()", () -> {
 			return StreamSupport.stream(model.getAllOfKind("Person").spliterator(), parallel)
-				.filter(a -> coactors(a).stream().anyMatch(co -> areCoupleCoactors(a, co)))
+				.filter(this::hasCoupleCoactors)
 				.count();
 		});
 	}
