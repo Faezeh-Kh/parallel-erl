@@ -9,28 +9,15 @@
 **********************************************************************/
 package org.eclipse.epsilon.performance.eol.imdb;
 
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-import org.eclipse.epsilon.common.util.profiling.BenchmarkUtils;
-import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
-
 /**
  * 
+ *
  * @author Sina Madani
  */
-public class imdb_filter extends AbstractIMDBQuery {
-	
+public class imdb_filter extends imdb_select {
+
 	public imdb_filter(Builder<?, ?> builder) {
 		super(builder);
 	}
-	
-	@Override
-	protected Number execute() throws EolRuntimeException {
-		return BenchmarkUtils.profileExecutionStage(profiledStages, "execute()", () -> {
-			return StreamSupport.stream(model.getAllOfKind("Person").spliterator(), parallel)
-				.filter(this::hasCoupleCoactors)
-				.collect(Collectors.toList())
-				.size();
-		});
-	}
+
 }

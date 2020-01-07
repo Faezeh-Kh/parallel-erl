@@ -308,7 +308,7 @@ validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallel
 # First-Order Operations (EOL, OCL, Java)
 imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
-imdbJavaFOOPScripts = ['imdb_filter', 'imdb_atLeastN', 'imdb_count']
+imdbJavaFOOPScripts = ['imdb_select', 'imdb_atLeastN', 'imdb_count']
 eolModule = 'EolModule'
 javaJar = 'JavaQuery'
 javaModule = javaJar
