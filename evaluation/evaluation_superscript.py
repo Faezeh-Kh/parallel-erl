@@ -225,7 +225,8 @@ imdbModelsNoExt = [imdbPrefix + imdbR for imdbR in imdbRanges]
 imdbModels = [imdbR+'.xmi' for imdbR in imdbModelsNoExt]
 javaModelsNoExt = [eclipsePrefix + eclipseR for eclipseR in eclipseRanges]
 javaModels = [eclipseR+'.xmi' for eclipseR in javaModelsNoExt]
-dblpModels = ['dblp-all.xmi']
+dblpModelsNoExt = ['dblp-all']
+dblpModels = [dblpM+'.xmi' for dblpM in dblpModelsNoExt]
 
 # Validation (EVL, OCL)
 javaValidationScripts = [
@@ -422,6 +423,9 @@ if isGenerate:
     def write_all_operation_benchmark_scenarios(name = 'firstorder_all'):
         firstOrderScenarios = []
         for modelName in imdbModelsNoExt:
+            for foopScript in dblpEOLFOOPScripts:
+                for eModule in eolModulesDefault:
+                    firstOrderScenarios.append((eModule, foopScript, modelName))
             for foopScript in imdbEOLFOOPScripts:
                 firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
             for foopScript in imdbEOLFOOPScripts[:2]:
@@ -449,7 +453,9 @@ if isGenerate:
         ])
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
-   
+    for modelName in dblpModelsNoExt:
+        write_benchmark_scenarios('mapBy_'+modelName, [(module, dblpEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs[1:]])
+
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('select_'+modelName,
             [(module, imdbEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs[1:]]+
