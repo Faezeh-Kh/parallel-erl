@@ -1,0 +1,7 @@
+return Record.allInstances()
+	.mapBy(r | Sequence{
+			r.key, r.url, r.ee, r.mdate, r.month,
+			r.authors.collect(a | a.name)
+		}.hashCode()
+	)
+	.size();

@@ -225,6 +225,7 @@ imdbModelsNoExt = [imdbPrefix + imdbR for imdbR in imdbRanges]
 imdbModels = [imdbR+'.xmi' for imdbR in imdbModelsNoExt]
 javaModelsNoExt = [eclipsePrefix + eclipseR for eclipseR in eclipseRanges]
 javaModels = [eclipseR+'.xmi' for eclipseR in javaModelsNoExt]
+dblpModels = ['dblp-all.xmi']
 
 # Validation (EVL, OCL)
 javaValidationScripts = [
@@ -258,7 +259,7 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
     (imdbMM, ['imdb_validator.evl'], imdbModels),
-    (dblpMM, ['dblp_isbn.evl'], ['dblp-all.xmi']),
+    (dblpMM, ['dblp_isbn.evl'], dblpModels),
     (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
@@ -306,6 +307,7 @@ validationModulesDefault = evlModulesDefault + oclModules
 validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
 # First-Order Operations (EOL, OCL, Java)
+dblpEOLFOOPScripts = ['dblp_mapBy']
 imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_select', 'imdb_atLeastN', 'imdb_count']
@@ -323,6 +325,7 @@ for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, ' -parallelism '+threadStr])
 
+programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
 for p in imdbJavaFOOPScripts:
     programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs, ''])
