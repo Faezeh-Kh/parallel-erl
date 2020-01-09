@@ -309,7 +309,9 @@ validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallel
 
 # First-Order Operations (EOL, OCL, Java)
 dblpEOLFOOPScripts = ['dblp_mapBy']
-imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_filter']
+imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN']
+imdbSequentialEOLFOOPScripts = ['imdb_filter']
+imdbParallelEOLFOOPScripts = ['imdb_parallelFilter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_select', 'imdb_atLeastN', 'imdb_count']
 eolModule = 'EolModule'
@@ -328,6 +330,8 @@ for numThread in threads:
 
 programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbSequentialEOLFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbParallelEOLFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
 for p in imdbJavaFOOPScripts:
     programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs, ''])
     programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], parallelJavaModulesAndArgs, ''])
@@ -493,20 +497,20 @@ if isGenerate:
         (oclModules[1], imdbOCLFOOPScripts[0], imdbModelsNoExt[0]),
         (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModelsNoExt[0]),
         (eolModulesDefault[-1], imdbEOLFOOPScripts[0], imdbModelsNoExt[0]),
-        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]),
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]),
+        (eolModulesDefault[0], imdbSequentialEOLFOOPScripts[0], imdbModelsNoExt[0]),
+        (eolModulesDefault[-1], imdbParallelEOLFOOPScripts[0], imdbModelsNoExt[0]),
         (javaModule, imdbJavaFOOPScripts[0], imdbModelsNoExt[0]),
         (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModelsNoExt[0])
         # select / filter scalability with model size
     ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
-        (eolModulesDefault[0], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
-        (eolModulesDefault[-1], imdbEOLFOOPScripts[-1], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[0], imdbSequentialEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
+        (eolModulesDefault[-1], imdbParallelEOLFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
         (javaModule, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:] ]+[
         (javaModuleParallel, imdbJavaFOOPScripts[0], imdbModel) for imdbModel in imdbModelsNoExt[1:]
         # select / filter scalability with threads
     ]+[ (eolMod, imdbEOLFOOPScripts[0], imdbModelsNoExt[0]) for eolMod in eolModulesDefault[1:-1] ]+[
-        (eolMod, imdbEOLFOOPScripts[-1], imdbModelsNoExt[0]) for eolMod in eolModulesDefault[1:-1]
+        (eolMod, imdbParallelEOLFOOPScripts[0], imdbModelsNoExt[0]) for eolMod in eolModulesDefault[1:-1]
         # count with 2m elements
     ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[1], imdbModelsNoExt[6]),
         (eolModulesDefault[-1], imdbEOLFOOPScripts[1], imdbModelsNoExt[6]),
