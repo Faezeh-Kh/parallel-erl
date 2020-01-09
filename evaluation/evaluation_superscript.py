@@ -454,7 +454,7 @@ if isGenerate:
     write_benchmark_scenarios('select_EOLvsOCL', eoloclscenarios)
 
     for modelName in dblpModelsNoExt:
-        write_benchmark_scenarios('mapBy_'+modelName, [(module, dblpEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs[1:]])
+        write_benchmark_scenarios('mapBy_'+modelName, [(module, dblpEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs])
 
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('select_'+modelName,
