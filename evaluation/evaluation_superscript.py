@@ -459,7 +459,7 @@ if isGenerate:
 
     for modelName in dblpModelsNoExt:
         for foopScript in dblpEOLFOOPScripts:
-            write_benchmark_scenarios(foopScript[5:]+'_'+modelName, [(module, dblpEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs])
+            write_benchmark_scenarios(foopScript[5:]+'_'+modelName, [(module, foopScript, modelName) for module in eolModulesAndArgs])
 
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('select_'+modelName,
