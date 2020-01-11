@@ -1,0 +1,7 @@
+return Record.allInstances()
+	.atMostNMatch(r1 | r1.authors.exists(a1 |
+		a1.records.exists(r2 | r2 <> r1 and
+			r2.authors.size() == r1.authors.size() and
+			r2.authors.containsAll(r1.authors)
+		)
+	), Author.allInstances().size() / 17);
