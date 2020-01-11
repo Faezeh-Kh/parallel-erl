@@ -189,7 +189,7 @@ def compute_descriptive_stats(data, roundToInt = True):
 
 def get_scenario_name(moduleConfig, script, model):
     module = moduleConfig if isinstance(moduleConfig, str) else moduleConfig[0]
-    extIndex = model.rfind('.')
+    #extIndex = model.rfind('.')
     return module+'_'+script+'_'+model
 
 def write_generated_file(filename, lines):
@@ -309,11 +309,11 @@ validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallel
 
 # First-Order Operations (EOL, OCL, Java)
 dblpEOLFOOPScripts = ['dblp_mapBy']
-imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN']
+imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_selectOne']
 imdbSequentialEOLFOOPScripts = ['imdb_filter']
 imdbParallelEOLFOOPScripts = ['imdb_parallelFilter']
 imdbOCLFOOPScripts = ['imdb_select']
-imdbJavaFOOPScripts = ['imdb_select', 'imdb_atLeastN', 'imdb_count']
+imdbJavaFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_selectOne']
 eolModule = 'EolModule'
 javaJar = 'JavaQuery'
 javaModule = javaJar
@@ -326,7 +326,7 @@ queryModulesDefault = [oclModules[0], eolModulesDefault[0], eolModulesDefault[-1
 eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    eolModulesAndArgs.append([eolModuleParallel+threadStr, ' -parallelism '+threadStr])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-parallelism '+threadStr])
 
 programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
@@ -478,16 +478,24 @@ if isGenerate:
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('atLeastN_'+modelName,
             [(module, imdbEOLFOOPScripts[2], modelName) for module in eolModulesAndArgs]+[
-                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName),
-                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName)
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName)
             ]
         )
 
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('count_'+modelName,
             [(module, imdbEOLFOOPScripts[1], modelName) for module in eolModulesAndArgs]+[
-                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName),
-                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName)
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName)
+            ]
+        )
+
+    for modelName in imdbModelsNoExt:
+        write_benchmark_scenarios('selectOne_'+modelName,
+            [(module, imdbEOLFOOPScripts[3], modelName) for module in eolModulesAndArgs]+[
+                (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[3], modelName),
+                (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[3], modelName)
             ]
         )
     
@@ -521,6 +529,11 @@ if isGenerate:
         (eolModulesDefault[-1], imdbEOLFOOPScripts[2], imdbModelsNoExt[4]),
         (javaModule, imdbJavaFOOPScripts[2], imdbModelsNoExt[4]),
         (javaModuleParallel, imdbJavaFOOPScripts[2], imdbModelsNoExt[4])
+        # selectOne with 1m elements
+    ]+[ (eolModulesDefault[0], imdbEOLFOOPScripts[3], imdbModelsNoExt[4]),
+        (eolModulesDefault[-1], imdbEOLFOOPScripts[3], imdbModelsNoExt[4]),
+        (javaModule, imdbJavaFOOPScripts[3], imdbModelsNoExt[4]),
+        (javaModuleParallel, imdbJavaFOOPScripts[3], imdbModelsNoExt[4])
     ])
 
     # Note: does not include Simulink or distributed EVL as these are dependent on environment, so discretion is required

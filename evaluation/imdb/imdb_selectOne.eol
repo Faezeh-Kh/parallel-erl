@@ -1,0 +1,4 @@
+import "imdb_foop.eol";
+
+return Person.allInstances()
+	.selectOne(a | a.hasCoupleCoactorsRare());

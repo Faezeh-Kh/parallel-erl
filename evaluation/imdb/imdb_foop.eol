@@ -20,6 +20,11 @@ operation getN() : Integer {
 	return 32;
 }
 
+operation Person hasCoupleCoactorsRare() : Boolean {
+	var nTarget = self.movies.size() + getN();
+	return self.coactors().count(co | co.areCoupleCoactors(self)) == nTarget;
+}
+
 operation Person hasCoupleCoactors() : Boolean {
 	return self.coactors().exists(co | co.areCoupleCoactors(self));
 }

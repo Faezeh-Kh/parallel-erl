@@ -62,6 +62,16 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 		return coactors(self).stream().anyMatch(co -> areCoupleCoactors(co, self));
 	}
 	
+	protected boolean hasCoupleCoactorsRare(Object self) {
+		try {
+			int nTarget = ((Collection<?>) propertyGetter.invoke(self, "movies")).size() + getN();
+			return coactors(self).stream().filter(co -> areCoupleCoactors(co, self)).count() == nTarget;
+		}
+		catch (EolRuntimeException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+	
 	protected Set<?> coactors(Object self) {
 		try {
 			Collection<?> movies = (Collection<?>) propertyGetter.invoke(self, "movies");
