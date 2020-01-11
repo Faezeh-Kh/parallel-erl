@@ -1,0 +1,6 @@
+return Record.allInstances()
+	.selectOne(r1 | Record.all.exists(r2 |
+			r2 <> r1 and r1.authors.size() == r2.authors.size() and
+			r1.authors.containsAll(r2.authors)
+		)
+	);

@@ -308,7 +308,7 @@ validationModulesDefault = evlModulesDefault + oclModules
 validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
 # First-Order Operations (EOL, OCL, Java)
-dblpEOLFOOPScripts = ['dblp_mapBy']
+dblpEOLFOOPScripts = ['dblp_mapBy', 'dblp_selectOne']
 imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_selectOne']
 imdbSequentialEOLFOOPScripts = ['imdb_filter']
 imdbParallelEOLFOOPScripts = ['imdb_parallelFilter']
@@ -459,6 +459,7 @@ if isGenerate:
 
     for modelName in dblpModelsNoExt:
         write_benchmark_scenarios('mapBy_'+modelName, [(module, dblpEOLFOOPScripts[0], modelName) for module in eolModulesAndArgs])
+        write_benchmark_scenarios('selectOne'+modelName, [(module, dblpEOLFOOPScripts[1], modelName) for module in eolModulesAndArgs])
 
     for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('select_'+modelName,
