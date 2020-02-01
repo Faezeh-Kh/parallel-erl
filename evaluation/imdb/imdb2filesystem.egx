@@ -22,23 +22,24 @@ operation String replaceIllegalChars() : String {
 		.replaceLiteral("=", "")
 		.replaceLiteral("+", "plus")
 		.replaceLiteral("~", "-")
-		.replaceLiteral("$", "£");
+		.replaceLiteral("$", "£")
+		.replaceLiteral("^", "");
 }
 
-rule Movies2Persons transform movie : Movie {
+/*rule Movies2Persons transform movie : Movie {
 	parameters : Map{"movie" = movie}
 	template : "moviePersons.egl"
 	target : "movies/"+movie.title.replaceIllegalChars()+" ("+movie.year+").txt"
-}
+}*/
 
 rule Actors2MovieFiles transform actor : Actor {
-	parameters : Map{"actor" = actor}
+	parameters : Map{"person" = actor}
 	template : "personMovies.egl"
 	target : "actors/"+actor.name.replaceIllegalChars()+".csv"
 }
 
 rule Actresses2MovieFiles transform actress : Actress {
-	parameters : Map{"actress" = Actress}
+	parameters : Map{"person" = actress}
 	template : "personMovies.egl"
 	target : "actresses/"+actress.name.replaceIllegalChars()+".csv"
 }
