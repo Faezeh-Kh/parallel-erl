@@ -1,0 +1,44 @@
+operation String replaceIllegalChars() : String {
+	return self
+		.replaceLiteral("%", "")
+		.replaceLiteral(":", "")
+		.replaceLiteral(";", "")
+		.replaceLiteral(",", " ")
+		.replaceLiteral("'", "")
+		.replaceLiteral("`", "")
+		.replaceLiteral('"', "")
+		.replaceLiteral("\\", "/")
+		.replaceLiteral("/", "_")
+		.replaceLiteral("<", "[")
+		.replaceLiteral(">", "]")
+		.replaceLiteral("{", "[")
+		.replaceLiteral("}", "]")
+		.replaceLiteral("*", "")
+		.replaceLiteral("?", "")
+		.replaceLiteral("|", "_")
+		.replaceLiteral("#", "")
+		.replaceLiteral("&", "and")
+		.replaceLiteral("@", "at")
+		.replaceLiteral("=", "")
+		.replaceLiteral("+", "plus")
+		.replaceLiteral("~", "-")
+		.replaceLiteral("$", "£");
+}
+
+rule Movies2Persons transform movie : Movie {
+	parameters : Map{"movie" = movie}
+	template : "moviePersons.egl"
+	target : "movies/"+movie.title.replaceIllegalChars()+" ("+movie.year+").txt"
+}
+
+rule Actors2MovieFiles transform actor : Actor {
+	parameters : Map{"actor" = actor}
+	template : "personMovies.egl"
+	target : "actors/"+actor.name.replaceIllegalChars()+".csv"
+}
+
+rule Actresses2MovieFiles transform actress : Actress {
+	parameters : Map{"actress" = Actress}
+	template : "personMovies.egl"
+	target : "actresses/"+actress.name.replaceIllegalChars()+".csv"
+}

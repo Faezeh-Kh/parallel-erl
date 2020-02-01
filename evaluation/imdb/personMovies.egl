@@ -1,0 +1,4 @@
+YEAR, TITLE, RATING, PEOPLE, TYPE
+[% for (movie in person.movies.sortBy(m | m.year)) {%]
+[%=movie.year%], [%=movie.title%], [%=movie.rating%], [%=movie.persons.size()%], [%=movie.type.name%]
+[%}%]
