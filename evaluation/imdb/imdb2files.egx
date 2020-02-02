@@ -32,14 +32,25 @@ operation String replaceIllegalChars() : String {
 	target : "movies/"+movie.title.replaceIllegalChars()+" ("+movie.year+").txt"
 }*/
 
-rule Actors2MovieFiles transform actor : Actor {
-	parameters : Map{"person" = actor}
-	template : "personMovies.egl"
-	target : "actors/"+actor.name.replaceIllegalChars()+".csv"
+pre {
+	var lengths = new Native("java.util.concurrent.ConcurrentHashMap")();
 }
 
-rule Actresses2MovieFiles transform actress : Actress {
-	parameters : Map{"person" = actress}
+@greedy
+rule People2MovieFiles transform person : Person {
+	parameters : Map{"person" = person}
 	template : "personMovies.egl"
-	target : "actresses/"+actress.name.replaceIllegalChars()+".csv"
+	target : "actors/"+person.name.replaceIllegalChars()+".csv"
+	post {
+		lengths.put(person.name, generated.length());
+	}
+}
+
+post {
+	var keys = lengths.keySet().size();
+	keys.println("Number of files: ");
+	var values = lengths.values().sum();
+	values.println("Sum of characters in all files: ");
+	var average = (values / keys).asInteger();
+	average.println("Average characters per file: ");
 }
