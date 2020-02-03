@@ -308,7 +308,8 @@ validationModulesDefault = evlModulesDefault + oclModules
 validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
 # First-Order Operations (EOL, OCL, Java)
-dblpEOLFOOPScripts = ['dblp_mapBy', 'dblp_atMostN']
+javaEOLFOOPScripts = ['java_collect']
+dblpEOLFOOPScripts = ['dblp_mapBy', 'dblp_atMostN', 'dblp_collect']
 imdbEOLFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_selectOne']
 imdbSequentialEOLFOOPScripts = ['imdb_filter']
 imdbParallelEOLFOOPScripts = ['imdb_parallelFilter']
@@ -328,6 +329,7 @@ for numThread in threads:
     threadStr = str(numThread)
     eolModulesAndArgs.append([eolModuleParallel+threadStr, '-parallelism '+threadStr])
 
+programs.append(['EOL', epsilonJar, '', [(javaMM, [s+'.eol' for s in javaEOLFOOPScripts], javaModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
 programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbSequentialEOLFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
@@ -338,6 +340,19 @@ for p in imdbJavaFOOPScripts:
 for p in imdbOCLFOOPScripts:
     programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], '-query'])
     programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], '-query'])
+
+# EGX
+egxModule = 'EgxModule'
+egxParallelModules = ['EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
+egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
+imdbEGXScripts = ['imdb2files']
+egxModulesAndArgs = [[egxModule, '-module egl.'+egxModule]]
+for numThread in threads:
+    threadStr = str(numThread)
+    for module in egxParallelModules: 
+        egxModulesAndArgs.append([module+threadStr, '-module egl.concurrent.'+module+ '-parallelism '+threadStr])
+programs.append(['EGX', epsilonJar, '', [(imdbMM, [s+'.egx' for s in imdbEGXScripts], imdbModels)], egxModulesAndArgs, ''])
+
 
 # Generate scenarios
 if isGenerate:
@@ -424,27 +439,24 @@ if isGenerate:
 
     # Specific benchmark scenarios
 
-    def write_all_operation_benchmark_scenarios(name = 'firstorder_all'):
-        firstOrderScenarios = []
-        for modelName in imdbModelsNoExt:
-            for foopScript in dblpEOLFOOPScripts:
-                for eModule in eolModulesDefault:
-                    firstOrderScenarios.append((eModule, foopScript, modelName))
-            for foopScript in imdbEOLFOOPScripts:
-                firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
-            for foopScript in imdbEOLFOOPScripts[:2]:
-                for module in eolModulesDefault[1:]:
-                    firstOrderScenarios.append((module, foopScript, modelName))
-            for foopScript in imdbEOLFOOPScripts[2:]:
-                firstOrderScenarios.append((eolModulesDefault[-1], foopScript, modelName))
-            for foopScript in imdbJavaFOOPScripts:
-                firstOrderScenarios.append((javaModule, foopScript, modelName))
-            for foopScript in imdbOCLFOOPScripts:
-                for module in oclModules:
-                    firstOrderScenarios.append((module, foopScript, modelName))
-        write_benchmark_scenarios(name, firstOrderScenarios)
-
-    write_all_operation_benchmark_scenarios()
+    firstOrderScenarios = []
+    for modelName in imdbModelsNoExt:
+        for foopScript in dblpEOLFOOPScripts:
+            for eModule in eolModulesDefault:
+                firstOrderScenarios.append((eModule, foopScript, modelName))
+        for foopScript in imdbEOLFOOPScripts:
+            firstOrderScenarios.append((eolModulesDefault[0], foopScript, modelName))
+        for foopScript in imdbEOLFOOPScripts[:2]:
+            for module in eolModulesDefault[1:]:
+                firstOrderScenarios.append((module, foopScript, modelName))
+        for foopScript in imdbEOLFOOPScripts[2:]:
+            firstOrderScenarios.append((eolModulesDefault[-1], foopScript, modelName))
+        for foopScript in imdbJavaFOOPScripts:
+            firstOrderScenarios.append((javaModule, foopScript, modelName))
+        for foopScript in imdbOCLFOOPScripts:
+            for module in oclModules:
+                firstOrderScenarios.append((module, foopScript, modelName))
+    write_benchmark_scenarios('firstorder_all', firstOrderScenarios)
 
     eoloclscenarios = []
     for i in [0, 2, 3, 5, 8]:
@@ -475,30 +487,28 @@ if isGenerate:
                 (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[0], modelName)
             ]
         )
-
-    for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('atLeastN_'+modelName,
             [(module, imdbEOLFOOPScripts[2], modelName) for module in eolModulesAndArgs]+[
                 (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName),
                 (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[2], modelName)
             ]
         )
-
-    for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('count_'+modelName,
             [(module, imdbEOLFOOPScripts[1], modelName) for module in eolModulesAndArgs]+[
                 (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName),
                 (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[1], modelName)
             ]
         )
-
-    for modelName in imdbModelsNoExt:
         write_benchmark_scenarios('selectOne_'+modelName,
             [(module, imdbEOLFOOPScripts[3], modelName) for module in eolModulesAndArgs]+[
                 (standardJavaModulesAndArgs[0], imdbJavaFOOPScripts[3], modelName),
                 (parallelJavaModulesAndArgs[0], imdbJavaFOOPScripts[3], modelName)
             ]
         )
+        write_benchmark_scenarios(imdbEGXScripts[0]+'_'+modelName,
+            [(module, imdbEGXScripts[0], modelName) for module in egxModulesDefault]
+        )
+        
     
     write_benchmark_scenarios('thesis_query', [
         # select / filter 3.53m elements with default modules
