@@ -106,7 +106,7 @@ if jmc:
     jvmFlags += ' -XX:+FlightRecorder -XX:StartFlightRecording=dumponexit=true,filename='
 
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
-subCmdSuffix = nL
+subCmdSuffix = ';'+nL
 epsilonJar = 'epsilon-engine'
 
 # Author: A.Polino
@@ -558,6 +558,7 @@ if isGenerate:
         (evlModulesDefault[-1], javaValidationScripts[0], model) for model in javaModelsNoExt
     ]+[ (valMod, javaValidationScripts[2], javaModelsNoExt[6]) for valMod in validationModulesScalabilityDefault ]+[
         (valMod, javaValidationScripts[3], javaModelsNoExt[4]) for valMod in validationModulesScalabilityDefault
+    ]+[ (valMod, imdbValidationScripts[1], imdbModelsNoExt[7]) for valMod in evlModulesDefault[:-1]
     ])
 
 # Analysis / post-processing results
