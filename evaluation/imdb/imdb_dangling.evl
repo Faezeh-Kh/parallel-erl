@@ -1,0 +1,14 @@
+pre {
+	var allActorsInMovies = Movie.allInstances().collect(m | m.persons).flatten();
+	var allMoviesInActors = Person.allInstances().collect(p | p.movies).flatten();
+}
+
+@parallel
+context Movie {
+	constraint ReferencedInActors {
+		check : allMoviesInActors.contains(self)
+	}
+	constraint AllActorsReferencedInMovies {
+		check : allActorsInMovies.containsAll(self.persons)
+	}
+}

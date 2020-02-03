@@ -238,6 +238,8 @@ javaValidationScripts = [
     'java_manyContext1Constraint'
 ]
 
+imdbValidationScripts = ['imdb_validator', 'imdb_dangling']
+
 simulinkModels = [
     'darkd0'#, 'darksc2', 'darkd3', 'darkd4', 'darkd6', 'darktriad3'
 ]
@@ -259,7 +261,7 @@ evlParallelModulesAllThreads = [module + str(numThread) for module in evlParalle
 
 evlScenarios = [
     (javaMM, [s+'.evl' for s in javaValidationScripts], javaModels),
-    (imdbMM, ['imdb_validator.evl'], imdbModels),
+    (imdbMM, [s+'.evl' for s in imdbValidationScripts], imdbModels),
     (dblpMM, ['dblp_isbn.evl'], dblpModels),
     (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
