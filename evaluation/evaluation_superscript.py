@@ -345,14 +345,17 @@ for p in imdbOCLFOOPScripts:
 
 # EGX
 egxModule = 'EgxModule'
-egxParallelModules = ['EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
+egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
 egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
 imdbEGXScripts = ['imdb2files']
 egxModulesAndArgs = [[egxModule, '-module egl.'+egxModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    for module in egxParallelModules: 
-        egxModulesAndArgs.append([module+threadStr, '-module egl.concurrent.'+module+ '-parallelism '+threadStr])
+    for module in egxParallelModules:
+        pkg = 'egl.concurrent.'
+        if 'Atom' in module:
+            pkg += 'atomic.'
+        egxModulesAndArgs.append([module+threadStr, '-module '+pkg+module+' -parallelism '+threadStr])
 programs.append(['EGX', epsilonJar, '', [(imdbMM, [s+'.egx' for s in imdbEGXScripts], imdbModels)], egxModulesAndArgs, ''])
 
 
