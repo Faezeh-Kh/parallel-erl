@@ -25,6 +25,7 @@ parser.add_argument('--workers', help='Expected number of workers (parallelism) 
 parser.add_argument('--batch', help='Batch factor for batch-based distributed modules.')
 parser.add_argument('--repeats', help='Number of runs in same JVM for each experiment.')
 parser.add_argument('--duplicates', help='Number of times to write each experiment to aggregate benchmark script.')
+parser.add_argument('--tfDir', help='Root path for EglTemplateFactory.')
 args = parser.parse_args()
 
 def defaultPath(parsedArg, defaultValue):
@@ -108,6 +109,8 @@ if jmc:
 subCmdPrefix = 'qsub ' if sge else 'call ' if os.name == 'nt' else './'
 subCmdSuffix = ';'+nL
 epsilonJar = 'epsilon-engine'
+parallelismOpt = '-parallelism '
+moduleOpt = '-module '
 
 # Author: A.Polino
 def is_power2(num):
@@ -266,15 +269,15 @@ evlScenarios = [
     (simulinkMM, ['simulink_live.evl'], [model + '.slx' for model in simulinkModels]),
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
-evlModulesAndArgs = [[evlModulesDefault[0], '-module evl.'+evlModules[0]]]
+evlModulesAndArgs = [[evlModulesDefault[0], moduleOpt+'evl.'+evlModules[0]]]
 for evlModule in evlParallelModules:
-    modulePkg = '-module evl.concurrent.'
+    modulePkg = moduleOpt+'evl.concurrent.'
     if evlModule.endswith('Atoms'):
         modulePkg += 'atomic.'
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' -parallelism '+threadStr])
-programs.append(['EVL', epsilonJar, '', evlScenarios, evlModulesAndArgs, ''])
+        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' '+parallelismOpt+threadStr])
+programs.append(['EVL', epsilonJar, '', evlScenarios, evlModulesAndArgs])
 
 evlJmsJar = 'EVL-JMS'
 evlJmsMaster = 'org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfigParser'
@@ -289,7 +292,7 @@ for evlModule in evlDistributedModules:
             evlDistArgs = distributedArgs +\
                 ' -local -parallelism '+threadStr+' -workers '+workerStr +\
                 ' -masterProportion '+ str(calculate_master_proportion(numWorker))
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + workerStr]], evlDistArgs])
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
     else:
         for numWorker in range(0, maxWorkers):
             workerStr = str(numWorker)
@@ -300,12 +303,12 @@ for evlModule in evlDistributedModules:
                 evlDistArgs += ' -local'
             if isBatch:
                 evlDistArgs += ' -batches '+batchFactor
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule + workerStr]], evlDistArgs])
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule + workerStr]], evlDistArgs + ' -parallelism 1'])
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
+            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule+workerStr, evlDistArgs+parallelismOpt+'1']]])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
-programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]], ''])
-programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], '', [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]], ''])
+programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
+programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], '', [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]]])
 validationModulesDefault = evlModulesDefault + oclModules
 validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
@@ -318,6 +321,7 @@ imdbParallelEOLFOOPScripts = ['imdb_parallelFilter']
 imdbOCLFOOPScripts = ['imdb_select']
 imdbJavaFOOPScripts = ['imdb_select', 'imdb_count', 'imdb_atLeastN', 'imdb_selectOne']
 eolModule = 'EolModule'
+oclQueryOpt = '-query'
 javaJar = 'JavaQuery'
 javaModule = javaJar
 javaModuleParallel = javaModule+'Parallel'
@@ -326,47 +330,53 @@ parallelJavaModulesAndArgs = [[javaModuleParallel, '-parallel']]
 eolModuleParallel = eolModule+'Parallel'
 eolModulesDefault = [eolModule] + [eolModuleParallel+str(numThread) for numThread in threads[1:]]
 queryModulesDefault = [oclModules[0], eolModulesDefault[0], eolModulesDefault[-1]]
-eolModulesAndArgs = [[eolModule, '-module eol.'+eolModule]]
+eolModulesAndArgs = [[eolModule, moduleOpt+'eol.'+eolModule]]
 for numThread in threads:
     threadStr = str(numThread)
-    eolModulesAndArgs.append([eolModuleParallel+threadStr, '-parallelism '+threadStr])
+    eolModulesAndArgs.append([eolModuleParallel+threadStr, parallelismOpt+threadStr])
 
-programs.append(['EOL', epsilonJar, '', [(javaMM, [s+'.eol' for s in javaEOLFOOPScripts], javaModels)], eolModulesAndArgs, ''])
-programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs, ''])
-programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs, ''])
-programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbSequentialEOLFOOPScripts], imdbModels)], eolModulesAndArgs[0:1], ''])
-programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbParallelEOLFOOPScripts], imdbModels)], eolModulesAndArgs[1:], ''])
+programs.append(['EOL', epsilonJar, '', [(javaMM, [s+'.eol' for s in javaEOLFOOPScripts], javaModels)], eolModulesAndArgs])
+programs.append(['EOL', epsilonJar, '', [(dblpMM, [s+'.eol' for s in dblpEOLFOOPScripts], dblpModels)], eolModulesAndArgs])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbEOLFOOPScripts], imdbModels)], eolModulesAndArgs])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbSequentialEOLFOOPScripts], imdbModels)], eolModulesAndArgs[0:1]])
+programs.append(['EOL', epsilonJar, '', [(imdbMM, [s+'.eol' for s in imdbParallelEOLFOOPScripts], imdbModels)], eolModulesAndArgs[1:]])
 for p in imdbJavaFOOPScripts:
-    programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs, ''])
-    programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], parallelJavaModulesAndArgs, ''])
+    programs.append([javaModule, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], standardJavaModulesAndArgs])
+    programs.append([javaModuleParallel, javaJar, '', [(imdbMM, [p+'.eol'], imdbModels)], parallelJavaModulesAndArgs])
 for p in imdbOCLFOOPScripts:
-    programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0]]], '-query'])
-    programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1]]], '-query'])
+    programs.append(['OCL', 'OCL', '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[0], oclQueryOpt]]])
+    programs.append(['OCL_'+p, 'OCL_'+p, '', [(imdbMM, [p+'.ocl'], imdbModels)], [[oclModules[1], oclQueryOpt]]])
 
 # EGX
+egxMain = 'org.eclipse.epsilon.egl.cli.EgxConfigParser'
+egxAdditionalArgs = moduleOpt+'egl.'
+if args.tfDir:
+    egxAdditionalArgs = '-deleteBeforeGen -factoryRoot "'+args.tfDir+'" '+egxAdditionalArgs
+egxNoPersist = '-nopersist '
+egxNoPersistName = 'NoOutput'
 egxModule = 'EgxModule'
 egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
 egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
 imdbEGXScripts = ['imdb2files']
-egxModulesAndArgs = [[egxModule, '-module egl.'+egxModule]]
+egxModulesAndArgs = [[egxModule, egxAdditionalArgs+egxModule], [egxModule+egxNoPersistName, egxNoPersist+egxAdditionalArgs+egxModule]]
 for numThread in threads:
     threadStr = str(numThread)
     for module in egxParallelModules:
-        pkg = 'egl.concurrent.'
+        pkg = 'concurrent.'
         if 'Atom' in module:
             pkg += 'atomic.'
-        egxModulesAndArgs.append([module+threadStr, '-module '+pkg+module+' -parallelism '+threadStr])
-programs.append(['EGX', epsilonJar, '', [(imdbMM, [s+'.egx' for s in imdbEGXScripts], imdbModels)], egxModulesAndArgs, ''])
-
+        egxModulesAndArgs.append([module+threadStr, egxAdditionalArgs+pkg+module+' '+parallelismOpt+threadStr])
+        egxModulesAndArgs.append([module+egxNoPersistName+threadStr, egxNoPersist+egxAdditionalArgs+pkg+module+' '+parallelismOpt+threadStr])
+programs.append(['EGX', epsilonJar, egxMain, [(imdbMM, [s+'.egx' for s in imdbEGXScripts], imdbModels)], egxModulesAndArgs])
 
 # Generate scenarios
 if isGenerate:
     allSubs = []
-    for program, programJar, classpath, scenarios, modulesAndArgs, additionalArgs in programs:
+    for program, programJar, classpath, scenarios, modulesAndArgs in programs:
         selfContained = '_' in program
         isOCL = program.startswith('OCL')
         isJava = program.startswith('Java')
-        isJms = program.startswith(evlJmsJar)
+        isJMS = program.startswith(evlJmsJar)
         programName = program if not selfContained else program.partition('_')[0]
         programSubset = []
         progFilePre = programName+'_run_'
@@ -387,7 +397,7 @@ if isGenerate:
                             command += stdDir + fileName + '.jfr'
                         if isJava and len(margs) > 1 and 'parallel' in margs[1]:
                             script = normalize_foop(script)
-                        if isJms:
+                        if isJMS:
                             scriptPath = 'scripts/'+script
                             metamodelPath = basePathSub+'metamodels/'+metamodel
                             modelPath = basePathSub+'models/'+model
@@ -416,8 +426,6 @@ if isGenerate:
                                     ',fileBasedMetamodelUri=file://'+metamodelPath+ \
                                     ',modelUri=file://'+modelPath
                         command += '" -profile'
-                        if additionalArgs:
-                            command += ' '+additionalArgs
                         if (len(margs) > 1 and margs[1]):
                             command += ' '+margs[1]
                         if len(stdDir) > 1:
