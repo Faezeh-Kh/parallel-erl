@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: EGL CLI
+Bundle-SymbolicName: org.eclipse.epsilon.egl.cli
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: org.eclipse.epsilon.egx.cli
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Require-Bundle: org.eclipse.epsilon.egl.engine,
+ org.eclipse.epsilon.eol.cli
