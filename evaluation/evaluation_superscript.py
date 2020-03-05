@@ -359,7 +359,7 @@ egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallel
 egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
 imdbEGXScripts = ['imdb2files']
 egxModulesAndArgs = [[egxModule, egxAdditionalArgs+egxModule], [egxModule+egxNoPersistName, egxNoPersist+egxAdditionalArgs+egxModule]]
-for numThread in threads:
+for numThread in threads+[maxCores*2]:
     threadStr = str(numThread)
     for module in egxParallelModules:
         pkg = 'concurrent.'
