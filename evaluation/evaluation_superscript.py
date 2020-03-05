@@ -75,7 +75,7 @@ basePathSub = '$BASEPATH$/'
 logicalCores = 24 if sge else os.cpu_count()
 batchFactor = args.batch if args.batch else str(logicalCores)
 fileExt = '.cmd' if (os.name == 'nt' and not sge) else '.sh' 
-fileNameRegex = r'(.*)_(.*_.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
+fileNameRegex = r'(.*)_(.*_?.*)_(.*)(\.txt)' # Script name must be preceded by metamodel!
 resultsFile = open(resultsFileName, 'w') if not isGenerate else None
 writer = csv.writer(resultsFile, lineterminator='\n') if not isGenerate else None
 rows = []
@@ -246,7 +246,7 @@ imdbValidationScripts = ['imdb_validator', 'imdb_dangling']
 simulinkModels = [
     'darkd0'#, 'darksc2', 'darkd3', 'darkd4', 'darkd6', 'darktriad3'
 ]
-
+evlModule = 'EvlModule'
 evlParallelModules = [
     'EvlModuleParallelAnnotation',
     'EvlModuleParallelContextAtoms',
@@ -258,8 +258,8 @@ evlDistributedModules = [
     'EvlModuleJmsMasterBatchLocal',
     'EvlModuleJmsMasterAtomic'
 ]
-evlModules = ['EvlModule'] + evlParallelModules + evlDistributedModules
-evlModulesDefault = evlModules[0:1] + [module + maxCoresStr for module in evlParallelModules] + [evlDistributedModules[1]+'1']
+evlModules = [evlModule] + evlParallelModules + evlDistributedModules
+evlModulesDefault = [evlModule] + [module + maxCoresStr for module in evlParallelModules] + [evlDistributedModules[1]+'1']
 evlParallelModulesAllThreads = [module + str(numThread) for module in evlParallelModules for numThread in threads]
 
 evlScenarios = [
@@ -356,6 +356,7 @@ egxNoPersist = '-nopersist '
 egxNoPersistName = 'NoOutput'
 egxModule = 'EgxModule'
 egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
+egxModules = [egxModule]+egxParallelModules
 egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
 imdbEGXScripts = ['imdb2files']
 egxModulesAndArgs = [[egxModule, egxAdditionalArgs+egxModule], [egxModule+egxNoPersistName, egxNoPersist+egxAdditionalArgs+egxModule]]
@@ -649,8 +650,9 @@ else:
         # This is a nested for loop but with repetition factored out into a function
         metrics = (None, None)
         # Only one of the following calls will change the value in this iteration!
-        metrics = compute_metrics_closure(metrics, evlModules[0], row, row[-1].upper() == 'EVL' or row[0] == oclModules[0])
-        metrics = compute_metrics_closure(metrics, evlModules[0], row, row[0] == oclModules[1])
+        metrics = compute_metrics_closure(metrics, egxModule, row, row[-1].upper() == 'EGX')
+        metrics = compute_metrics_closure(metrics, evlModule, row, row[0] == oclModules[0] or row[-1].upper() == 'EVL')
+        metrics = compute_metrics_closure(metrics, evlModule, row, row[0] == oclModules[1])
         metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
         metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModule, normalize_foop(row[2]))
         metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModuleParallel, normalize_foop(row[2]))
