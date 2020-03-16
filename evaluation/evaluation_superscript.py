@@ -308,7 +308,10 @@ for evlModule in evlDistributedModules:
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
+# java_simple
 programs.append(['OCL_'+javaValidationScripts[1], 'OCL_'+javaValidationScripts[1], '', [(javaMM, [javaValidationScripts[1]+'.ocl'], javaModels)], [[oclModules[1]]]])
+# java_equals
+programs.append(['OCL_'+javaValidationScripts[3], 'OCL_'+javaValidationScripts[3], '', [(javaMM, [javaValidationScripts[3]+'.ocl'], javaModels)], [[oclModules[1]]]])
 validationModulesDefault = evlModulesDefault + oclModules
 validationModulesScalabilityDefault = [evlModules[0], oclModules[0]]+evlParallelModulesAllThreads+oclModules[0:1]+[evlDistributedModules[1]+'1', evlDistributedModules[1]+'2']
 
