@@ -270,20 +270,20 @@ evlScenarios = [
     (simulinkMM, ['simulink_offline.evl'], [model + '.simulink' for model in simulinkModels])
 ]
 evlModulesAndArgs = [[evlModulesDefault[0], moduleOpt+'evl.'+evlModules[0]]]
-for evlModule in evlParallelModules:
+for module in evlParallelModules:
     modulePkg = moduleOpt+'evl.concurrent.'
-    if evlModule.endswith('Atoms'):
+    if module.endswith('Atoms'):
         modulePkg += 'atomic.'
     for numThread in threads:
         threadStr = str(numThread)
-        evlModulesAndArgs.append([evlModule + threadStr, modulePkg+evlModule+' '+parallelismOpt+threadStr])
+        evlModulesAndArgs.append([module + threadStr, modulePkg+module+' '+parallelismOpt+threadStr])
 programs.append(['EVL', epsilonJar, '', evlScenarios, evlModulesAndArgs])
 
 evlJmsJar = 'EVL-JMS'
 evlJmsMaster = 'org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfigParser'
-for evlModule in evlDistributedModules:
-    isLocal = 'Local' in evlModule
-    isBatch = 'Batch' in evlModule
+for module in evlDistributedModules:
+    isLocal = 'Local' in module
+    isBatch = 'Batch' in module
     if isLocal:
         for numWorker in [0]+threads[:-1]:
             parallelism = int(threads[-1] / (numWorker+1))
