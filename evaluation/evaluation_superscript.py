@@ -527,7 +527,7 @@ if isGenerate:
         )
         
     
-    write_benchmark_scenarios('thesis_query', [
+    write_benchmark_scenarios('sample_query', [
         # select / filter 3.53m elements with default modules
         (oclModules[0], imdbOCLFOOPScripts[0], imdbModelsNoExt[0]),
         (oclModules[1], imdbOCLFOOPScripts[0], imdbModelsNoExt[0]),
@@ -565,7 +565,7 @@ if isGenerate:
     ])
 
     # Note: does not include Simulink or distributed EVL as these are dependent on environment, so discretion is required
-    write_benchmark_scenarios('thesis_validation', [
+    write_benchmark_scenarios('sample_validation', [
         (valMod, 'dblp_isbn', 'dblp-all') for valMod in evlModulesDefault
     ]+[ (valMod, javaValidationScripts[1], 'eclipseModel-all') for valMod in validationModulesDefault
     ]+[ (valMod, javaValidationScripts[0], javaModelsNoExt[7]) for valMod in validationModulesDefault
@@ -637,15 +637,16 @@ else:
         break   # Non-recursive
 
     # For reference, each row will eventually = [module, threads, script, model, execTimeMean, execTimeStdev, execSpeedup, execEfficiency, execMemoryMean, execMemoryStdev, modelTimeMean, modelTimeStdev, modelMemoryMean, modelMemoryStdev, program]
-    def compute_metrics_closure(currentMetrics, relModule, row, filterCondition, relScript = row[2], decimalPlaces = 3):
-        if (filterCondition):
-            for nestedRow in rows:
-                if (nestedRow[0] == relModule and (nestedRow[2] == relScript or nestedRow[2] == row[2]) and nestedRow[3] == row[3]):
-                    speedup = round(nestedRow[4]/row[4], decimalPlaces) if nestedRow[4] and row[4] else None
-                    efficiency = round(speedup/row[1], decimalPlaces) if speedup and row[1] else None
-                    return (speedup, efficiency)
+    def compute_metrics_closure(currentMetrics, relModule, row, relScript = None, decimalPlaces = 3):
+        if not relScript:
+            relScript = row[2]
+        for nestedRow in rows:#[::-1]:
+            if nestedRow[0] == relModule and nestedRow[2] == relScript and nestedRow[3] == row[3]:
+                speedup = round(nestedRow[4]/row[4], decimalPlaces) if nestedRow[4] and row[4] else None
+                efficiency = round(speedup/row[1], decimalPlaces) if speedup and row[1] else None
+                return (speedup, efficiency)
         return currentMetrics
-    
+
     # Second pass - compute performance metrics, update rows and write to CSV file
     for i in range(0, len(rows)):
         row = rows[i]
@@ -653,16 +654,16 @@ else:
         # This is a nested for loop but with repetition factored out into a function
         metrics = (None, None)
         # Only one of the following calls will change the value in this iteration!
-        metrics = compute_metrics_closure(metrics, egxModule, row, row[-1].upper() == 'EGX')
-        metrics = compute_metrics_closure(metrics, evlModule, row, row[0] == oclModules[0] or row[-1].upper() == 'EVL')
-        metrics = compute_metrics_closure(metrics, evlModule, row, row[0] == oclModules[1])
-        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
-        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModule, normalize_foop(row[2]))
-        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == javaModuleParallel, normalize_foop(row[2]))
-        metrics = compute_metrics_closure(metrics, eolModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
-        for oclModule in oclModules:
-            metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModuleParallel, normalize_foop(row[2]))
-            metrics = compute_metrics_closure(metrics, oclModule, row, row[0] == eolModule, normalize_foop(row[2]))
+        if row[-1].upper() == 'EVL':
+            metrics = compute_metrics_closure(metrics, evlModule, row)
+        elif row[-1].upper() == 'EGX':
+            metrics = compute_metrics_closure(metrics, egxModule, row)
+        elif row[0] == eolModuleParallel or row[0] == javaModule or row[0] == javaModuleParallel:
+            metrics = compute_metrics_closure(metrics, eolModule, row, normalize_foop(row[2]))
+        else:
+            for oclModule in oclModules:
+                if row[0] == eolModule or row[0] == evlModule:
+                    metrics = compute_metrics_closure(metrics, oclModule, row, normalize_foop(row[2]))
         
         rowResults.insert(6, metrics[0])
         rowResults.insert(7, metrics[1])
