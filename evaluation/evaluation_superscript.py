@@ -358,7 +358,7 @@ if args.tfDir:
 egxNoPersist = '-nopersist '
 egxNoPersistName = 'NoOutput'
 egxModule = 'EgxModule'
-egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallelElements', 'EgxModuleParallelAnnotation']
+egxParallelModules = ['EgxModuleParallelGenerationRuleAtoms', 'EgxModuleParallelAnnotation']
 egxModules = [egxModule]+egxParallelModules
 egxModulesDefault = [egxModule, egxParallelModules[0]+maxCoresStr]
 imdbEGXScripts = ['imdb2files']
