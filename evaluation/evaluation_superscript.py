@@ -272,8 +272,6 @@ evlScenarios = [
 evlModulesAndArgs = [[evlModulesDefault[0], moduleOpt+'evl.'+evlModules[0]]]
 for module in evlParallelModules:
     modulePkg = moduleOpt+'evl.concurrent.'
-    if module.endswith('Atoms'):
-        modulePkg += 'atomic.'
     for numThread in threads:
         threadStr = str(numThread)
         evlModulesAndArgs.append([module + threadStr, modulePkg+module+' '+parallelismOpt+threadStr])
@@ -367,8 +365,6 @@ for numThread in threads+[maxCores*2, maxCores*4, maxCores*8]:
     threadStr = str(numThread)
     for module in egxParallelModules:
         pkg = 'concurrent.'
-        if 'Atom' in module:
-            pkg += 'atomic.'
         egxModulesAndArgs.append([module+threadStr, egxAdditionalArgs+pkg+module+' '+parallelismOpt+threadStr])
         egxModulesAndArgs.append([module+egxNoPersistName+threadStr, egxNoPersist+egxAdditionalArgs+pkg+module+' '+parallelismOpt+threadStr])
 programs.append(['EGX', epsilonJar, egxMain, [(imdbMM, [s+'.egx' for s in imdbEGXScripts], imdbModels)], egxModulesAndArgs])
