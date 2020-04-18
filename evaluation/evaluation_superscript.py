@@ -282,27 +282,24 @@ evlJmsMaster = 'org.eclipse.epsilon.evl.distributed.jms.launch.JmsEvlMasterConfi
 for module in evlDistributedModules:
     isLocal = 'Local' in module
     isBatch = 'Batch' in module
-    if isLocal:
-        for numWorker in [0]+threads[:-1]:
-            parallelism = int(threads[-1] / (numWorker+1))
-            workerStr = str(numWorker)
-            threadStr = str(parallelism)
-            evlDistArgs = distributedArgs +\
-                ' -local -parallelism '+threadStr+' -workers '+workerStr +\
-                ' -masterProportion '+ str(calculate_master_proportion(numWorker))
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
-    else:
-        for numWorker in range(0, maxWorkers):
-            workerStr = str(numWorker)
-            evlDistArgs = distributedArgs+ \
-                ' -workers '+workerStr+' -masterProportion '+ \
-                str(calculate_master_proportion(numWorker))
-            if isLocal:
-                evlDistArgs += ' -local'
-            if isBatch:
-                evlDistArgs += ' -batches '+batchFactor
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
-            programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule+workerStr, evlDistArgs+parallelismOpt+'1']]])
+    workersRange = [0]+threads[:-1] if isLocal else range(0, maxWorkers)
+    for numWorker in workersRange:
+        if numWorker > 0 and isLocal:
+            parallelism = int(threads[-1] / numWorker)
+            numWorker -= 1
+        else:
+            parallelism = threads[-1]
+        workerStr = str(numWorker)
+        threadStr = str(parallelism)
+        evlDistArgs = distributedArgs+ \
+            ' -workers '+workerStr+' -masterProportion '+ \
+            str(calculate_master_proportion(numWorker))
+        if isLocal:
+            evlDistArgs += ' -local'
+        if isBatch:
+            evlDistArgs += ' -batches '+batchFactor
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule+workerStr, evlDistArgs+parallelismOpt+'1']]])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
