@@ -76,7 +76,11 @@ public abstract class AbstractIMDBQuery extends AbstractBenchmark {
 		try {
 			Collection<?> movies = (Collection<?>) propertyGetter.invoke(self, "movies");
 			Collection<Object> persons = EolCollectionType.isOrdered(movies) ?
-				new EolSequence<>(movies.size()) : new EolBag<>(movies.size());
+				new EolSequence<>() : new EolBag<>();
+				
+			if (persons instanceof EolSequence) {
+				((EolSequence<?>) persons).ensureCapacity(movies.size());
+			}
 			
 			for (Object movie : movies) {
 				persons.add(propertyGetter.invoke(movie, "persons"));
