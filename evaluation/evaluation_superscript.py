@@ -298,8 +298,8 @@ for module in evlDistributedModules:
             evlDistArgs += ' -local'
         if isBatch:
             evlDistArgs += ' -batches '+batchFactor
-        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[evlModule+workerStr, evlDistArgs]]])
-        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[evlModule+workerStr, evlDistArgs+parallelismOpt+'1']]])
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[:3], [[module+workerStr, evlDistArgs]]])
+        programs.append([evlJmsJar, evlJmsJar, evlJmsMaster, evlScenarios[3:], [[module+workerStr, evlDistArgs+parallelismOpt+'1']]])
 
 oclModules = ['EOCL-interpreted', 'EOCL-compiled']
 programs.append(['OCL', 'OCL', '', [(javaMM, [s+'.ocl' for s in javaValidationScripts], javaModels)], [[oclModules[0]]]])
