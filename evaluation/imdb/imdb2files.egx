@@ -33,7 +33,7 @@ operation String replaceIllegalChars() : String {
 }*/
 
 pre {
-	var lengths = new Native("java.util.concurrent.ConcurrentHashMap")();
+	var lengths = new ConcurrentMap;
 }
 
 @greedy
