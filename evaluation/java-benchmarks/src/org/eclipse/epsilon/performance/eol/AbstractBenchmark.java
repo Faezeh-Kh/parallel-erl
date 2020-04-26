@@ -17,10 +17,10 @@ import org.eclipse.epsilon.eol.IEolModule;
 import org.eclipse.epsilon.eol.cli.EolConfigParser;
 import org.eclipse.epsilon.eol.exceptions.EolRuntimeException;
 import org.eclipse.epsilon.eol.execute.introspection.IPropertyGetter;
-import org.eclipse.epsilon.eol.launch.IEolRunConfiguration;
+import org.eclipse.epsilon.eol.launch.EolRunConfiguration;
 import org.eclipse.epsilon.eol.models.IModel;
 
-public abstract class AbstractBenchmark extends IEolRunConfiguration {
+public abstract class AbstractBenchmark extends EolRunConfiguration {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String... args) throws Exception {
@@ -31,7 +31,7 @@ public abstract class AbstractBenchmark extends IEolRunConfiguration {
 		new BenchmarkConfigParser<>(builder).apply(args).run();
 	}
 	
-	public static class Builder<C extends AbstractBenchmark, B extends Builder<C, B>> extends IEolRunConfiguration.Builder<C, B> {
+	public static class Builder<C extends AbstractBenchmark, B extends Builder<C, B>> extends EolRunConfiguration.Builder<C, B> {
 		public Builder(Class<C> runConfigClass) {
 			super(runConfigClass);
 		}

@@ -96,7 +96,7 @@ public class EvlOclTests {
 	}
 	
 	@Parameters(name = "{0}")
-	public static Iterable<? extends Object> configurations() {
+	public static Iterable<? extends Object> configurations() throws Exception {
 		return getScenarios(
 			evlTestInputs,
 			false,
