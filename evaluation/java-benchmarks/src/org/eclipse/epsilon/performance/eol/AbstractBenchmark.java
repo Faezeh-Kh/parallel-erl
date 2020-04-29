@@ -44,7 +44,7 @@ public abstract class AbstractBenchmark extends EolRunConfiguration {
 			try {
 				if (module == null) module = createModule();
 				String scriptName = FileUtil.getFileName(script.getFileName().toString(), false);
-				String className = "org.eclipse.epsilon.performance.eol."+scriptName.split("_")[0]+"."+scriptName;
+				String className = AbstractBenchmark.class.getPackage().getName()+"."+scriptName.split("_")[0]+"."+scriptName;
 				return (C) Class.forName(className).getDeclaredConstructors()[0].newInstance(this);
 			}
 			catch (InstantiationException | IllegalAccessException | IllegalArgumentException
